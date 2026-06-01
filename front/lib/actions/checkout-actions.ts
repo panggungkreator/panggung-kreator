@@ -3,6 +3,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import Groq from "groq-sdk";
+import nodemailer from "nodemailer";
 
 type OnboardingPayload = {
   full_name: string;
@@ -279,6 +280,17 @@ export async function verifyMemberPaymentAction(memberId: string) {
       return { success: false, error: "Hanya admin yang diperbolehkan memverifikasi pembayaran." };
     }
 
+    // Fetch member details before updating
+    const { data: memberToVerify, error: fetchError } = await supabase
+      .from("members")
+      .select("email, username, temporary_password, full_name")
+      .eq("id", memberId)
+      .single();
+
+    if (fetchError || !memberToVerify) {
+      return { success: false, error: "Gagal mengambil data member." };
+    }
+
     // Update status
     const { error } = await supabase
       .from("members")
@@ -287,6 +299,52 @@ export async function verifyMemberPaymentAction(memberId: string) {
 
     if (error) {
       return { success: false, error: error.message };
+    }
+
+    // Kirim Email Konfirmasi menggunakan Nodemailer
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || "smtp.gmail.com",
+          port: parseInt(process.env.SMTP_PORT || "465"),
+          secure: process.env.SMTP_SECURE === "false" ? false : true, // true untuk port 465, false untuk port lain
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
+
+        // Dapatkan origin untuk link login
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        
+        await transporter.sendMail({
+          from: `"Panggung Kreator" <${process.env.SMTP_USER}>`,
+          to: memberToVerify.email,
+          subject: "Pembayaran Terkonfirmasi - Panggung Kreator Akademi",
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+              <h2 style="color: #bc151b;">Selamat, Pembayaran Anda Sudah Terkonfirmasi! 🎉</h2>
+              <p>Halo <strong>${memberToVerify.full_name || "Kreator"}</strong>,</p>
+              <p>Pembayaran Anda untuk bergabung di Panggung Kreator Akademi telah berhasil kami verifikasi.</p>
+              <p>Berikut adalah detail akun Anda untuk masuk ke sistem:</p>
+              <div style="background-color: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; margin: 20px 0;">
+                <p style="margin: 0 0 10px 0; font-size: 16px;"><strong>Username:</strong> ${memberToVerify.username}</p>
+                <p style="margin: 0; font-size: 16px;"><strong>Password:</strong> ${memberToVerify.temporary_password}</p>
+              </div>
+              <p>Silakan klik tautan di bawah ini untuk masuk ke akun Anda:</p>
+              <div style="margin: 30px 0;">
+                <a href="${appUrl}/login" style="background-color: #bc151b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Login ke Dashboard</a>
+              </div>
+              <p style="font-size: 14px; color: #666;">Jika Anda mengalami kendala, silakan balas email ini untuk menghubungi tim support kami.</p>
+              <p style="margin-top: 30px;">Salam hangat,<br/><strong>Tim Panggung Kreator</strong></p>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        console.error("Gagal mengirim email konfirmasi:", emailError);
+      }
+    } else {
+      console.warn("SMTP_USER atau SMTP_PASS tidak ditemukan di .env, email konfirmasi tidak dikirim.");
     }
 
     return { success: true };

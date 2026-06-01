@@ -56,9 +56,14 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
   };
 
   // Handle Verify Payment Action
-  const handleVerify = async (memberId: string) => {
+  const handleVerify = async (memberId: string, memberName: string) => {
     if (verifyingId) return;
-    
+
+    const isConfirmed = window.confirm(
+      `Apakah anda yakin ingin mengkonfirmasi pelunasan dengan member atas nama ${memberName}?`
+    );
+    if (!isConfirmed) return;
+
     setVerifyingId(memberId);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -73,7 +78,7 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
               m.id === memberId ? { ...m, payment_status: "paid" } : m
             )
           );
-          setSuccessMessage("Berhasil memverifikasi pembayaran member!");
+          setSuccessMessage(`Berhasil memverifikasi pembayaran atas nama ${memberName}`);
           router.refresh();
         } else {
           setErrorMessage(result.error || "Gagal memverifikasi pembayaran.");
@@ -107,7 +112,7 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
     const total = members.length;
     const pending = members.filter((m) => m.payment_status === "pending").length;
     const paid = members.filter((m) => m.payment_status === "paid").length;
-    const revenue = paid * 249000;
+    const revenue = paid * 49000;
 
     return { total, pending, paid, revenue };
   }, [members]);
@@ -208,31 +213,28 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
           <div className="flex gap-2 text-xs font-semibold">
             <button
               onClick={() => setStatusFilter("all")}
-              className={`px-4 py-2 rounded-lg border transition-all cursor-pointer ${
-                statusFilter === "all"
+              className={`px-4 py-2 rounded-lg border transition-all cursor-pointer ${statusFilter === "all"
                   ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-black dark:border-white"
                   : "bg-transparent text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20"
-              }`}
+                }`}
             >
               Semua ({members.length})
             </button>
             <button
               onClick={() => setStatusFilter("pending")}
-              className={`px-4 py-2 rounded-lg border transition-all cursor-pointer ${
-                statusFilter === "pending"
+              className={`px-4 py-2 rounded-lg border transition-all cursor-pointer ${statusFilter === "pending"
                   ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/20 dark:border-yellow-500/20"
                   : "bg-transparent text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20"
-              }`}
+                }`}
             >
               Pending ({members.filter((m) => m.payment_status === "pending").length})
             </button>
             <button
               onClick={() => setStatusFilter("paid")}
-              className={`px-4 py-2 rounded-lg border transition-all cursor-pointer ${
-                statusFilter === "paid"
+              className={`px-4 py-2 rounded-lg border transition-all cursor-pointer ${statusFilter === "paid"
                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 dark:border-emerald-500/20"
                   : "bg-transparent text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20"
-              }`}
+                }`}
             >
               Lunas ({members.filter((m) => m.payment_status === "paid").length})
             </button>
@@ -324,11 +326,10 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
                     {/* Status Badge */}
                     <td className="py-4 px-6 text-center">
                       <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                          member.payment_status === "paid"
+                        className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${member.payment_status === "paid"
                             ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 dark:border-emerald-500/20"
                             : "bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/20 dark:border-yellow-500/20"
-                        }`}
+                          }`}
                       >
                         {member.payment_status === "paid" ? "Paid (Lunas)" : "Pending"}
                       </span>
@@ -353,7 +354,7 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
                         {/* Verify Payment Action */}
                         {member.payment_status === "pending" && (
                           <button
-                            onClick={() => handleVerify(member.id)}
+                            onClick={() => handleVerify(member.id, member.full_name || member.username || "Kreator")}
                             disabled={verifyingId !== null}
                             className="px-2.5 py-1.5 bg-[#bc151b] hover:bg-[#bc151b]/90 text-white rounded-md font-semibold border border-red-600/30 transition-all disabled:opacity-50 flex items-center justify-center cursor-pointer"
                           >
