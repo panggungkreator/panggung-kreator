@@ -8,6 +8,27 @@ import { signout } from '@/lib/actions/auth-actions';
 import { createClient } from '@/lib/supabase/client';
 import { registerMemberAction } from '@/lib/actions/checkout-actions';
 
+const formatWhatsapp = (value: string) => {
+  let digits = value.replace(/\D/g, '');
+  
+  // Jika diawali 62, ubah ke 0
+  if (digits.startsWith('62')) {
+    digits = '0' + digits.slice(2);
+  }
+  
+  // Jika tidak kosong dan tidak diawali 0, tambahkan 0 di depan
+  if (digits.length > 0 && !digits.startsWith('0')) {
+    digits = '0' + digits;
+  }
+
+  const truncated = digits.slice(0, 13);
+  const parts = [];
+  for (let i = 0; i < truncated.length; i += 4) {
+    parts.push(truncated.slice(i, i + 4));
+  }
+  return parts.join('-');
+};
+
 export default function CheckoutPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,7 +37,7 @@ export default function CheckoutPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [dbMember, setDbMember] = useState<any>(null);
   const [loadingSession, setLoadingSession] = useState(true);
-  const [generatedAccount, setGeneratedAccount] = useState<{username: string, password: string} | null>(null);
+  const [generatedAccount, setGeneratedAccount] = useState<{ username: string, password: string } | null>(null);
   const [error, setError] = useState("");
 
   // Form State
@@ -36,14 +57,14 @@ export default function CheckoutPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setCurrentUser(session.user);
-        
+
         // Fetch member profile
         const { data: member } = await supabase
           .from("members")
           .select("*")
           .eq("id", session.user.id)
           .maybeSingle();
-        
+
         if (member) {
           setDbMember(member);
           // Set values to form
@@ -52,7 +73,7 @@ export default function CheckoutPage() {
             stageName: member.stage_name || '',
             instagram: member.instagram_username || '',
             tiktok: member.tiktok_username || '',
-            whatsapp: member.whatsapp_number || '',
+            whatsapp: formatWhatsapp(member.whatsapp_number || ''),
             email: member.email || session.user.email || '',
             profession: member.occupation || ''
           });
@@ -96,8 +117,8 @@ export default function CheckoutPage() {
       isValid = false;
     } else {
       const cleanWa = formData.whatsapp.replace(/\D/g, '');
-      if (cleanWa.length < 10 || cleanWa.length > 15) {
-        newErrors.whatsapp = 'Nomor WhatsApp harus terdiri dari 10-15 digit angka';
+      if (cleanWa.length < 10 || cleanWa.length > 13) {
+        newErrors.whatsapp = 'Nomor WhatsApp harus terdiri dari 10-13 digit angka';
         isValid = false;
       }
     }
@@ -136,9 +157,7 @@ export default function CheckoutPage() {
 
   const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    
-    // Hanya izinkan angka dan karakter '+' (opsional) di awal
-    const formatted = value.replace(/(?!^\+)[^\d]/g, '');
+    const formatted = formatWhatsapp(value);
 
     setFormData(prev => ({ ...prev, whatsapp: formatted }));
     if (errors.whatsapp) {
@@ -156,7 +175,7 @@ export default function CheckoutPage() {
     try {
       // Panggil server action untuk register member & generate akun login
       const result = await registerMemberAction(formData);
-      
+
       if (result.success) {
         setGeneratedAccount({
           username: result.username!,
@@ -229,7 +248,7 @@ export default function CheckoutPage() {
             Pendaftaran <span className="text-[#bc151b]">Panggung Kreator Akademi</span>
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm md:text-base">
-            {qrisGenerated 
+            {qrisGenerated
               ? "Selesaikan pembayaran manual Anda untuk mengaktifkan akun."
               : "Lengkapi data diri lo dan selesaikan pembayaran untuk bergabung."
             }
@@ -391,7 +410,7 @@ export default function CheckoutPage() {
                         name="whatsapp"
                         value={formData.whatsapp}
                         onChange={handleWhatsappChange}
-                        placeholder="0812xxxxxxxx atau +62812xxxxxxxx"
+                        placeholder="0812xxxxxxxx"
                         className={`w-full bg-white dark:bg-[#0a0a0a] border ${errors.whatsapp ? 'border-[#bc151b] focus:ring-[#bc151b]' : 'border-zinc-200 dark:border-white/10 focus:border-[#bc151b] focus:ring-[#bc151b]'
                           } rounded-lg px-4 py-3 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 transition-all`}
                         required

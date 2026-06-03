@@ -6,10 +6,11 @@ import Logo from './Logo';
 import { Sun, Moon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { signout } from '@/lib/actions/auth-actions';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function Header({ isFixed = false }: { isFixed?: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -74,12 +75,12 @@ export default function Header({ isFixed = false }: { isFixed?: boolean }) {
   return (
     <header className={`${isFixed ? 'fixed' : 'sticky'} top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-200 dark:border-white/5 transition-colors duration-300`}>
       <Logo size="md" />
-      
+
       <div className="flex items-center gap-3">
         {mounted ? (
           <button
             onClick={toggleTheme}
-            className="p-1.5 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-all rounded-lg border border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 bg-white dark:bg-zinc-900/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer flex items-center justify-center"
+            className="p-3 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-all rounded-lg border border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 bg-white dark:bg-zinc-900/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer flex items-center justify-center"
             title={theme === "dark" ? "Mode Terang" : "Mode Gelap"}
           >
             {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
@@ -87,20 +88,13 @@ export default function Header({ isFixed = false }: { isFixed?: boolean }) {
         ) : (
           <div className="w-8 h-8 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/50 animate-pulse" />
         )}
-        
-        {user ? (
-          <button
-            onClick={handleSignOut}
-            className="text-xs font-bold text-zinc-500 hover:text-red-500 dark:text-zinc-400 dark:hover:text-red-500 transition-all border border-zinc-200 dark:border-white/10 hover:border-red-500/30 rounded-lg px-3 py-1.5 bg-white dark:bg-zinc-900/50 hover:bg-red-500/10 cursor-pointer"
-          >
-            Keluar
-          </button>
-        ) : (
+
+        {pathname !== '/checkout' && (
           <Link
-            href="/login"
-            className="text-xs font-bold text-zinc-600 hover:text-[#bc151b] dark:text-zinc-300 dark:hover:text-white transition-all border border-zinc-200 dark:border-white/10 hover:border-[#bc151b]/20 dark:hover:border-white/20 rounded-lg px-3 py-1.5 bg-white dark:bg-zinc-900/50 hover:bg-[#bc151b]/5 dark:hover:bg-zinc-800/50 cursor-pointer"
+            href="/checkout"
+            className="text-sm font-bold text-white transition-all border border-[#bc151b] hover:border-[#9a1116] rounded-lg px-4 py-2 bg-[#bc151b] hover:bg-[#9a1116] cursor-pointer shadow-sm shadow-[#bc151b]/20"
           >
-            Masuk
+            Daftar Sekarang
           </Link>
         )}
       </div>
