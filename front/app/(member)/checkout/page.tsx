@@ -66,19 +66,31 @@ export default function CheckoutPage() {
           .maybeSingle();
 
         if (member) {
-          setDbMember(member);
-          // Set values to form
-          setFormData({
-            fullName: member.full_name || '',
-            stageName: member.stage_name || '',
-            instagram: member.instagram_username || '',
-            tiktok: member.tiktok_username || '',
-            whatsapp: formatWhatsapp(member.whatsapp_number || ''),
-            email: member.email || session.user.email || '',
-            profession: member.occupation || ''
-          });
-          if (member.payment_status === 'pending') {
-            setQrisGenerated(true);
+          const createdAt = new Date(member.created_at || session.user.created_at);
+          const now = new Date();
+          const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+          if (member.payment_status === 'pending' && hoursElapsed > 3) {
+            // Sesi kedaluwarsa setelah 3 jam
+            await supabase.auth.signOut();
+            setCurrentUser(null);
+            setDbMember(null);
+            setQrisGenerated(false);
+          } else {
+            setDbMember(member);
+            // Set values to form
+            setFormData({
+              fullName: member.full_name || '',
+              stageName: member.stage_name || '',
+              instagram: member.instagram_username || '',
+              tiktok: member.tiktok_username || '',
+              whatsapp: member.whatsapp_number || '',
+              email: member.email || session.user.email || '',
+              profession: member.occupation || ''
+            });
+            if (member.payment_status === 'pending') {
+              setQrisGenerated(true);
+            }
           }
         } else {
           setFormData(prev => ({ ...prev, email: session.user.email || '' }));

@@ -189,6 +189,8 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       let friendlyError = authError.message;
       if (authError.message.includes("rate limit exceeded")) {
         friendlyError = "Batas pendaftaran email terlampaui (rate limit Supabase). Silakan coba lagi nanti atau hubungi Admin.";
+      } else if (authError.message.toLowerCase().includes("already registered") || authError.message.toLowerCase().includes("already exists")) {
+        friendlyError = "Email sudah terdaftar. Jika sebelumnya Anda belum menyelesaikan pembayaran dan sesi telah habis, silakan hubungi Admin untuk bantuan.";
       }
       return { success: false, error: friendlyError };
     }

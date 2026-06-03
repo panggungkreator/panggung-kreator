@@ -15,6 +15,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Panggung Kreator",
   description: "Platform Teman Sepanggung",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({
