@@ -316,7 +316,6 @@ export async function verifyMemberPaymentAction(memberId: string) {
           },
         });
 
-        // Dapatkan origin untuk link login
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
         
         await transporter.sendMail({
@@ -354,3 +353,65 @@ export async function verifyMemberPaymentAction(memberId: string) {
     return { success: false, error: error.message || "Terjadi kesalahan internal." };
   }
 }
+
+export async function deleteMembersAction(memberIds: string[]) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) { return cookieStore.get(name)?.value; },
+          set(name: string, value: string, options: CookieOptions) {},
+          remove(name: string, options: CookieOptions) {},
+        },
+      }
+    );
+
+    // Cek apakah user yang memanggil adalah admin
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { success: false, error: "Tidak diotorisasi" };
+    }
+
+    const { data: adminMember } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!adminMember || adminMember.role !== "admin") {
+      return { success: false, error: "Hanya admin yang diperbolehkan menghapus data." };
+    }
+
+    const supabaseAdmin = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          get(name: string) { return ""; },
+          set(name: string, value: string, options: any) {},
+          remove(name: string, options: any) {},
+        },
+      }
+    );
+
+    // Loop through each member id to delete auth account and member record
+    // Note: If members table has ON DELETE CASCADE from auth.users, deleting auth user is enough.
+    // However, we will delete auth.user which should cascade if setup correctly, 
+    // or we delete both explicitly.
+    for (const id of memberIds) {
+      // Delete member record first (just in case cascade is not set)
+      await supabaseAdmin.from("members").delete().eq("id", id);
+      // Delete auth user
+      await supabaseAdmin.auth.admin.deleteUser(id);
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Delete members error:", error);
+    return { success: false, error: error.message || "Terjadi kesalahan saat menghapus data." };
+  }
+}
+

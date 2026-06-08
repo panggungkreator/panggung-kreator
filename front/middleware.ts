@@ -88,8 +88,8 @@ export async function middleware(request: NextRequest) {
         return response;
     }
 
-    // Jika admin mengakses halaman member/login, langsung arahkan ke panel admin
-    if (isAdmin && (pathname === "/login" || pathname === "/dashboard" || pathname === "/checkout")) {
+    // Jika admin mengakses halaman member/login, langsung arahkan ke panel admin (kecuali checkout untuk keperluan testing)
+    if (isAdmin && (pathname === "/login" || pathname === "/dashboard")) {
         return NextResponse.redirect(new URL("/admin", request.url));
     }
 
@@ -104,7 +104,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/checkout", request.url));
     }
 
-    if (hasOnboarded && pathname === "/checkout") {
+    if (hasOnboarded && !isAdmin && pathname === "/checkout") {
         return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
