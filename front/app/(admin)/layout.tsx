@@ -59,6 +59,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Data Voucher
               </span>
             </Link>
+
+            {/* Packages Nav Item */}
+            <Link
+              href="/admin/packages"
+              className={`flex items-center rounded-2xl transition-all duration-200 cursor-pointer ${pathname.includes('/packages')
+                ? 'bg-[#1a1a2e] text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-md'
+                : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+                } ${isExpanded
+                  ? 'px-4 py-3 mx-2 w-[calc(100%-16px)] justify-start'
+                  : 'w-12 h-12 justify-center'
+                }`}
+            >
+              <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <span className={`font-bold text-sm whitespace-nowrap transition-opacity duration-300 ${isExpanded ? 'ml-3 opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
+                Data Paket
+              </span>
+            </Link>
+
           </nav>
         </div>
 

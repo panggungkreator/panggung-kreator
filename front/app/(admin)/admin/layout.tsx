@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import { signout } from "@/lib/actions/auth-actions";
 import { Sun, Moon, Bell, ChevronDown } from "lucide-react";
@@ -108,9 +109,6 @@ export default function AdminLayout({
       <header className="px-6 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-200 dark:border-white/5 flex items-center justify-between sticky top-0 z-50 transition-colors duration-300">
         <div className="flex items-center gap-3">
           <Logo size="md" isLink={false} />
-          {/* <span className="bg-red-500/10 text-[#bc151b] text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded border border-red-500/20">
-            Admin Panel
-          </span> */}
         </div>
 
         <div className="flex items-center gap-4">
@@ -153,11 +151,22 @@ export default function AdminLayout({
             {/* Dropdown Menu */}
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="px-4 py-2 border-b border-zinc-100 dark:border-white/5">
+                <div className="px-4 py-2 border-b border-zinc-100 dark:border-white/5 mb-1">
                   <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider">Akun</p>
                   <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Admin</p>
                 </div>
 
+                {/* Landing Page link in Dropdown */}
+                <Link
+                  href="/"
+                  target="_blank"
+                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+                  <span>Landing Page</span>
+                </Link>
 
                 <div className="h-px bg-zinc-100 dark:bg-white/5 my-1" />
 
