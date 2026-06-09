@@ -601,9 +601,9 @@ export default function LandingPage() {
       {/* 13. Final Tagline & Footer */}
       <section className="py-20 px-6 md:px-12 bg-zinc-100 dark:bg-black border-t border-zinc-200 dark:border-white/5 text-center relative transition-colors duration-300">
         <div className="max-w-4xl mx-auto">
-          <div className="w-24 h-24 rounded-xl flex items-center justify-center font-title font-bold text-white text-lg mx-auto mb-6">
-            <img src="/logo_black.png" alt="Panggung Kreator Akademi Logo" className="w-full h-full object-cover block dark:hidden" />
-            <img src="/logo.png" alt="Panggung Kreator Akademi Logo" className="w-full h-full object-cover hidden dark:block" />
+          <div className="w-auto h-auto rounded-xl flex items-center justify-center font-title font-bold text-white text-lg mx-auto mb-6">
+            <img src="/logo-light.png" alt="Panggung Kreator Akademi Logo" className="w-36 h-full object-cover block dark:hidden" />
+            <img src="/logo-dark.png" alt="Panggung Kreator Akademi Logo" className="w-full h-full object-cover hidden dark:block" />
           </div>
           <h2 className="text-3xl md:text-5xl font-title font-bold uppercase text-zinc-900 dark:text-white tracking-widest mb-4">
             Panggung Kreator Akademi

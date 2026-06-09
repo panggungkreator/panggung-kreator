@@ -107,10 +107,10 @@ export default function AdminLayout({
       {/* Header Admin */}
       <header className="px-6 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-200 dark:border-white/5 flex items-center justify-between sticky top-0 z-50 transition-colors duration-300">
         <div className="flex items-center gap-3">
-          <Logo size="sm" isLink={false} />
-          <span className="bg-red-500/10 text-[#bc151b] text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded border border-red-500/20">
+          <Logo size="md" isLink={false} />
+          {/* <span className="bg-red-500/10 text-[#bc151b] text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded border border-red-500/20">
             Admin Panel
-          </span>
+          </span> */}
         </div>
 
         <div className="flex items-center gap-4">
