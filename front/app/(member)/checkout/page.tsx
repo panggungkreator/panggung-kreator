@@ -6,16 +6,16 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
 import { signout } from '@/lib/actions/auth-actions';
 import { createClient } from '@/lib/supabase/client';
-import { registerMemberAction } from '@/lib/actions/checkout-actions';
+import { registerMemberAction, validateVoucherAction } from '@/lib/actions/checkout-actions';
 
 const formatWhatsapp = (value: string) => {
   let digits = value.replace(/\D/g, '');
-  
+
   // Jika diawali 62, ubah ke 0
   if (digits.startsWith('62')) {
     digits = '0' + digits.slice(2);
   }
-  
+
   // Jika tidak kosong dan tidak diawali 0, tambahkan 0 di depan
   if (digits.length > 0 && !digits.startsWith('0')) {
     digits = '0' + digits;
@@ -40,6 +40,12 @@ export default function CheckoutPage() {
   const [generatedAccount, setGeneratedAccount] = useState<{ username: string, password: string } | null>(null);
   const [error, setError] = useState("");
 
+  // Voucher State
+  const [voucherCodeInput, setVoucherCodeInput] = useState("");
+  const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
+  const [appliedVoucher, setAppliedVoucher] = useState<{ code: string, discountNominal: number } | null>(null);
+  const [voucherMessage, setVoucherMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+
   // Form State
   const [formData, setFormData] = useState({
     fullName: '',
@@ -58,43 +64,51 @@ export default function CheckoutPage() {
       if (session?.user) {
         setCurrentUser(session.user);
 
-        // Fetch member profile
-        const { data: member } = await supabase
-          .from("members")
-          .select("*")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (member) {
-          const createdAt = new Date(member.created_at || session.user.created_at);
-          const now = new Date();
-          const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-
-          if (member.payment_status === 'pending' && hoursElapsed > 3) {
-            // Sesi kedaluwarsa setelah 3 jam
-            await supabase.auth.signOut();
-            setCurrentUser(null);
-            setDbMember(null);
-            setQrisGenerated(false);
-          } else {
-            setDbMember(member);
-            // Set values to form
-            setFormData({
-              fullName: member.full_name || '',
-              stageName: member.stage_name || '',
-              instagram: member.instagram_username || '',
-              tiktok: member.tiktok_username || '',
-              whatsapp: member.whatsapp_number || '',
-              email: member.email || session.user.email || '',
-              profession: member.occupation || ''
-            });
-            if (member.payment_status === 'pending') {
-              setQrisGenerated(true);
+          // Fetch member profile
+          const { data: member } = await supabase
+            .from("members")
+            .select("*")
+            .eq("id", session.user.id)
+            .maybeSingle();
+  
+          if (member) {
+            const createdAt = new Date(member.created_at || session.user.created_at);
+            const now = new Date();
+            const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+  
+            if (member.payment_status === 'pending' && hoursElapsed > 3) {
+              // Sesi kedaluwarsa setelah 3 jam
+              await supabase.auth.signOut();
+              setCurrentUser(null);
+              setDbMember(null);
+              setQrisGenerated(false);
+            } else {
+              setDbMember(member);
+              // Set values to form
+              setFormData({
+                fullName: member.full_name || '',
+                stageName: member.stage_name || '',
+                instagram: member.instagram_username || '',
+                tiktok: member.tiktok_username || '',
+                whatsapp: member.whatsapp_number || '',
+                email: member.email || session.user.email || '',
+                profession: member.occupation || ''
+              });
+              // Set applied voucher if exists
+              if (member.used_voucher_code && member.final_price) {
+                const discount = 49000 - (member.final_price - (member.unique_code || 0));
+                setAppliedVoucher({
+                  code: member.used_voucher_code,
+                  discountNominal: discount
+                });
+              }
+              if (member.payment_status === 'pending') {
+                setQrisGenerated(true);
+              }
             }
+          } else {
+            setFormData(prev => ({ ...prev, email: session.user.email || '' }));
           }
-        } else {
-          setFormData(prev => ({ ...prev, email: session.user.email || '' }));
-        }
       }
       setLoadingSession(false);
     };
@@ -177,6 +191,43 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleApplyVoucher = async () => {
+    if (!voucherCodeInput.trim()) return;
+    setIsValidatingVoucher(true);
+    setVoucherMessage(null);
+
+    try {
+      const result = await validateVoucherAction(voucherCodeInput.trim());
+      if (result.success) {
+        let discountNominal = 0;
+        if (result.discount_type === 'nominal') {
+          discountNominal = result.discount_value!;
+        } else if (result.discount_type === 'percentage') {
+          discountNominal = (49000 * result.discount_value!) / 100;
+        }
+
+        setAppliedVoucher({
+          code: voucherCodeInput.trim().toUpperCase(),
+          discountNominal
+        });
+        setVoucherMessage({ type: 'success', text: `Voucher berhasil digunakan! Diskon Rp ${discountNominal.toLocaleString('id-ID')}` });
+      } else {
+        setVoucherMessage({ type: 'error', text: result.error || "Voucher tidak valid." });
+        setAppliedVoucher(null);
+      }
+    } catch (err) {
+      setVoucherMessage({ type: 'error', text: "Gagal memvalidasi voucher." });
+    } finally {
+      setIsValidatingVoucher(false);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherCodeInput("");
+    setVoucherMessage(null);
+  };
+
   const handleGenerateQris = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -186,12 +237,22 @@ export default function CheckoutPage() {
 
     try {
       // Panggil server action untuk register member & generate akun login
-      const result = await registerMemberAction(formData);
+      const payloadData = {
+        ...formData,
+        usedVoucherCode: appliedVoucher?.code
+      };
+      const result = await registerMemberAction(payloadData);
 
       if (result.success) {
         setGeneratedAccount({
           username: result.username!,
           password: result.password!
+        });
+        setDbMember({
+          username: result.username!,
+          final_price: result.finalPrice!,
+          unique_code: result.uniqueCode!,
+          used_voucher_code: appliedVoucher?.code || null
         });
         setQrisGenerated(true);
         // Refresh session state local
@@ -234,6 +295,13 @@ export default function CheckoutPage() {
 
   const activeUsername = dbMember?.username || generatedAccount?.username || '';
   const activePassword = generatedAccount?.password || '';
+
+  const basePrice = 49000;
+  const finalPrice = dbMember 
+    ? dbMember.final_price 
+    : (appliedVoucher ? Math.max(0, basePrice - appliedVoucher.discountNominal) : basePrice);
+    
+  const uniqueCode = dbMember ? (dbMember.unique_code || 0) : 0;
 
   if (loadingSession) {
     return (
@@ -298,7 +366,7 @@ export default function CheckoutPage() {
                   </h3>
                   <ol className="list-decimal list-inside text-xs text-zinc-600 dark:text-zinc-400 space-y-3 leading-relaxed">
                     <li>Pindai QRIS manual yang ada di panel sebelah kanan.</li>
-                    <li>Bayar sebesar <strong className="text-zinc-900 dark:text-white text-sm">Rp 49.000</strong> (tidak ada biaya layanan).</li>
+                    <li>Bayar sebesar <strong className="text-[#bc151b] dark:text-red-400 text-sm">Rp {finalPrice.toLocaleString('id-ID')}</strong> (pastikan nominal transfer persis sesuai tagihan termasuk 3 digit terakhir).</li>
                     <li>Ambil screenshot bukti transfer Anda.</li>
                     <li>Kirimkan bukti transfer tersebut ke WhatsApp Admin dengan menekan tombol di bawah ini untuk mengonfirmasi pembayaran.</li>
                     <li>Setelah bukti transfer dikirim, Anda akan di-invite ke grup dan menerima email konfirmasi.</li>
@@ -374,46 +442,6 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Instagram */}
-                    <div>
-                      <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2 flex items-center gap-2">
-                        <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
-                        Akun Instagram
-                      </label>
-                      <div className="flex items-center w-full bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-lg px-4 focus-within:border-[#bc151b] focus-within:ring-1 focus-within:ring-[#bc151b] transition-all">
-                        <span className="text-zinc-400 dark:text-zinc-500 mr-3 select-none font-medium text-base">@</span>
-                        <input
-                          type="text"
-                          name="instagram"
-                          value={formData.instagram}
-                          onChange={handleSocialChange}
-                          placeholder="username"
-                          className="w-full bg-transparent border-0 py-3 text-zinc-900 dark:text-white focus:outline-none focus:ring-0 p-0 placeholder-zinc-400 dark:placeholder-zinc-600"
-                        />
-                      </div>
-                    </div>
-
-                    {/* TikTok */}
-                    <div>
-                      <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2 flex items-center gap-2">
-                        <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.8-5.46-.4-2.51.13-5.23 1.61-7.23 1.35-1.84 3.48-3 5.75-3.35V11.1c-1.04.14-2.03.62-2.76 1.41-.75.83-1.16 1.96-1.15 3.09.02 1.15.42 2.29 1.18 3.13.78.86 1.9 1.36 3.08 1.42 1.05.05 2.1-.28 2.92-.93.74-.58 1.25-1.42 1.4-2.36.08-.54.08-1.1.08-1.64V.02h2.52z" /></svg>
-                        Akun TikTok
-                      </label>
-                      <div className="flex items-center w-full bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-lg px-4 focus-within:border-[#bc151b] focus-within:ring-1 focus-within:ring-[#bc151b] transition-all">
-                        <span className="text-zinc-400 dark:text-zinc-500 mr-3 select-none font-medium text-base">@</span>
-                        <input
-                          type="text"
-                          name="tiktok"
-                          value={formData.tiktok}
-                          onChange={handleSocialChange}
-                          placeholder="username"
-                          className="w-full bg-transparent border-0 py-3 text-zinc-900 dark:text-white focus:outline-none focus:ring-0 p-0 placeholder-zinc-400 dark:placeholder-zinc-600"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* No WA */}
                     <div>
                       <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Nomor WhatsApp *</label>
@@ -458,6 +486,46 @@ export default function CheckoutPage() {
                           {errors.email}
                         </p>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Instagram */}
+                    <div>
+                      <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
+                        Akun Instagram
+                      </label>
+                      <div className="flex items-center w-full bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-lg px-4 focus-within:border-[#bc151b] focus-within:ring-1 focus-within:ring-[#bc151b] transition-all">
+                        <span className="text-zinc-400 dark:text-zinc-500 mr-3 select-none font-medium text-base">@</span>
+                        <input
+                          type="text"
+                          name="instagram"
+                          value={formData.instagram}
+                          onChange={handleSocialChange}
+                          placeholder="username"
+                          className="w-full bg-transparent border-0 py-3 text-zinc-900 dark:text-white focus:outline-none focus:ring-0 p-0 placeholder-zinc-400 dark:placeholder-zinc-600"
+                        />
+                      </div>
+                    </div>
+
+                    {/* TikTok */}
+                    <div>
+                      <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.8-5.46-.4-2.51.13-5.23 1.61-7.23 1.35-1.84 3.48-3 5.75-3.35V11.1c-1.04.14-2.03.62-2.76 1.41-.75.83-1.16 1.96-1.15 3.09.02 1.15.42 2.29 1.18 3.13.78.86 1.9 1.36 3.08 1.42 1.05.05 2.1-.28 2.92-.93.74-.58 1.25-1.42 1.4-2.36.08-.54.08-1.1.08-1.64V.02h2.52z" /></svg>
+                        Akun TikTok
+                      </label>
+                      <div className="flex items-center w-full bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-lg px-4 focus-within:border-[#bc151b] focus-within:ring-1 focus-within:ring-[#bc151b] transition-all">
+                        <span className="text-zinc-400 dark:text-zinc-500 mr-3 select-none font-medium text-base">@</span>
+                        <input
+                          type="text"
+                          name="tiktok"
+                          value={formData.tiktok}
+                          onChange={handleSocialChange}
+                          placeholder="username"
+                          className="w-full bg-transparent border-0 py-3 text-zinc-900 dark:text-white focus:outline-none focus:ring-0 p-0 placeholder-zinc-400 dark:placeholder-zinc-600"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -511,17 +579,70 @@ export default function CheckoutPage() {
               </div>
 
               <div className="border-t border-b border-zinc-200 dark:border-white/10 py-4 mb-6">
+                
+                {/* Kolom Input Voucher */}
+                {!qrisGenerated && (
+                  <div className="mb-4 pb-4 border-b border-zinc-200 dark:border-white/10">
+                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Punya Kode Voucher?</label>
+                    {appliedVoucher ? (
+                      <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-lg px-3 py-2">
+                        <span className="text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                          {appliedVoucher.code} Terpasang
+                        </span>
+                        <button onClick={handleRemoveVoucher} className="text-zinc-400 hover:text-red-500 text-xs font-medium transition-colors">
+                          Hapus
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={voucherCodeInput}
+                          onChange={(e) => setVoucherCodeInput(e.target.value.toUpperCase())}
+                          placeholder="Masukkan kode"
+                          className="flex-1 bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white uppercase focus:outline-none focus:border-[#bc151b]"
+                        />
+                        <button
+                          onClick={handleApplyVoucher}
+                          disabled={isValidatingVoucher || !voucherCodeInput.trim()}
+                          className="bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-4 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                        >
+                          {isValidatingVoucher ? "Cek..." : "Terapkan"}
+                        </button>
+                      </div>
+                    )}
+                    {voucherMessage && (
+                      <p className={`mt-2 text-[10px] font-medium ${voucherMessage.type === 'error' ? 'text-red-500' : 'text-emerald-500'}`}>
+                        {voucherMessage.text}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center text-sm text-zinc-500 dark:text-zinc-400 mb-2">
                   <span>Subtotal</span>
-                  <span>Rp 49.000</span>
+                  <span>Rp {basePrice.toLocaleString('id-ID')}</span>
                 </div>
+                {appliedVoucher && (
+                  <div className="flex justify-between items-center text-sm text-emerald-600 dark:text-emerald-400 mb-2 font-medium">
+                    <span>Diskon ({appliedVoucher.code})</span>
+                    <span>- Rp {appliedVoucher.discountNominal.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                {uniqueCode > 0 && (
+                  <div className="flex justify-between items-center text-sm text-zinc-500 dark:text-zinc-400 mb-2">
+                    <span>Kode Unik</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">+ Rp {uniqueCode.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-sm text-zinc-400 dark:text-zinc-500 mb-2">
                   <span>Biaya Layanan</span>
                   <span>Rp 0</span>
                 </div>
-                <div className="flex justify-between items-center font-bold text-lg mt-4 text-zinc-900 dark:text-white">
+                <div className="flex justify-between items-center font-bold text-lg mt-4 text-zinc-900 dark:text-white border-t border-zinc-200 dark:border-white/10 pt-4">
                   <span>Total Pembayaran</span>
-                  <span className="text-[#bc151b]">Rp 49.000</span>
+                  <span className="text-[#bc151b]">Rp {finalPrice.toLocaleString('id-ID')}</span>
                 </div>
               </div>
 
@@ -556,7 +677,12 @@ export default function CheckoutPage() {
                       {/* QR code untuk transfer manual menggunakan gambar screenshot qris.jpeg */}
                       <img src="/qris.jpeg" alt="QRIS Panggung Kreator" className="w-48 h-auto mx-auto object-contain" />
                     </div>
-                    <p className="text-sm font-bold text-gray-700 mb-1">Total: Rp 49.000</p>
+                    <p className="text-sm font-bold text-gray-700 mb-1">Total Transfer: Rp {finalPrice.toLocaleString('id-ID')}</p>
+                    {uniqueCode > 0 && (
+                      <p className="text-[11px] text-emerald-600 font-bold mb-1">
+                        * Wajib transfer sesuai nominal sampai 3 digit terakhir (termasuk kode unik Rp {uniqueCode})
+                      </p>
+                    )}
                     <p className="text-xs text-gray-400 mb-4">Pindai QRIS di atas untuk melakukan transfer</p>
 
                     <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-xs font-semibold flex flex-col gap-2 border border-yellow-100 mb-4 text-left leading-relaxed">

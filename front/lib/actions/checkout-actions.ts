@@ -132,7 +132,55 @@ type CheckoutPayload = {
   whatsapp: string;
   email: string;
   profession: string;
+  usedVoucherCode?: string;
+  finalPrice?: number;
 };
+
+export async function validateVoucherAction(code: string) {
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) { return ""; },
+          set() {},
+          remove() {},
+        },
+      }
+    );
+
+    const { data: voucher, error } = await supabase
+      .from("vouchers")
+      .select("*")
+      .eq("code", code)
+      .single();
+
+    if (error || !voucher) {
+      return { success: false, error: "Kode voucher tidak valid atau tidak ditemukan." };
+    }
+
+    if (!voucher.is_active) {
+      return { success: false, error: "Kode voucher sudah tidak aktif." };
+    }
+
+    if (voucher.max_uses > 0 && voucher.current_uses >= voucher.max_uses) {
+      return { success: false, error: "Batas penggunaan kode voucher ini sudah habis." };
+    }
+
+    if (voucher.expires_at && new Date(voucher.expires_at) < new Date()) {
+      return { success: false, error: "Kode voucher sudah kadaluarsa." };
+    }
+
+    return { 
+      success: true, 
+      discount_type: voucher.discount_type, 
+      discount_value: voucher.discount_value 
+    };
+  } catch (error: any) {
+    return { success: false, error: "Terjadi kesalahan sistem saat memvalidasi voucher." };
+  }
+}
 
 export async function registerMemberAction(payload: CheckoutPayload) {
   try {
@@ -200,7 +248,38 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       return { success: false, error: "Gagal membuat akun autentikasi." };
     }
 
-    // 3. Save Member Details to Database (using admin client to bypass RLS)
+    // Server-side recalculate finalPrice if voucher is used to prevent tampering
+    let validFinalPrice = 49000;
+    if (payload.usedVoucherCode) {
+      const { data: voucher } = await supabaseAdmin
+        .from("vouchers")
+        .select("*")
+        .eq("code", payload.usedVoucherCode)
+        .single();
+      
+      if (voucher && voucher.is_active && (voucher.max_uses === 0 || voucher.current_uses < voucher.max_uses)) {
+        if (voucher.discount_type === 'nominal') {
+          validFinalPrice = Math.max(0, 49000 - voucher.discount_value);
+        } else if (voucher.discount_type === 'percentage') {
+          validFinalPrice = Math.max(0, 49000 - (49000 * voucher.discount_value / 100));
+        }
+
+        // Increment current_uses
+        await supabaseAdmin
+          .from("vouchers")
+          .update({ current_uses: voucher.current_uses + 1 })
+          .eq("id", voucher.id);
+      } else {
+        // Fallback if voucher is invalid at the last moment
+        return { success: false, error: "Voucher yang Anda gunakan sudah tidak berlaku atau kuota habis." };
+      }
+    }
+
+    // 3. Generate Unique Code (100 - 999) if price is greater than 0
+    const uniqueCode = validFinalPrice > 0 ? Math.floor(100 + Math.random() * 900) : 0;
+    const finalPriceWithUniqueCode = validFinalPrice > 0 ? validFinalPrice + uniqueCode : 0;
+
+    // 4. Save Member Details to Database (using admin client to bypass RLS)
     const { error: dbError } = await supabaseAdmin
       .from("members")
       .insert({
@@ -215,7 +294,10 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         username: generatedUsername,
         temporary_password: generatedPassword,
         payment_status: 'pending',
-        role: 'member'
+        role: 'member',
+        used_voucher_code: payload.usedVoucherCode || null,
+        final_price: finalPriceWithUniqueCode,
+        unique_code: uniqueCode
       });
 
     if (dbError) {
@@ -223,7 +305,7 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       return { success: false, error: dbError.message };
     }
 
-    // 4. Sign in the user on the cookie-based client so their session is persisted on the client browser
+    // 5. Sign in the user on the cookie-based client so their session is persisted on the client browser
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: payload.email.trim(),
       password: generatedPassword,
@@ -236,7 +318,9 @@ export async function registerMemberAction(payload: CheckoutPayload) {
     return {
       success: true,
       username: generatedUsername,
-      password: generatedPassword
+      password: generatedPassword,
+      finalPrice: finalPriceWithUniqueCode,
+      uniqueCode: uniqueCode
     };
 
   } catch (error: any) {
@@ -327,14 +411,9 @@ export async function verifyMemberPaymentAction(memberId: string) {
               <h2 style="color: #bc151b;">Selamat, Pembayaran Anda Sudah Terkonfirmasi! 🎉</h2>
               <p>Halo <strong>${memberToVerify.full_name || "Kreator"}</strong>,</p>
               <p>Pembayaran Anda untuk bergabung di Panggung Kreator Akademi telah berhasil kami verifikasi.</p>
-              <p>Berikut adalah detail akun Anda untuk masuk ke sistem:</p>
-              <div style="background-color: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; margin: 20px 0;">
-                <p style="margin: 0 0 10px 0; font-size: 16px;"><strong>Username:</strong> ${memberToVerify.username}</p>
-                <p style="margin: 0; font-size: 16px;"><strong>Password:</strong> ${memberToVerify.temporary_password}</p>
-              </div>
-              <p>Silakan klik tautan di bawah ini untuk masuk ke akun Anda:</p>
+              <p>Silakan klik tombol di bawah ini untuk bergabung dengan Grup WhatsApp Akademi:</p>
               <div style="margin: 30px 0;">
-                <a href="${appUrl}/login" style="background-color: #bc151b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Login ke Dashboard</a>
+                <a href="https://chat.whatsapp.com/JrJ9oXeYmdG4zC40HXMXjt" style="background-color: #25d366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Gabung ke Grup WhatsApp</a>
               </div>
               <p style="font-size: 14px; color: #666;">Jika Anda mengalami kendala, silakan balas email ini untuk menghubungi tim support kami.</p>
               <p style="margin-top: 30px;">Salam hangat,<br/><strong>Tim Panggung Kreator</strong></p>

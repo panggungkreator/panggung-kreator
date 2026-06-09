@@ -1,8 +1,21 @@
 "use client";
 
-import React, { useState, useTransition, useMemo } from "react";
+import React, { useState, useEffect, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { verifyMemberPaymentAction, deleteMembersAction } from "@/lib/actions/checkout-actions";
+import { createClient } from "@/lib/supabase/client";
+import {
+  Search,
+  Download,
+  Trash2,
+  CheckCircle2,
+  Clock,
+  X,
+  FileSpreadsheet,
+  ExternalLink,
+  Users,
+  Eye
+} from "lucide-react";
 
 type Member = {
   id: string;
@@ -17,11 +30,40 @@ type Member = {
   temporary_password?: string;
   payment_status: string;
   created_at: string;
+  final_price?: number;
+  used_voucher_code?: string;
+  unique_code?: number;
+  role?: string;
 };
 
 interface AdminClientProps {
   initialMembers: Member[];
 }
+
+const formatOccupation = (occupation: string | undefined) => {
+  if (!occupation) return "-";
+
+  const mapping: Record<string, string> = {
+    "content_creator": "Content Creator",
+    "kreator konten": "Kreator Konten",
+    "student": "Mahasiswa / Pelajar",
+    "employee": "Karyawan / Profesional",
+    "founder": "Pengusaha / Founder",
+    "executive": "Direktur / C-Level",
+    "designer": "Desainer / Seniman",
+    "writer": "Penulis / Jurnalis",
+    "influencer": "Influencer",
+    "other": "Lainnya"
+  };
+
+  const key = occupation.toLowerCase().trim();
+  if (mapping[key]) return mapping[key];
+
+  return occupation
+    .split(/[_-]/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
 
 export default function AdminClient({ initialMembers }: AdminClientProps) {
   const router = useRouter();
@@ -33,8 +75,46 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [detailMember, setDetailMember] = useState<Member | null>(null);
+
+  // Real-time Supabase subscription for admin dashboard updates
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("admin_members_realtime_dashboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "members" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newMember = payload.new as Member;
+            // Only display non-admin members
+            if (newMember.role !== "admin") {
+              setMembers((prev) => {
+                // Prevent duplicate inserts
+                if (prev.some((m) => m.id === newMember.id)) return prev;
+                return [newMember, ...prev];
+              });
+            }
+          } else if (payload.eventType === "UPDATE") {
+            const updatedMember = payload.new as Member;
+            setMembers((prev) =>
+              prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
+            );
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = payload.old.id;
+            setMembers((prev) => prev.filter((m) => m.id !== deletedId));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const [modal, setModal] = useState<{
     isOpen: boolean;
     type: "verify" | "delete";
@@ -58,7 +138,7 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
     }
     const name = stageName || fullName;
     const text = encodeURIComponent(
-      `Halo Kak ${name}, pendaftaran Panggung Kreator Akademi Anda sudah kami verifikasi dan akun Anda telah aktif! Silakan login di https://panggungkreator.com/login`
+      `Halo Kak ${name}, pendaftaran Panggung Kreator Akademi Anda sudah kami verifikasi dan akun Anda telah aktif! Silakan bergabung dengan Grup WhatsApp Akademi di https://chat.whatsapp.com/JrJ9oXeYmdG4zC40HXMXjt`
     );
     return `https://wa.me/${cleanPhone}?text=${text}`;
   };
@@ -96,7 +176,6 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
       try {
         const result = await verifyMemberPaymentAction(memberId);
         if (result.success) {
-          // Update local state instantly
           setMembers((prev) =>
             prev.map((m) =>
               m.id === memberId ? { ...m, payment_status: "paid" } : m
@@ -113,16 +192,6 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
         setVerifyingId(null);
         setModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
       }
-    });
-  };
-
-  // Toggle reveal credentials
-  const toggleReveal = (id: string) => {
-    setRevealedIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) newSet.delete(id);
-      else newSet.add(id);
-      return newSet;
     });
   };
 
@@ -156,7 +225,7 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
         const name = member.full_name || member.username || "Kreator";
         description = (
           <span>
-            Apakah anda yakin ingin menghapus data pendaftar atas nama <span className="font-bold text-[#bc151b] dark:text-red-500">{name}</span> secara permanen? Aksi ini tidak dapat dibatalkan.
+            Apakah anda yakin ingin menghapus data pendaftar atas nama <span className="font-bold text-[#b91c1c]">{name}</span> secara permanen? Aksi ini tidak dapat dibatalkan.
           </span>
         );
       }
@@ -205,7 +274,8 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
         (m.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
         (m.stage_name || "").toLowerCase().includes(search.toLowerCase()) ||
         (m.username || "").toLowerCase().includes(search.toLowerCase()) ||
-        (m.email || "").toLowerCase().includes(search.toLowerCase());
+        (m.email || "").toLowerCase().includes(search.toLowerCase()) ||
+        (m.whatsapp_number || "").includes(search);
 
       const matchStatus =
         statusFilter === "all" || m.payment_status === statusFilter;
@@ -219,347 +289,602 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
     const total = members.length;
     const pending = members.filter((m) => m.payment_status === "pending").length;
     const paid = members.filter((m) => m.payment_status === "paid").length;
-    const revenue = paid * 49000;
+    const revenue = paid * 49000; // Simplification, could use final_price
 
     return { total, pending, paid, revenue };
   }, [members]);
 
+  // Export to Excel (CSV compatible format)
+  const handleExportExcel = () => {
+    if (filteredMembers.length === 0) return;
+
+    // Header definition
+    const headers = [
+      "ID",
+      "Nama Lengkap",
+      "Nama Panggung",
+      "Username",
+      "Email",
+      "No. WhatsApp",
+      "Pekerjaan",
+      "Status Pembayaran",
+      "Tagihan",
+      "Kode Voucher",
+      "Tanggal Terdaftar"
+    ];
+
+    // Data row definition (prefix phone with ="..." to avoid stripping leading zero in Excel)
+    const rows = filteredMembers.map(m => [
+      m.id,
+      m.full_name || "-",
+      m.stage_name || "-",
+      m.username || "-",
+      m.email || "-",
+      `="${m.whatsapp_number || ''}"`,
+      formatOccupation(m.occupation),
+      m.payment_status === "paid" ? "Lunas" : "Pending",
+      m.final_price || 49000,
+      m.used_voucher_code || "-",
+      new Date(m.created_at).toLocaleDateString("id-ID")
+    ]);
+
+    // CSV compile
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(value => {
+        const escaped = String(value).replace(/"/g, '""');
+        return `"${escaped}"`;
+      }).join(","))
+    ].join("\n");
+
+    // Add UTF-8 BOM so Excel decodes it correctly
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStr = new Date().toISOString().split("T")[0];
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Pendaftar_PanggungKreator_${dateStr}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-title font-bold uppercase tracking-wider text-zinc-900 dark:text-white">
-            Dashboard CMS
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-            Kelola data pendaftaran dan verifikasi pembayaran manual QRIS.
-          </p>
-        </div>
-      </div>
+    <div className="flex flex-col h-full animate-fade-in text-zinc-800 dark:text-zinc-200">
 
       {/* Alert Messages */}
       {successMessage && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-600 dark:text-emerald-400 flex items-center justify-between font-medium">
+        <div className="mb-6 p-4 bg-[#dcfce7] border border-emerald-200/50 rounded-2xl text-xs text-[#15803d] dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 flex items-center justify-between font-semibold">
           <span className="flex items-center gap-2">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
+            <CheckCircle2 className="w-4 h-4 text-[#15803d] dark:text-emerald-400" />
             {successMessage}
           </span>
-          <button onClick={() => setSuccessMessage(null)} className="hover:opacity-80">✕</button>
+          <button onClick={() => setSuccessMessage(null)} className="hover:opacity-80 p-1">✕</button>
         </div>
       )}
 
       {errorMessage && (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-600 dark:text-red-400 flex items-center justify-between font-medium">
+        <div className="mb-6 p-4 bg-[#fee2e2] border border-red-200/50 rounded-2xl text-xs text-[#b91c1c] dark:bg-red-950/20 dark:text-red-400 dark:border-red-500/20 flex items-center justify-between font-semibold">
           <span className="flex items-center gap-2">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4 text-[#b91c1c] dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
             {errorMessage}
           </span>
-          <button onClick={() => setErrorMessage(null)} className="hover:opacity-80">✕</button>
+          <button onClick={() => setErrorMessage(null)} className="hover:opacity-80 p-1">✕</button>
         </div>
       )}
 
-      {/* Stats Dashboard */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Card 1: Total Pendaftar */}
-        <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-white/5 rounded-2xl p-6 backdrop-blur-xs transition-colors duration-300 shadow-xs dark:shadow-none">
-          <div className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Total Pendaftar</div>
-          <div className="text-3xl font-title font-bold mt-2 text-zinc-900 dark:text-white">{stats.total}</div>
-          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-2 font-medium">Total seluruh formulir masuk</div>
+
+      {/* Stats Cards Grid - Soft Colors Accent */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 px-1">
+        {/* Card 1: Total Pendaftar (Soft Blue) */}
+        <div className="bg-[#e0f2fe]/50 border border-[#bae6fd]/50 dark:bg-sky-950/20 dark:border-sky-900/30 rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[120px] transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-sky-800/80 dark:text-sky-400 uppercase tracking-widest">Total Pendaftar</span>
+            <div className="w-8 h-8 rounded-xl bg-white dark:bg-zinc-900 text-[#0369a1] dark:text-sky-300 flex items-center justify-center shadow-sm">
+              <Users className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="text-3xl font-extrabold text-[#0369a1] dark:text-sky-300">{stats.total}</span>
+          </div>
+          <p className="text-[10px] text-sky-700/60 dark:text-sky-400/60 mt-1 font-medium">Total pendaftar terdaftar</p>
         </div>
 
-        {/* Card 2: Menunggu Verifikasi */}
-        <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-white/5 rounded-2xl p-6 backdrop-blur-xs transition-colors duration-300 relative overflow-hidden shadow-xs dark:shadow-none">
-          <div className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Menunggu Verifikasi</div>
-          <div className="text-3xl font-title font-bold mt-2 text-yellow-600 dark:text-yellow-500">{stats.pending}</div>
-          <div className="text-[10px] text-yellow-600/80 dark:text-yellow-500/70 mt-2 font-medium">Perlu verifikasi transfer manual</div>
-          {stats.pending > 0 && (
-            <span className="absolute top-4 right-4 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
-            </span>
-          )}
+        {/* Card 2: Pending Verifikasi (Soft Yellow) */}
+        <div className="bg-[#fef9c3]/50 border border-[#fef08a]/50 dark:bg-yellow-950/20 dark:border-yellow-900/30 rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[120px] transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-yellow-800/80 dark:text-yellow-400 uppercase tracking-widest">Pending Verifikasi</span>
+            <div className="w-8 h-8 rounded-xl bg-white dark:bg-zinc-900 text-[#713f12] dark:text-yellow-300 flex items-center justify-center shadow-sm">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="text-3xl font-extrabold text-[#713f12] dark:text-yellow-300">{stats.pending}</span>
+          </div>
+          <p className="text-[10px] text-yellow-700/60 dark:text-yellow-400/60 mt-1 font-medium">Menunggu verifikasi admin</p>
         </div>
 
-        {/* Card 3: Total Lunas */}
-        <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-white/5 rounded-2xl p-6 backdrop-blur-xs transition-colors duration-300 shadow-xs dark:shadow-none">
-          <div className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Total Lunas</div>
-          <div className="text-3xl font-title font-bold mt-2 text-emerald-600 dark:text-emerald-500">{stats.paid}</div>
-          <div className="text-[10px] text-emerald-600/80 dark:text-emerald-500/70 mt-2 font-medium">Akun aktif & siap belajar</div>
+        {/* Card 3: Total Lunas (Soft Green) */}
+        <div className="bg-[#dcfce7]/50 border border-[#bbf7d0]/50 dark:bg-emerald-950/20 dark:border-emerald-900/30 rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[120px] transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-emerald-800/80 dark:text-emerald-400 uppercase tracking-widest">Total Lunas</span>
+            <div className="w-8 h-8 rounded-xl bg-white dark:bg-zinc-900 text-[#15803d] dark:text-emerald-300 flex items-center justify-center shadow-sm">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="text-3xl font-extrabold text-[#15803d] dark:text-emerald-300">{stats.paid}</span>
+          </div>
+          <p className="text-[10px] text-emerald-700/60 dark:text-emerald-400/60 mt-1 font-medium">Pembayaran terverifikasi</p>
         </div>
 
-        {/* Card 4: Omset */}
-        <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-white/5 rounded-2xl p-6 backdrop-blur-xs transition-colors duration-300 shadow-xs dark:shadow-none">
-          <div className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Total Omset</div>
-          <div className="text-2xl font-title font-bold mt-3 text-zinc-900 dark:text-white tracking-wide">{formatIDR(stats.revenue)}</div>
-          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-2.5 font-medium">Hasil omset paket advanced</div>
+        {/* Card 4: Total Omset (Soft Red/Pink) */}
+        <div className="bg-[#fee2e2]/50 border border-[#fecaca]/50 dark:bg-red-950/20 dark:border-red-900/30 rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[120px] transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-red-800/80 dark:text-red-400 uppercase tracking-widest">Total Omset</span>
+            <div className="w-8 h-8 rounded-xl bg-white dark:bg-zinc-900 text-[#b91c1c] dark:text-red-300 flex items-center justify-center shadow-sm">
+              <FileSpreadsheet className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="text-3xl font-extrabold text-[#b91c1c] dark:text-red-300">{formatIDR(stats.revenue)}</span>
+          </div>
+          <p className="text-[10px] text-red-700/60 dark:text-red-400/60 mt-1 font-medium">Total pendapatan kotor</p>
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white dark:bg-zinc-900/20 border border-zinc-200 dark:border-white/5 rounded-2xl overflow-hidden backdrop-blur-xs transition-colors duration-300 shadow-xs dark:shadow-none">
-        {/* Filters Panel */}
-        <div className="p-6 border-b border-zinc-200 dark:border-white/5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-zinc-50/50 dark:bg-zinc-900/40">
-          <div className="flex flex-col md:flex-row items-center gap-4 w-full lg:w-auto">
-            <div className="flex items-center bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-xl px-4 py-2 w-full md:w-80 focus-within:border-[#bc151b] focus-within:ring-1 focus-within:ring-[#bc151b] transition-all">
-              <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Cari nama, email, username..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="bg-transparent border-0 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-0 p-0 w-full"
-              />
-            </div>
+      <div className="flex-1 flex flex-col">
+        {/* Controls Toolbar (Search, Soft Filter pills, Export) */}
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-5 bg-white dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-white/5 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+          {/* Search Box */}
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 w-4 h-4" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama, email, username, no. wa..."
+              className="w-full pl-10 pr-9 py-2.5 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#bc151b]/20 focus:border-[#bc151b] transition-all"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
-            <div className="flex gap-2 text-xs font-semibold w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          {/* Filter pills and Export menu */}
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto md:justify-end">
+            {/* Filter Pills with Soft Color Palette */}
+            <div className="flex gap-1 bg-zinc-100/60 dark:bg-zinc-900/60 p-1 rounded-xl">
               <button
                 onClick={() => setStatusFilter("all")}
-                className={`px-4 py-2 rounded-lg border transition-all cursor-pointer whitespace-nowrap ${statusFilter === "all"
-                  ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-black dark:border-white"
-                  : "bg-transparent text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20"
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${statusFilter === "all"
+                  ? "bg-[#e0f2fe] text-[#0369a1] dark:bg-sky-950/40 dark:text-sky-300 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
                   }`}
               >
                 Semua ({members.length})
               </button>
+
               <button
                 onClick={() => setStatusFilter("pending")}
-                className={`px-4 py-2 rounded-lg border transition-all cursor-pointer whitespace-nowrap ${statusFilter === "pending"
-                  ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/20 dark:border-yellow-500/20"
-                  : "bg-transparent text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20"
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${statusFilter === "pending"
+                  ? "bg-[#fef9c3] text-[#713f12] dark:bg-yellow-950/40 dark:text-yellow-300 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
                   }`}
               >
-                Pending ({members.filter((m) => m.payment_status === "pending").length})
+                Pending ({members.filter(m => m.payment_status === "pending").length})
               </button>
+
               <button
                 onClick={() => setStatusFilter("paid")}
-                className={`px-4 py-2 rounded-lg border transition-all cursor-pointer whitespace-nowrap ${statusFilter === "paid"
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 dark:border-emerald-500/20"
-                  : "bg-transparent text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20"
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${statusFilter === "paid"
+                  ? "bg-[#dcfce7] text-[#15803d] dark:bg-emerald-950/40 dark:text-emerald-300 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
                   }`}
               >
-                Lunas ({members.filter((m) => m.payment_status === "paid").length})
+                Lunas ({members.filter(m => m.payment_status === "paid").length})
               </button>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
-            {selectedIds.size > 0 && (
-              <span className="text-xs font-medium text-zinc-500">{selectedIds.size} dipilih</span>
-            )}
+            {/* Export Excel Button with Soft Green */}
             <button
-              onClick={() => handleDelete(Array.from(selectedIds))}
-              disabled={isDeleting || selectedIds.size === 0}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all ${selectedIds.size > 0
-                ? "bg-red-500 hover:bg-red-600 text-white cursor-pointer"
-                : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
-                }`}
+              onClick={handleExportExcel}
+              disabled={filteredMembers.length === 0}
+              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-[#15803d] bg-[#dcfce7] hover:bg-[#bbf7d0] dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/50 rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Ekspor ke Excel (CSV)"
             >
-              {isDeleting ? "Menghapus..." : "Hapus Data"}
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Export Excel</span>
             </button>
           </div>
         </div>
 
-        {/* Table List */}
-        <div className="overflow-x-auto">
-          {filteredMembers.length === 0 ? (
-            <div className="text-center py-16 px-4">
-              <svg className="w-12 h-12 text-zinc-400 dark:text-zinc-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Tidak ada data pendaftar</h3>
-              <p className="text-xs text-zinc-500 mt-1">Coba sesuaikan kata pencarian atau filter status Anda.</p>
+        {/* Table Container - Spacious & Soft Styled with Thin borders */}
+        <div className="bg-white dark:bg-zinc-900/40 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/60 overflow-hidden flex-1 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+
+          {/* Selected Rows Mass Action Bar */}
+          {selectedIds.size > 0 && (
+            <div className="p-4 border-b border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30 flex items-center justify-between animate-fade-in">
+              <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 px-2">
+                {selectedIds.size} pendaftar terpilih
+              </span>
+              <button
+                onClick={() => handleDelete(Array.from(selectedIds))}
+                disabled={isDeleting}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[#fee2e2] text-[#b91c1c] hover:bg-[#fecaca] transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {isDeleting ? "Menghapus..." : "Hapus Terpilih"}
+              </button>
             </div>
-          ) : (
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-white/5 text-zinc-500 dark:text-zinc-400 bg-zinc-50/70 dark:bg-zinc-950/40 uppercase tracking-wider font-semibold">
-                  <th className="py-4 px-6 w-10">
-                    <input
-                      type="checkbox"
-                      className="rounded border-zinc-300 dark:border-zinc-700 text-[#bc151b] focus:ring-[#bc151b]"
-                      checked={selectedIds.size === filteredMembers.length && filteredMembers.length > 0}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
-                  <th className="py-4 px-6">Member</th>
-                  <th className="py-4 px-6">Email</th>
-                  <th className="py-4 px-6">No. WhatsApp</th>
-                  <th className="py-4 px-6">Sosmed</th>
-                  <th className="py-4 px-6">Profesi</th>
-                  <th className="py-4 px-6">Tgl Terdaftar</th>
-                  <th className="py-4 px-6 text-center">Chat WA</th>
-                  <th className="py-4 px-6 text-center">Konfirmasi Pembayaran</th>
-                  <th className="py-4 px-6 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-white/5">
-                {filteredMembers.map((member) => (
-                  <tr key={member.id} className="odd:bg-white even:bg-zinc-50/50 dark:odd:bg-transparent dark:even:bg-white/[0.02] hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition-colors">
-                    <td className="py-4 px-6">
+          )}
+
+          <div className="overflow-x-auto">
+            {filteredMembers.length === 0 ? (
+              <div className="text-center py-24 px-4">
+                <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center mx-auto mb-4 dark:border-white/5">
+                  <svg className="w-8 h-8 text-zinc-300 dark:text-zinc-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Tidak ada data pendaftar</h3>
+                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">Coba sesuaikan kata pencarian atau filter status Anda.</p>
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">
+                    <th className="py-4 px-5 w-12 text-center border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">
                       <input
                         type="checkbox"
-                        className="rounded border-zinc-300 dark:border-zinc-700 text-[#bc151b] focus:ring-[#bc151b]"
-                        checked={selectedIds.has(member.id)}
-                        onChange={() => toggleSelect(member.id)}
+                        className="rounded border-zinc-300 dark:border-white/10 text-zinc-900 focus:ring-zinc-900 dark:bg-zinc-900 cursor-pointer"
+                        checked={selectedIds.size === filteredMembers.length && filteredMembers.length > 0}
+                        onChange={toggleSelectAll}
                       />
-                    </td>
-                    {/* Member Name */}
-                    <td className="py-4 px-6">
-                      <div className="font-semibold text-zinc-900 dark:text-white text-sm">{member.full_name}</div>
-                      {member.stage_name && (
-                        <div className="text-zinc-500 font-medium text-[10px] mt-0.5">
-                          Stage Name: <span className="text-zinc-700 dark:text-zinc-400">{member.stage_name}</span>
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Credentials Column has been removed, but Email is added back as separate column */}
-                    <td className="py-4 px-6 text-zinc-700 dark:text-zinc-300 font-medium">
-                      {member.email || "-"}
-                    </td>
-
-                    {/* WhatsApp */}
-                    <td className="py-4 px-6 text-zinc-700 dark:text-zinc-300 font-medium">
-                      {member.whatsapp_number || "-"}
-                    </td>
-
-                    {/* Sosmed */}
-                    <td className="py-4 px-6 space-y-1">
-                      <div className="flex flex-col gap-1 text-[10px] text-zinc-500 font-medium">
-                        {member.instagram_username ? (
-                          <span className="flex items-center gap-1">
-                            ig: <span className="text-zinc-700 dark:text-zinc-300">@{member.instagram_username}</span>
-                          </span>
-                        ) : null}
-                        {member.tiktok_username ? (
-                          <span className="flex items-center gap-1">
-                            tt: <span className="text-zinc-700 dark:text-zinc-300">@{member.tiktok_username}</span>
-                          </span>
-                        ) : null}
-                        {!member.instagram_username && !member.tiktok_username && (
-                          <span className="text-zinc-400 dark:text-zinc-600">-</span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Occupation */}
-                    <td className="py-4 px-6 capitalize text-zinc-700 dark:text-zinc-300 font-medium">
-                      {member.occupation || "-"}
-                    </td>
-
-                    {/* Date Registered */}
-                    <td className="py-4 px-6 text-zinc-600 dark:text-zinc-400 font-medium">
-                      {new Date(member.created_at).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </td>
-
-                    {/* Chat WA */}
-                    <td className="py-4 px-6 text-center">
-                      <a
-                        href={formatWhatsappLink(member.whatsapp_number, member.stage_name, member.full_name)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mx-auto w-max px-2.5 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/20 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.73-1.45L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.968C16.574 1.97 14.101.945 11.472.945 6.037.945 1.611 5.316 1.607 10.744c-.002 1.716.446 3.39 1.298 4.872L1.876 21.09l5.771-1.936z" />
-                        </svg>
-                        Chat WA
-                      </a>
-                    </td>
-
-                    {/* Konfirmasi Pembayaran */}
-                    <td className="py-4 px-6 text-center">
-                      {member.payment_status === "pending" ? (
-                        <button
-                          onClick={() => handleVerify(member.id, member.full_name || member.username || "Kreator")}
-                          disabled={verifyingId !== null}
-                          className="mx-auto w-max px-2.5 py-1.5 bg-[#bc151b] hover:bg-[#bc151b]/90 text-white rounded-md font-semibold border border-red-600/30 transition-all disabled:opacity-50 flex items-center justify-center cursor-pointer"
-                        >
-                          {verifyingId === member.id ? (
-                            <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          ) : (
-                            "Konfirmasi Lunas"
-                          )}
-                        </button>
-                      ) : (
-                        <span className="mx-auto flex w-max items-center gap-1.5 px-2.5 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-md text-xs font-bold uppercase tracking-wider">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Lunas
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Aksi (Trash) */}
-                    <td className="py-4 px-6 text-center">
-                      <button
-                        onClick={() => handleDelete([member.id])}
-                        disabled={isDeleting}
-                        className="mx-auto w-max p-2 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
-                        title="Hapus"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </td>
+                    </th>
+                    <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30 text-center"></th>
+                    <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Member</th>
+                    <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Email</th>
+                    <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">No. WhatsApp</th>
+                    <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Tgl Terdaftar</th>
+                    <th className="py-4 px-5 text-center border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Status</th>
+                    <th className="py-4 px-5 text-center border-b border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {filteredMembers.map((member, index) => {
+                    const isLastRow = index === filteredMembers.length - 1;
+                    const cellBorderClass = `${isLastRow ? "" : "border-b"} border-r border-zinc-100 dark:border-zinc-800/40 last:border-r-0 py-4 px-5`;
+
+                    return (
+                      <tr key={member.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/20 transition-colors group">
+                        <td className={`${cellBorderClass} text-center`}>
+                          <input
+                            type="checkbox"
+                            className="rounded border-zinc-300 dark:border-white/10 text-zinc-900 focus:ring-zinc-900 dark:bg-zinc-900 cursor-pointer"
+                            checked={selectedIds.has(member.id)}
+                            onChange={() => toggleSelect(member.id)}
+                          />
+                        </td>
+                        <td className={`${cellBorderClass} text-center`}>
+                          {/* ubah button dibawah ini agar menjadi center */}
+
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => setDetailMember(member)}
+                              className="px-2 py-1 text-[#0369a1] bg-[#e0f2fe] dark:bg-sky-950/30 hover:bg-[#bae6fd] rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                              title="Detail"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Member Info */}
+                        <td className={cellBorderClass}>
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center font-bold text-sm">
+                              {(member.full_name || "M")[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-bold text-zinc-900 dark:text-zinc-100 text-sm leading-tight">{member.full_name}</div>
+                              <div className="text-zinc-400 dark:text-zinc-500 font-medium text-[10px] mt-0.5 flex items-center gap-1.5">
+                                <span>@{member.username || "username"}</span>
+                                {member.stage_name && (
+                                  <>
+                                    <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
+                                    <span className="text-zinc-500 dark:text-zinc-400 font-semibold">{member.stage_name}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Email Address */}
+                        <td className={`${cellBorderClass} font-medium text-zinc-650 dark:text-zinc-300`}>
+                          {member.email || "-"}
+                        </td>
+
+                        {/* WhatsApp Details */}
+                        <td className={cellBorderClass}>
+                          <div className="font-semibold text-zinc-700 dark:text-zinc-300">{member.whatsapp_number || "-"}</div>
+                          <a
+                            href={formatWhatsappLink(member.whatsapp_number, member.stage_name, member.full_name)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] font-bold text-[#bc151b] hover:underline mt-1 inline-flex items-center gap-0.5"
+                          >
+                            <span>Kirim Pesan</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        </td>
+
+                        {/* Created date */}
+                        <td className={`${cellBorderClass} font-medium text-zinc-500 dark:text-zinc-400`}>
+                          {new Date(member.created_at).toLocaleDateString("id-ID", {
+                            day: "numeric", month: "short", year: "numeric",
+                          })}
+                        </td>
+
+                        {/* Payment Status Badges (Soft Palette) */}
+                        <td className={`${cellBorderClass} text-center`}>
+                          {member.payment_status === "pending" ? (
+                            <button
+                              onClick={() => handleVerify(member.id, member.full_name || member.username || "Kreator")}
+                              disabled={verifyingId !== null}
+                              className="px-4 py-2 bg-[#fef9c3] hover:bg-[#fef08a] text-[#713f12] rounded-full text-xs font-bold transition-all disabled:opacity-50 shadow-sm cursor-pointer border border-yellow-200/50"
+                            >
+                              {verifyingId === member.id ? "Memproses..." : "Konfirmasi Lunas"}
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-4 py-1.5 bg-[#dcfce7] text-[#15803d] dark:bg-emerald-950/20 dark:text-emerald-400 rounded-full text-xs font-bold border border-emerald-200/20">
+                              Lunas
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Individual actions */}
+                        <td className={`${cellBorderClass} text-center`}>
+                          <div className="flex items-center justify-center gap-1.5">
+
+                            <button
+                              onClick={() => handleDelete([member.id])}
+                              disabled={isDeleting}
+                              className="p-2 text-zinc-400 hover:text-[#b91c1c] hover:bg-[#fee2e2] dark:hover:bg-red-950/30 rounded-xl transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50 cursor-pointer flex items-center justify-center"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Confirmation Modal */}
+      {/* Confirmation Modal - Styled with Soft Accents */}
       {modal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-            onClick={() => !modal.isLoading && setModal(prev => ({ ...prev, isOpen: false }))}
-          ></div>
-          <div className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6">
-              <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">{modal.title}</h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">{modal.description}</p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" onClick={() => !modal.isLoading && setModal(prev => ({ ...prev, isOpen: false }))}></div>
+          <div className="relative bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-150 dark:border-white/5 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in p-8 text-center">
+
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${modal.type === 'delete'
+              ? 'bg-[#fee2e2] text-[#b91c1c]'
+              : 'bg-[#fef9c3] text-[#713f12]'
+              }`}>
+              {modal.type === 'delete' ? (
+                <Trash2 className="w-8 h-8" />
+              ) : (
+                <Clock className="w-8 h-8" />
+              )}
             </div>
-            <div className="bg-zinc-50 dark:bg-zinc-950/50 px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-3">
+
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-2 font-title">{modal.title}</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 px-4 leading-relaxed">{modal.description}</p>
+
+            <div className="flex gap-3 justify-center">
               <button
                 onClick={() => setModal(prev => ({ ...prev, isOpen: false }))}
                 disabled={modal.isLoading}
-                className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+                className="px-6 py-3 text-sm font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-all w-full cursor-pointer"
               >
                 Batal
               </button>
+
               <button
                 onClick={modal.onConfirm}
                 disabled={modal.isLoading}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${modal.type === "delete" ? "bg-red-500 hover:bg-red-600" : "bg-[#bc151b] hover:bg-[#bc151b]/90"
+                className={`px-6 py-3 text-sm font-bold text-white rounded-full transition-all flex justify-center items-center gap-2 w-full cursor-pointer ${modal.type === "delete"
+                  ? "bg-[#b91c1c] hover:bg-[#991b1b]"
+                  : "bg-[#15803d] hover:bg-[#166534]"
                   }`}
               >
-                {modal.isLoading && (
-                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
-                {modal.type === "delete" ? "Ya, Hapus Data" : "Konfirmasi"}
+                {modal.isLoading ? "Memproses..." : (modal.type === "delete" ? "Hapus" : "Konfirmasi")}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Member Modal */}
+      {detailMember && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm"
+            onClick={() => setDetailMember(null)}
+          ></div>
+
+          {/* Modal Container */}
+          <div className="relative bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-150 dark:border-white/5 shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in p-8 text-zinc-800 dark:text-zinc-200">
+            {/* Close button */}
+            <button
+              onClick={() => setDetailMember(null)}
+              className="absolute right-6 top-6 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 p-1.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 rounded-2xl bg-[#e0f2fe] text-[#0369a1] dark:bg-sky-950/30 dark:text-sky-400 flex items-center justify-center font-bold text-lg">
+                {(detailMember.full_name || "M")[0].toUpperCase()}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 font-title">{detailMember.full_name}</h3>
+                <p className="text-xs text-zinc-500 mt-0.5">@{detailMember.username || "username"}</p>
+              </div>
+            </div>
+
+            {/* Information Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-xs">
+              {/* Account Section */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5">
+                <h4 className="font-bold text-[#0369a1] dark:text-sky-400 mb-3 uppercase tracking-wider text-[10px]">Informasi Akun</h4>
+                <div className="space-y-2.5">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Username:</span>
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.username}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Peran (Role):</span>
+                    <span className="font-bold text-zinc-750 dark:text-zinc-200 uppercase">{detailMember.role || "member"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal Section */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5">
+                <h4 className="font-bold text-[#15803d] dark:text-emerald-400 mb-3 uppercase tracking-wider text-[10px]">Informasi Personal</h4>
+                <div className="space-y-2.5">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Nama Panggung:</span>
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.stage_name || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Pekerjaan:</span>
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">{formatOccupation(detailMember.occupation)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Tgl Terdaftar:</span>
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">
+                      {new Date(detailMember.created_at).toLocaleDateString("id-ID", {
+                        day: "numeric", month: "long", year: "numeric"
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact & Social Section */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5">
+                <h4 className="font-bold text-[#b91c1c] dark:text-red-400 mb-3 uppercase tracking-wider text-[10px]">Kontak & Sosial Media</h4>
+                <div className="space-y-2.5">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">No. WhatsApp:</span>
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.whatsapp_number || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Instagram:</span>
+                    {detailMember.instagram_username &&
+                      detailMember.instagram_username.trim() !== "" &&
+                      detailMember.instagram_username.trim() !== "-" ? (
+                      <a
+                        href={`https://instagram.com/${detailMember.instagram_username.replace("@", "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-[#bc151b] hover:underline"
+                      >
+                        @{detailMember.instagram_username.replace("@", "")}
+                      </a>
+                    ) : (
+                      <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
+                    )}
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">TikTok:</span>
+                    {detailMember.tiktok_username &&
+                      detailMember.tiktok_username.trim() !== "" &&
+                      detailMember.tiktok_username.trim() !== "-" ? (
+                      <a
+                        href={`https://tiktok.com/@${detailMember.tiktok_username.replace("@", "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-[#bc151b] hover:underline"
+                      >
+                        @{detailMember.tiktok_username.replace("@", "")}
+                      </a>
+                    ) : (
+                      <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Section */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5">
+                <h4 className="font-bold text-[#713f12] dark:text-amber-400 mb-3 uppercase tracking-wider text-[10px]">Informasi Pembayaran</h4>
+                <div className="space-y-2.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-400 font-medium">Status:</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${detailMember.payment_status === "paid"
+                      ? "bg-[#dcfce7] text-[#15803d] border-emerald-200/20"
+                      : "bg-[#fef9c3] text-[#713f12] border-yellow-200/20"
+                      }`}>
+                      {detailMember.payment_status === "paid" ? "Lunas" : "Pending"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Kode Unik:</span>
+                    <span className="font-bold text-zinc-750 dark:text-zinc-200">{detailMember.unique_code ?? "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Voucher Terpakai:</span>
+                    <span className="font-bold text-[#bc151b] dark:text-[#ef4444]">{detailMember.used_voucher_code || "Tidak ada"}</span>
+                  </div>
+                  <div className="flex justify-between pt-1 border-t border-zinc-200/40 dark:border-white/5">
+                    <span className="text-zinc-400 font-bold">Total Pembayaran:</span>
+                    <span className="font-extrabold text-zinc-900 dark:text-white text-sm">
+                      Rp {(detailMember.final_price ?? (49000 + (detailMember.unique_code ?? 0))).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDetailMember(null)}
+                className="px-6 py-3 text-sm font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-all w-full cursor-pointer text-center"
+              >
+                Tutup
+              </button>
+              <a
+                href={formatWhatsappLink(detailMember.whatsapp_number, detailMember.stage_name, detailMember.full_name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-3 text-sm font-bold text-white bg-[#15803d] hover:bg-[#166534] rounded-full transition-all w-full flex justify-center items-center gap-2 cursor-pointer shadow-md text-center"
+              >
+                <span>WhatsApp</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </div>
@@ -567,3 +892,4 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
     </div>
   );
 }
+
