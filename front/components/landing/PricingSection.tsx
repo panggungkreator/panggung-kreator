@@ -46,7 +46,7 @@ export function PricingSection({ id, isVisible, content, packagesData }: Pricing
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto z-10">
+      <div className="max-w-6xl mx-auto z-10 relative">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-title font-bold uppercase tracking-wider mb-4 text-zinc-900 dark:text-white">
             <InlineEditText
@@ -132,7 +132,7 @@ export function PricingSection({ id, isVisible, content, packagesData }: Pricing
 
                   <div className="mt-8">
                       <Link 
-                      href="/checkout" 
+                      href={`/checkout?packageId=${pkg.id}`} 
                       className={`block w-full py-4 rounded-xl text-center font-bold uppercase tracking-wider transition-all duration-300 text-white ${
                         pkg.is_highlighted
                           ? "bg-[#bc151b] hover:bg-[#a01116] shadow-[0_0_20px_rgba(188,21,27,0.4)]"

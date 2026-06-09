@@ -132,6 +132,7 @@ type CheckoutPayload = {
   whatsapp: string;
   email: string;
   profession: string;
+  packageId?: string;
   usedVoucherCode?: string;
   finalPrice?: number;
 };
@@ -248,8 +249,25 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       return { success: false, error: "Gagal membuat akun autentikasi." };
     }
 
+    // Determine Base Price from Package
+    let validBasePrice = 49000;
+    if (payload.packageId) {
+      const { data: pkg } = await supabaseAdmin
+        .from("packages")
+        .select("price")
+        .eq("id", payload.packageId)
+        .single();
+      
+      if (pkg?.price) {
+        const parsed = parseInt(pkg.price.replace(/\D/g, ""), 10);
+        if (!isNaN(parsed)) {
+          validBasePrice = parsed;
+        }
+      }
+    }
+
     // Server-side recalculate finalPrice if voucher is used to prevent tampering
-    let validFinalPrice = 49000;
+    let validFinalPrice = validBasePrice;
     if (payload.usedVoucherCode) {
       const { data: voucher } = await supabaseAdmin
         .from("vouchers")
@@ -259,9 +277,9 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       
       if (voucher && voucher.is_active && (voucher.max_uses === 0 || voucher.current_uses < voucher.max_uses)) {
         if (voucher.discount_type === 'nominal') {
-          validFinalPrice = Math.max(0, 49000 - voucher.discount_value);
+          validFinalPrice = Math.max(0, validBasePrice - voucher.discount_value);
         } else if (voucher.discount_type === 'percentage') {
-          validFinalPrice = Math.max(0, 49000 - (49000 * voucher.discount_value / 100));
+          validFinalPrice = Math.max(0, validBasePrice - (validBasePrice * voucher.discount_value / 100));
         }
 
         // Increment current_uses
@@ -296,6 +314,7 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         payment_status: 'pending',
         role: 'member',
         used_voucher_code: payload.usedVoucherCode || null,
+        package_id: payload.packageId || null,
         final_price: finalPriceWithUniqueCode,
         unique_code: uniqueCode
       });

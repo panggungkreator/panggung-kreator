@@ -39,5 +39,14 @@ export default async function AdminPage() {
     console.error("Error fetching members for admin:", error);
   }
 
-  return <AdminClient initialMembers={members || []} />;
+  // Tarik data seluruh paket untuk pemetaan paket di tabel admin
+  const { data: packages, error: pkgError } = await supabase
+    .from("packages")
+    .select("id, name");
+
+  if (pkgError) {
+    console.error("Error fetching packages for admin map:", pkgError);
+  }
+
+  return <AdminClient initialMembers={members || []} packages={packages || []} />;
 }

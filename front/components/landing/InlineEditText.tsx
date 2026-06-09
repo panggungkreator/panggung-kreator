@@ -82,20 +82,41 @@ export function InlineEditText({
   }
 
   return (
-    <Tag
-      ref={contentRef}
-      className={`relative outline-none transition-all ${className} ${
-        isEditing 
-          ? "ring-2 ring-[#bc151b] ring-offset-2 ring-offset-zinc-50 dark:ring-offset-zinc-950 rounded-sm bg-black/5 dark:bg-white/5 cursor-text" 
-          : "hover:ring-2 hover:ring-[#bc151b]/50 hover:ring-offset-2 hover:rounded-sm hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
-      } ${isSaving ? "opacity-50" : ""}`}
-      contentEditable={isEditMode}
-      suppressContentEditableWarning={true}
-      onFocus={() => setIsEditing(true)}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-      title="Klik untuk mengedit"
-      dangerouslySetInnerHTML={{ __html: content }}
-    />
+    <div className={`relative inline-block ${className.includes('block') ? 'w-full block' : ''}`}>
+      <Tag
+        ref={contentRef}
+        className={`relative outline-none transition-all w-full ${className} ${
+          isEditing 
+            ? "ring-2 ring-[#bc151b] ring-offset-2 ring-offset-zinc-50 dark:ring-offset-zinc-950 rounded-sm bg-black/5 dark:bg-white/5 cursor-text" 
+            : "hover:ring-2 hover:ring-[#bc151b]/50 hover:ring-offset-2 hover:rounded-sm hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+        } ${isSaving ? "opacity-50" : ""}`}
+        contentEditable={isEditMode}
+        suppressContentEditableWarning={true}
+        onFocus={() => setIsEditing(true)}
+        onBlur={(e: any) => {
+          // Hanya blur jika kliknya BUKAN ke tombol save
+          if (e.relatedTarget && e.relatedTarget.closest('.inline-save-btn')) {
+            return;
+          }
+          handleBlur();
+        }}
+        onKeyDown={handleKeyDown}
+        title="Klik untuk mengedit"
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+      
+      {isEditing && (
+        <button
+          className="inline-save-btn absolute -bottom-8 left-1/2 -translate-x-1/2 bg-[#bc151b] text-white text-xs font-bold px-3 py-1.5 rounded shadow-lg flex items-center gap-1 z-50 hover:bg-red-700 transition-colors"
+          onMouseDown={(e) => {
+            e.preventDefault(); // Mencegah onBlur pada input
+            handleBlur();
+          }}
+          title="Simpan Perubahan"
+        >
+          <Pencil size={12} /> Simpan
+        </button>
+      )}
+    </div>
   );
 }

@@ -54,12 +54,36 @@ export async function updateLandingSectionAction(sectionType: string, content: a
       return { success: false, error: "Akses ditolak: Hanya admin yang bisa mengedit" };
     }
 
-    const { error } = await supabase
+    const { data: existingSection } = await supabase
       .from("landing_sections")
-      .update({ content, updated_at: new Date().toISOString() })
-      .eq("section_type", sectionType);
+      .select("id")
+      .eq("section_type", sectionType)
+      .maybeSingle();
 
-    if (error) throw error;
+    if (existingSection) {
+      const { error } = await supabase
+        .from("landing_sections")
+        .update({ content, updated_at: new Date().toISOString() })
+        .eq("id", existingSection.id);
+      if (error) throw error;
+    } else {
+      const { data: maxOrder } = await supabase
+        .from("landing_sections")
+        .select("section_order")
+        .order("section_order", { ascending: false })
+        .limit(1);
+      const nextOrder = maxOrder && maxOrder.length > 0 ? maxOrder[0].section_order + 1 : 1;
+
+      const { error } = await supabase
+        .from("landing_sections")
+        .insert({ 
+          section_type: sectionType, 
+          content, 
+          section_order: nextOrder,
+          is_visible: true
+        });
+      if (error) throw error;
+    }
 
     // Revalidate the home page to reflect changes
     revalidatePath("/");
@@ -90,12 +114,36 @@ export async function toggleSectionVisibilityAction(sectionType: string, isVisib
       return { success: false, error: "Akses ditolak: Hanya admin yang bisa mengubah visibilitas" };
     }
 
-    const { error } = await supabase
+    const { data: existingSection } = await supabase
       .from("landing_sections")
-      .update({ is_visible: isVisible, updated_at: new Date().toISOString() })
-      .eq("section_type", sectionType);
+      .select("id")
+      .eq("section_type", sectionType)
+      .maybeSingle();
 
-    if (error) throw error;
+    if (existingSection) {
+      const { error } = await supabase
+        .from("landing_sections")
+        .update({ is_visible: isVisible, updated_at: new Date().toISOString() })
+        .eq("id", existingSection.id);
+      if (error) throw error;
+    } else {
+      const { data: maxOrder } = await supabase
+        .from("landing_sections")
+        .select("section_order")
+        .order("section_order", { ascending: false })
+        .limit(1);
+      const nextOrder = maxOrder && maxOrder.length > 0 ? maxOrder[0].section_order + 1 : 1;
+
+      const { error } = await supabase
+        .from("landing_sections")
+        .insert({ 
+          section_type: sectionType, 
+          content: {}, 
+          section_order: nextOrder,
+          is_visible: isVisible
+        });
+      if (error) throw error;
+    }
 
     // Revalidate the home page to reflect changes
     revalidatePath("/");

@@ -34,10 +34,12 @@ type Member = {
   used_voucher_code?: string;
   unique_code?: number;
   role?: string;
+  package_id?: string | null;
 };
 
 interface AdminClientProps {
   initialMembers: Member[];
+  packages?: any[];
 }
 
 const formatOccupation = (occupation: string | undefined) => {
@@ -65,8 +67,12 @@ const formatOccupation = (occupation: string | undefined) => {
     .join(" ");
 };
 
-export default function AdminClient({ initialMembers }: AdminClientProps) {
+export default function AdminClient({ initialMembers, packages = [] }: AdminClientProps) {
   const router = useRouter();
+  const packageMap = useMemo(() => {
+    return new Map(packages.map((p) => [p.id, p.name]));
+  }, [packages]);
+
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "paid">("all");
@@ -289,7 +295,9 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
     const total = members.length;
     const pending = members.filter((m) => m.payment_status === "pending").length;
     const paid = members.filter((m) => m.payment_status === "paid").length;
-    const revenue = paid * 49000; // Simplification, could use final_price
+    const revenue = members
+      .filter((m) => m.payment_status === "paid")
+      .reduce((sum, m) => sum + (m.final_price || 49000), 0);
 
     return { total, pending, paid, revenue };
   }, [members]);
@@ -554,8 +562,9 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
                     </th>
                     <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30 text-center"></th>
                     <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Member</th>
-                    <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Email</th>
                     <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">No. WhatsApp</th>
+                    <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Paket</th>
+                    <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Nominal</th>
                     <th className="py-4 px-5 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Tgl Terdaftar</th>
                     <th className="py-4 px-5 text-center border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Status</th>
                     <th className="py-4 px-5 text-center border-b border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Aksi</th>
@@ -611,11 +620,6 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
                           </div>
                         </td>
 
-                        {/* Email Address */}
-                        <td className={`${cellBorderClass} font-medium text-zinc-650 dark:text-zinc-300`}>
-                          {member.email || "-"}
-                        </td>
-
                         {/* WhatsApp Details */}
                         <td className={cellBorderClass}>
                           <div className="font-semibold text-zinc-700 dark:text-zinc-300">{member.whatsapp_number || "-"}</div>
@@ -628,6 +632,18 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
                             <span>Kirim Pesan</span>
                             <ExternalLink className="w-2.5 h-2.5" />
                           </a>
+                        </td>
+
+                        {/* Paket */}
+                        <td className={cellBorderClass}>
+                          <div className="font-semibold text-zinc-700 dark:text-zinc-300">
+                            {packageMap.get(member.package_id || "") || "-"}
+                          </div>
+                        </td>
+
+                        {/* Nominal */}
+                        <td className={`${cellBorderClass} font-bold text-zinc-800 dark:text-zinc-200`}>
+                          {member.final_price ? formatIDR(member.final_price) : "-"}
                         </td>
 
                         {/* Created date */}
@@ -754,20 +770,6 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
 
             {/* Information Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-xs">
-              {/* Account Section */}
-              <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5">
-                <h4 className="font-bold text-[#0369a1] dark:text-sky-400 mb-3 uppercase tracking-wider text-[10px]">Informasi Akun</h4>
-                <div className="space-y-2.5">
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400 font-medium">Username:</span>
-                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.username}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400 font-medium">Peran (Role):</span>
-                    <span className="font-bold text-zinc-750 dark:text-zinc-200 uppercase">{detailMember.role || "member"}</span>
-                  </div>
-                </div>
-              </div>
 
               {/* Personal Section */}
               <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5">
@@ -776,6 +778,10 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
                   <div className="flex justify-between">
                     <span className="text-zinc-400 font-medium">Nama Panggung:</span>
                     <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.stage_name || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Username:</span>
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.username}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-400 font-medium">Pekerjaan:</span>
@@ -838,11 +844,17 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
               </div>
 
               {/* Payment Section */}
-              <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5">
-                <h4 className="font-bold text-[#713f12] dark:text-amber-400 mb-3 uppercase tracking-wider text-[10px]">Informasi Pembayaran</h4>
-                <div className="space-y-2.5">
+              <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5 md:col-span-2">
+                <h4 className="font-bold text-[#713f12] dark:text-amber-400 mb-3 uppercase tracking-wider text-[10px]">Informasi Paket & Pembayaran</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Paket Pilihan:</span>
+                    <span className="font-bold text-zinc-750 dark:text-zinc-200">
+                      {packageMap.get(detailMember.package_id || "") || "-"}
+                    </span>
+                  </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-zinc-400 font-medium">Status:</span>
+                    <span className="text-zinc-400 font-medium">Status Pembayaran:</span>
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${detailMember.payment_status === "paid"
                       ? "bg-[#dcfce7] text-[#15803d] border-emerald-200/20"
                       : "bg-[#fef9c3] text-[#713f12] border-yellow-200/20"
@@ -851,19 +863,19 @@ export default function AdminClient({ initialMembers }: AdminClientProps) {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-zinc-400 font-medium">Kode Unik:</span>
-                    <span className="font-bold text-zinc-750 dark:text-zinc-200">{detailMember.unique_code ?? "-"}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-zinc-400 font-medium">Voucher Terpakai:</span>
                     <span className="font-bold text-[#bc151b] dark:text-[#ef4444]">{detailMember.used_voucher_code || "Tidak ada"}</span>
                   </div>
-                  <div className="flex justify-between pt-1 border-t border-zinc-200/40 dark:border-white/5">
-                    <span className="text-zinc-400 font-bold">Total Pembayaran:</span>
-                    <span className="font-extrabold text-zinc-900 dark:text-white text-sm">
-                      Rp {(detailMember.final_price ?? (49000 + (detailMember.unique_code ?? 0))).toLocaleString('id-ID')}
-                    </span>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400 font-medium">Kode Unik:</span>
+                    <span className="font-bold text-zinc-750 dark:text-zinc-200">{detailMember.unique_code ?? "-"}</span>
                   </div>
+                </div>
+                <div className="flex justify-between pt-3 mt-3 border-t border-zinc-200/40 dark:border-white/5">
+                  <span className="text-zinc-400 font-bold">Total Pembayaran:</span>
+                  <span className="font-extrabold text-zinc-900 dark:text-white text-sm">
+                    Rp {(detailMember.final_price ?? (49000 + (detailMember.unique_code ?? 0))).toLocaleString('id-ID')}
+                  </span>
                 </div>
               </div>
             </div>
