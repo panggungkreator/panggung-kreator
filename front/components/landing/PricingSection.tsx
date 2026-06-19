@@ -70,13 +70,12 @@ export function PricingSection({ id, isVisible, content, packagesData }: Pricing
             <div className="text-center text-zinc-500 py-12 w-full">Belum ada paket yang tersedia.</div>
           ) : (
             packagesData.map((pkg) => (
-              <div 
-                key={pkg.id} 
-                className={`relative flex flex-col w-full lg:w-1/3 bg-white dark:bg-[#0a0a0a] rounded-3xl transition-all duration-300 ${
-                  pkg.is_highlighted 
-                    ? "border-2 border-[#bc151b] shadow-[0_0_40px_rgba(188,21,27,0.15)] lg:-mt-4 lg:mb-4 z-10" 
-                    : "border border-zinc-200 dark:border-white/5 shadow-md dark:shadow-none mt-0 opacity-90 hover:opacity-100"
-                }`}
+              <div
+                key={pkg.id}
+                className={`relative flex flex-col w-full lg:w-1/3 bg-white dark:bg-[#0a0a0a] rounded-3xl transition-all duration-300 ${pkg.is_highlighted
+                  ? "border-2 border-[#bc151b] shadow-[0_0_40px_rgba(188,21,27,0.15)] lg:-mt-4 lg:mb-4 z-10"
+                  : "border border-zinc-200 dark:border-white/5 shadow-md dark:shadow-none mt-0 opacity-90 hover:opacity-100"
+                  }`}
               >
                 {/* Popular Badge */}
                 {pkg.is_highlighted && (
@@ -87,12 +86,12 @@ export function PricingSection({ id, isVisible, content, packagesData }: Pricing
 
                 <div className="p-8 text-center border-b border-zinc-100 dark:border-white/5">
                   <p className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-2">
-                    Storytelling Corner Level:
+                    Panggung Kreator Level:
                   </p>
                   <h3 className={`text-3xl font-title font-bold uppercase mb-4 ${pkg.is_highlighted ? "text-[#bc151b]" : "text-zinc-900 dark:text-white"}`}>
                     {pkg.name}
                   </h3>
-                  
+
                   {pkg.subtitle && (
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-pre-line mb-6">
                       {pkg.subtitle}
@@ -131,13 +130,12 @@ export function PricingSection({ id, isVisible, content, packagesData }: Pricing
                   </ul>
 
                   <div className="mt-8">
-                      <Link 
-                      href={`/checkout?packageId=${pkg.id}`} 
-                      className={`block w-full py-4 rounded-xl text-center font-bold uppercase tracking-wider transition-all duration-300 text-white ${
-                        pkg.is_highlighted
-                          ? "bg-[#bc151b] hover:bg-[#a01116] shadow-[0_0_20px_rgba(188,21,27,0.4)]"
-                          : "bg-zinc-900 hover:bg-black dark:bg-zinc-800 dark:hover:bg-zinc-700"
-                      }`}
+                    <Link
+                      href={`/checkout?packageId=${pkg.id}`}
+                      className={`block w-full py-4 rounded-xl text-center font-bold uppercase tracking-wider transition-all duration-300 text-white ${pkg.is_highlighted
+                        ? "bg-[#bc151b] hover:bg-[#a01116] shadow-[0_0_20px_rgba(188,21,27,0.4)]"
+                        : "bg-zinc-900 hover:bg-black dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                        }`}
                     >
                       {pkg.cta_text || "JOIN SEKARANG"}
                     </Link>
