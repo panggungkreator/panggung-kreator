@@ -1,29 +1,31 @@
-import React from 'react';
-import Header from '@/components/ui/Header';
-import { getLandingSectionsAction } from '@/lib/actions/landing-actions';
-import { getPackagesAction } from '@/lib/actions/package-actions';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { LandingCMSProvider } from '@/components/landing/LandingCMSContext';
-import { AdminEditBar } from '@/components/landing/AdminEditBar';
-import { HeroSection } from '@/components/landing/HeroSection';
-import { WelcomeSection } from '@/components/landing/WelcomeSection';
-import { PainPointsSection } from '@/components/landing/PainPointsSection';
-import { CurriculumSection } from '@/components/landing/CurriculumSection';
-import { 
-  TargetAudienceSection, 
-  CommunityValuesSection, 
-  VisionSection, 
-  FacilitiesSection, 
-  TestimonialsSection, 
-  ClosingCtaSection, 
-  FaqSection, 
-  FooterSection 
-} from '@/components/landing/RemainingSections';
-import { PricingSection } from '@/components/landing/PricingSection';
+import React from "react";
+import { getLandingSectionsAction } from "@/lib/actions/landing-actions";
+import { getPackagesAction } from "@/lib/actions/package-actions";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
-// Prevent Next.js from aggressively caching this page so admin changes reflect immediately
-export const dynamic = 'force-dynamic';
+// Editor Context & Admin toolbar
+import { EditorProvider } from "@/components/editor/EditorContext";
+import { AdminEditBar } from "@/components/editor/AdminEditBar";
+import ScrollAnimationInit from "@/components/ui/ScrollAnimationInit";
+
+// Redesigned layout sections
+import NavHeader from "@/layout/nav-header";
+import SectionHero from "@/layout/section-hero";
+import SectionPainPoints from "@/layout/section-pain-points";
+import SectionTurningPoint from "@/layout/section-turning-point";
+import SectionOriginStory from "@/layout/section-origin-story";
+import SectionPerformerVision from "@/layout/section-performer-vision";
+import SectionCurriculum from "@/layout/section-curriculum";
+import SectionPricing from "@/layout/section-pricing";
+import SectionWhyUs from "@/layout/section-why-us";
+import SectionTransformation from "@/layout/section-transformation";
+import SectionClosingCta from "@/layout/section-closing-cta";
+import SectionFaq from "@/layout/section-faq";
+import FooterMain from "@/layout/footer-main";
+
+// Prevent Next.js from caching this page so admin changes reflect immediately
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function LandingPage() {
@@ -34,78 +36,68 @@ export default async function LandingPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) { return cookieStore.get(name)?.value; },
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
       },
     }
   );
 
   let isAdmin = false;
-  const { data: { session } } = await supabase.auth.getSession();
-  
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   if (session) {
     const { data: adminMember } = await supabase
-      .from('members')
-      .select('role')
-      .eq('id', session.user.id)
+      .from("members")
+      .select("role")
+      .eq("id", session.user.id)
       .single();
-    
-    if (adminMember && adminMember.role === 'admin') {
+
+    if (adminMember && adminMember.role === "admin") {
       isAdmin = true;
     }
   }
 
-  // Fetch sections data
+  // Fetch sections data from database
   const { data: sectionsData, success } = await getLandingSectionsAction();
   const sections = success && sectionsData ? sectionsData : [];
 
-  // Fetch packages data
+  // Fetch packages data from database
   const { data: packagesData, success: pkgSuccess } = await getPackagesAction();
   const packages = pkgSuccess && packagesData ? packagesData : [];
 
-  // Helper to extract section content
-  const getSection = (type: string) => {
-    return sections.find((s: any) => s.section_type === type) || { is_visible: true, content: {} };
-  };
-
-  const heroData = getSection('hero');
-  const welcomeData = getSection('welcome');
-  const painPointsData = getSection('pain_points');
-  const curriculumData = getSection('curriculum');
-  const targetAudienceData = getSection('target_audience');
-  const communityValuesData = getSection('community_values');
-  const visionData = getSection('vision');
-  const facilitiesData = getSection('facilities');
-  const testimonialsData = getSection('testimonials');
-  const closingCtaData = getSection('closing_cta');
-  const faqData = getSection('faq');
-  const footerData = getSection('footer');
-
   return (
-    <LandingCMSProvider isAdmin={isAdmin}>
-      <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-[#0a0a0a] dark:text-white font-sans transition-colors duration-300 selection:bg-[#bc151b] selection:text-white overflow-x-hidden">
+    <EditorProvider isAdmin={isAdmin} initialSections={sections}>
+      <div className="min-h-screen bg-zinc-55 bg-white text-zinc-900 dark:bg-zinc-950 dark:text-white font-sans transition-colors duration-300 selection:bg-amber-500 selection:text-zinc-950 overflow-x-hidden">
         
+        {/* Scroll Animations Initializer */}
+        <ScrollAnimationInit />
+
         {/* Admin Tools */}
         <AdminEditBar />
 
         {/* 1. Header/Navbar */}
-        <Header isFixed={true} />
+        <NavHeader />
 
-        {/* Dynamic Sections */}
-        <HeroSection id="hero" isVisible={heroData.is_visible} content={heroData.content} packages={packages} />
-        <WelcomeSection id="welcome" isVisible={welcomeData.is_visible} content={welcomeData.content} />
-        <PainPointsSection id="pain_points" isVisible={painPointsData.is_visible} content={painPointsData.content} />
-        <CurriculumSection id="curriculum" isVisible={curriculumData.is_visible} content={curriculumData.content} />
-        <TargetAudienceSection id="target_audience" isVisible={targetAudienceData.is_visible} content={targetAudienceData.content} />
-        <CommunityValuesSection id="community_values" isVisible={communityValuesData.is_visible} content={communityValuesData.content} />
-        <VisionSection id="vision" isVisible={visionData.is_visible} content={visionData.content} />
-        <FacilitiesSection id="facilities" isVisible={facilitiesData.is_visible} content={facilitiesData.content} />
-        <TestimonialsSection id="testimonials" isVisible={testimonialsData.is_visible} content={testimonialsData.content} />
-        <PricingSection id="pricing" isVisible={true} content={getSection('pricing').content} packagesData={packages} />
-        <ClosingCtaSection id="closing_cta" isVisible={closingCtaData.is_visible} content={closingCtaData.content} />
-        <FaqSection id="faq" isVisible={faqData.is_visible} content={faqData.content} />
-        <FooterSection id="footer" isVisible={footerData.is_visible} content={footerData.content} />
+        {/* Dynamic Redesigned Sections */}
+        <SectionHero />
+        <SectionPainPoints />
+        <SectionTurningPoint />
+        <SectionOriginStory />
+        <SectionPerformerVision />
+        <SectionCurriculum />
+        <SectionPricing packagesData={packages} />
+        <SectionWhyUs />
+        <SectionTransformation />
+        <SectionClosingCta />
+        <SectionFaq />
+        
+        {/* Footer */}
+        <FooterMain />
 
       </div>
-    </LandingCMSProvider>
+    </EditorProvider>
   );
 }

@@ -18,7 +18,7 @@ export default function Logo({ className = '', size = 'md', isLink = true }: Log
     imgSizeClass = 'w-24 h-auto';
     textClass = 'text-sm sm:text-base';
   } else if (size === 'lg') {
-    imgSizeClass = 'w-20 h-auto';
+    imgSizeClass = 'w-40 h-auto';
     textClass = 'text-lg';
   }
 

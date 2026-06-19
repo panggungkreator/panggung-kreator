@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -12,6 +12,11 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const playfairDisplay = Playfair_Display({
+  variable: "--font-playfair-display",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "Panggung Kreator",
   description: "Platform Teman Sepanggung",
@@ -19,6 +24,8 @@ export const metadata: Metadata = {
     icon: "/logo-dark.png",
   },
 };
+
+import SmoothScroll from "@/components/ui/SmoothScroll";
 
 export default function RootLayout({
   children,
@@ -41,13 +48,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${plusJakartaSans.variable} ${inter.variable} h-full antialiased`}
+      className={`${plusJakartaSans.variable} ${inter.variable} ${playfairDisplay.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <SmoothScroll>{children}</SmoothScroll>
+      </body>
     </html>
   );
 }
