@@ -9,7 +9,6 @@ export default function Footer() {
     { label: "Galeri Kegiatan", href: "/galeri" },
     { label: "Platform Akademi", href: "https://akademi.panggungkreator.web.id" },
     { label: "Ajukan Kolaborasi", href: "/kolaborasi" },
-    { label: "Media Kit Komunitas", href: "/media-kit" },
   ];
 
   const authLinks = [
@@ -122,7 +121,7 @@ export default function Footer() {
               </li>
 
               {/* Integrated Auth Links */}
-              <div className="pt-6 border-t border-white/10 space-y-3.5 mt-6">
+              {/* <div className="pt-6 border-t border-white/10 space-y-3.5 mt-6">
                 {authLinks.map((link) => (
                   <li key={link.label}>
                     <Link
@@ -133,7 +132,7 @@ export default function Footer() {
                     </Link>
                   </li>
                 ))}
-              </div>
+              </div> */}
             </ul>
           </div>
 

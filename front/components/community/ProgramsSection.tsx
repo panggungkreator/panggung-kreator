@@ -112,17 +112,13 @@ export default function ProgramsSection() {
         </p>
       </div>
 
-      {/* Cards Layout: Carousel on Mobile, Grid on Desktop */}
-      <div className="flex md:grid md:grid-cols-3 overflow-x-auto md:overflow-visible snap-x snap-mandatory no-scrollbar bg-transparent md:bg-[#2c2c2c] md:dark:bg-white gap-0 md:gap-[1px]">
+      {/* Cards Layout: Grid on Mobile & Desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-3 bg-[#2c2c2c] dark:bg-white gap-[1px]">
         {programs.map((prog, idx) => (
           <div
             key={prog.title}
             ref={(el) => { cardsRef.current[idx] = el; }}
-            className={`flex flex-col flex-shrink-0 md:flex-shrink snap-start min-w-[80vw] sm:min-w-[60vw] md:min-w-0 group transition-all duration-300 bg-white dark:bg-[#2c2c2c] hover:bg-neutral-50 dark:hover:bg-neutral-950/40
-              border-[#2c2c2c]
-              ${idx === programs.length - 1 ? "border-r-0" : "border-r dark:border-white/20"}
-              md:border-r-0 md:border-b-0
-            `}
+            className="flex flex-col group transition-all duration-300 bg-white dark:bg-[#2c2c2c] hover:bg-neutral-50 dark:hover:bg-neutral-950/40"
           >
             {/* Card Header: Visual Placeholder */}
             <div className="w-full aspect-[16/10] border-b border-[#2c2c2c] dark:border-white/20 overflow-hidden bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center p-6 text-center select-none relative">

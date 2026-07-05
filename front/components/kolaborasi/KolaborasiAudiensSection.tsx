@@ -75,7 +75,7 @@ export default function KolaborasiAudiensSection() {
       </div>
 
       {/* Grid Profil Audiens - Perfect 1px borders */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 bg-white dark:bg-[#2c2c2c] gap-[1px] border-t border-[#2c2c2c] dark:border-white">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 bg-white dark:bg-[#2c2c2c] gap-[1px] border-t border-white dark:border-[#2c2c2c]">
         {audiens.map((item, idx) => (
           <div
             key={item.no}

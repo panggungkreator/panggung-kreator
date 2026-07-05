@@ -28,25 +28,25 @@ export default function GallerySection() {
   const activities = [
     {
       title: "Open Mic Night",
-      category: "🎤 PUBLIC SPEAKING",
+      category: "PUBLIC SPEAKING",
       desc: "Dokumentasi keseruan panggung Open Mic mingguan.",
       placeholder: "Foto suasana Open Mic Night — peserta di panggung mini dengan mikrofon, audiens tertawa gembira.",
     },
     {
       title: "Public Speaking Practice",
-      category: "🎤 PUBLIC SPEAKING",
+      category: "PUBLIC SPEAKING",
       desc: "Suasana kelas yang fokus dan interaktif.",
       placeholder: "Foto kelas Public Speaking — peserta berdiskusi kelompok, saling memberikan feedback.",
     },
     {
       title: "Networking Session",
-      category: "💡 RELASI & GATHERING",
+      category: "RELASI & GATHERING",
       desc: "Interaksi hangat antar-anggota dalam gathering.",
       placeholder: "Foto kumpul santai di cafe, keceriaan anggota saling bertukar cerita.",
     },
     {
       title: "Content Creator Class",
-      category: "🎬 CONTENT CREATION",
+      category: "CONTENT CREATION",
       desc: "Aksi kreatif belajar membuat konten.",
       placeholder: "Foto belajar ngedit video, member memegang kamera mirrorless sambil tersenyum.",
     },

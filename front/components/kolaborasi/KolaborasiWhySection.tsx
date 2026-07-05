@@ -70,7 +70,7 @@ export default function KolaborasiWhySection() {
       </div>
 
       {/* Grid Alasan - Perfect 1px borders */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 bg-white dark:bg-[#2c2c2c] gap-[1px] border-t border-[#2c2c2c] dark:border-white">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 bg-white dark:bg-[#2c2c2c] gap-[1px] border-t border-white dark:border-[#2c2c2c]">
         {reasons.map((item, idx) => (
           <div
             key={item.no}

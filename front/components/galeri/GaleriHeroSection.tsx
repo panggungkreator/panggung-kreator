@@ -49,7 +49,7 @@ export default function GaleriHeroSection() {
           ref={subheadlineRef}
           className="font-sans text-xs md:text-sm text-[#2c2c2c]/60 dark:text-white/60 max-w-2xl leading-relaxed uppercase tracking-wider"
         >
-          Dokumentasi kegiatan nyata komunitas — dari panggung Open Mic, ruang kelas intensif, hingga momen networking yang mempertemukan orang-orang luar biasa.
+          Dokumentasi kegiatan nyata komunitas — <span className="highlight-stabilo">dari panggung Open Mic, ruang kelas intensif, hingga momen networking yang mempertemukan orang-orang luar biasa. </span>
         </p>
       </div>
     </section>

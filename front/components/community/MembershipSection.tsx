@@ -39,6 +39,26 @@ export default function MembershipSection() {
   const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Disable animations on mobile to prevent layout shift and border clipping
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    if (isMobile) {
+      if (headerRef.current) {
+        headerRef.current.style.opacity = "1";
+        headerRef.current.style.transform = "none";
+      }
+      benefitRefs.current.forEach((el) => {
+        if (el) {
+          el.style.opacity = "1";
+          el.style.transform = "none";
+        }
+      });
+      if (ctaRef.current) {
+        ctaRef.current.style.opacity = "1";
+        ctaRef.current.style.transform = "none";
+      }
+      return;
+    }
+
     if (headerRef.current) fadeUp(headerRef.current, 0.1, 30);
     staggerIn(benefitRefs.current, 0.1, 40);
     if (ctaRef.current) fadeUp(ctaRef.current, 0.2, 20);
@@ -63,19 +83,15 @@ export default function MembershipSection() {
       </div>
 
       {/* Benefits Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5">
+      <div className="grid grid-cols-1 md:grid-cols-5">
         {benefits.map((b, idx) => (
           <div
             key={b.title}
             ref={(el) => { benefitRefs.current[idx] = el; }}
-            className={`p-6 md:p-10 flex flex-col items-center justify-center text-center transition-all duration-300 hover:bg-white/5
-              ${idx % 3 === 0 ? "border-r border-neutral-700" : ""}
-              ${idx < 3 ? "border-b border-neutral-700" : ""}
-              md:border-b-0
-              ${idx < 4 ? "md:border-r md:border-neutral-700" : "md:border-r-0"}
-            `}
+            className={`p-6 md:p-10 flex flex-col items-center justify-center text-center transition-all duration-300 bg-[#2c2c2c] hover:bg-white/5 border-b border-neutral-700 md:border-b-0 ${
+              idx < 4 ? "md:border-r md:border-neutral-700" : "md:border-r-0"
+            }`}
           >
-
             {/* Title / Label */}
             <div className="text-[14px] font-black tracking-[0.25em] text-white mb-2 uppercase">
               {b.title}

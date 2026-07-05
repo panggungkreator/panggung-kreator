@@ -48,14 +48,14 @@ export default function StatsBarSection() {
 
   return (
     <section className="relative bg-white dark:bg-[#2c2c2c] border-b border-[#2c2c2c] dark:border-white z-20">
-      {/* 4-Column Metric Grid with stark border divisions */}
-      <div className="grid grid-cols-2 md:grid-cols-5">
+      {/* 5-Column Metric Grid with stark border divisions */}
+      <div className="grid grid-cols-1 md:grid-cols-5">
         {stats.map((s, idx) => (
           <div
             key={s.label}
-            className={`p-6 md:p-10 flex flex-col items-center justify-center text-center transition-all duration-300 hover:bg-neutral-50 dark:hover:bg-neutral-950/40 ${idx % 3 === 0 ? "border-r border-[#2c2c2c] dark:border-white" : ""
-              } ${idx < 3 ? "border-b border-[#2c2c2c] dark:border-white" : ""} md:border-b-0 ${idx < 4 ? "md:border-r md:border-[#2c2c2c] md:dark:border-white" : "md:border-r-0"
-              }`}
+            className={`p-6 md:p-10 flex flex-col items-center justify-center text-center transition-all duration-300 bg-white dark:bg-[#2c2c2c] hover:bg-neutral-50 dark:hover:bg-neutral-950/40 border-b border-[#2c2c2c] dark:border-white md:border-b-0 ${
+              idx < 4 ? "md:border-r md:border-[#2c2c2c] md:dark:border-white" : "md:border-r-0"
+            }`}
           >
             {/* Giant Number / Text Value */}
             {s.isNumber ? (

@@ -62,18 +62,15 @@ export default function LoginPage() {
         {/* Branding & Form Area */}
         <div className="mt-12 md:mt-20 mb-auto max-w-sm w-full mx-auto md:mx-0 py-2">
           {/* Heading & Welcome Text */}
-          <h2 className="text-3xl lg:text-4xl font-serif italic tracking-tight leading-tight mb-3 text-[#0A0A0A] dark:text-white">
+          <h2 className="text-3xl lg:text-4xl font-serif italic tracking-tight leading-tight mb-4 text-[#0A0A0A] dark:text-white">
             One Stage, <br />
             <span className="not-italic font-sans font-black tracking-wide text-zinc-800 dark:text-zinc-300 uppercase">
               One Progress
             </span>
           </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans tracking-wide leading-relaxed mb-12 max-w-xs">
-            Selamat datang kembali. Mari bergabung kembali dengan panggung kolaborasi kreator terbaik.
-          </p>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/20 border-l-4 border-[#bc151b] text-[11px] text-[#bc151b] dark:text-red-400 font-mono flex items-start gap-2 rounded-none animate-fade-in">
+            <div className="my-4 p-3 bg-red-50 dark:bg-red-950/20 border-l-4 border-[#bc151b] text-[11px] text-[#bc151b] dark:text-red-400 font-mono flex items-start gap-2 rounded-none animate-fade-in">
               <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
@@ -90,7 +87,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
               <label className="text-[9px] font-bold tracking-wider text-zinc-500 dark:text-zinc-400 uppercase block mb-1">
                 EMAIL ATAU USERNAME

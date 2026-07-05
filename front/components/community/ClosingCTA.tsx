@@ -65,10 +65,6 @@ export default function ClosingCTA() {
             Ingin kolaborasi?{" "}
             <Link href="/kolaborasi" className="underline hover:text-white transition-colors">
               → /kolaborasi
-            </Link>{" "}
-            | Unduh Media Kit{" "}
-            <Link href="/media-kit" className="underline hover:text-white transition-colors">
-              → /media-kit
             </Link>
           </p>
         </div>

@@ -16,6 +16,11 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Close mobile menu when pathname changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   useEffect(() => {
     setMounted(true);
 
@@ -125,7 +130,7 @@ export default function Header() {
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center group">
+          <Link href="/" className="flex items-center group" onClick={() => setIsMobileMenuOpen(false)}>
             <img src="/logo-dark.png" alt="Logo" className="h-16 w-auto dark:block hidden" />
             <img src="/logo-light.png" alt="Logo" className="h-16 w-auto dark:hidden" />
           </Link>
@@ -177,7 +182,7 @@ export default function Header() {
                 </button>
               </div>
             ) : ( */}
-            <div className="flex items-center gap-5">
+            {/* <div className="flex items-center gap-5">
               <Link
                 href="/login"
                 className="text-xs uppercase tracking-[0.2em] font-bold text-[#2c2c2c]/60 hover:text-[#2c2c2c] dark:text-white/60 dark:hover:text-white transition-colors"
@@ -191,7 +196,7 @@ export default function Header() {
               >
                 GABUNG — GRATIS
               </a>
-            </div>
+            </div> */}
             {/* )} */}
           </div>
 

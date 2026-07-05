@@ -72,7 +72,7 @@ export default function KolaborasiOverviewSection() {
         {/* Right: Grid Statistik (40% / 2 cols on lg) */}
         <div
           ref={statsRef}
-          className="lg:col-span-2 grid grid-cols-2 bg-[#2c2c2c] dark:bg-white gap-[1px]"
+          className="lg:col-span-2 grid grid-cols-1 bg-[#2c2c2c] dark:bg-white gap-[1px]"
         >
           {stats.map((stat, idx) => (
             <div
