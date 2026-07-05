@@ -177,10 +177,28 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
 
     if (error) {
         console.error("Login error:", error);
-        if (error.status === 429 || error.code === "over_request_rate_limit" || (error as any).__isAuthError) {
+        if (error.status === 429 || error.code === "over_request_rate_limit" || error.message?.toLowerCase().includes("rate limit")) {
             return { success: false, error: "Terlalu banyak percobaan masuk (rate limit). Silakan tunggu beberapa menit sebelum mencoba lagi." };
         }
-        return { success: false, error: "Password salah atau kredensial tidak valid" };
+
+        // Jika input berupa username dan sudah lolos pengecekan di atas (baris 155-169),
+        // berarti username ditemukan tapi password salah
+        if (!emailOrUsername.includes("@")) {
+            return { success: false, error: "Password salah. Silakan coba lagi." };
+        }
+
+        // Jika input berupa email, cek apakah email terdaftar di tabel members
+        const { data: existingMember } = await supabase
+            .from("members")
+            .select("id")
+            .eq("email", loginEmail)
+            .single();
+
+        if (!existingMember) {
+            return { success: false, error: "Email tidak terdaftar sebagai member." };
+        }
+
+        return { success: false, error: "Password salah. Silakan coba lagi." };
     }
 
     let isAdmin = false;
