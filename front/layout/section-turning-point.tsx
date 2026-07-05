@@ -29,7 +29,7 @@ export default function SectionTurningPoint() {
 
         {/* Big Highlighted Text */}
         <h2 className="text-4xl sm:text-5xl md:text-7xl font-bold font-serif leading-[1.15] tracking-tight max-w-3xl mt-4 reveal-words">
-          <Edit id="turning_point.main_text">Kamu cuma belum ketemu</Edit>
+          <Edit id="turning_point.main_text">Kamu cuma belum ketemu </Edit>
           <br className="hidden sm:inline" />
           <span className="relative inline-block text-amber-650 dark:text-amber-400 mt-2 sm:mt-0">
             <Edit id="turning_point.emphasis_text">panggung yang tepat.</Edit>

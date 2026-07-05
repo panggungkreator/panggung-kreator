@@ -51,17 +51,17 @@ export default function OnboardingForm() {
         digits = "0" + digits;
       }
     }
-    
+
     // Limit to max 13 digits
     digits = digits.slice(0, 13);
-    
+
     // Format into 4-digit chunks separated by dash
     const chunks = [];
     for (let i = 0; i < digits.length; i += 4) {
       chunks.push(digits.slice(i, i + 4));
     }
     const formatted = chunks.join("-");
-    
+
     updateForm("whatsappNumber", formatted);
   };
 
@@ -73,7 +73,7 @@ export default function OnboardingForm() {
       // Submit form
       setLoading(true);
       try {
-        const finalOccupation = 
+        const finalOccupation =
           formData.occupation === "Lainnya" && formData.otherOccupation.trim() !== ""
             ? formData.otherOccupation
             : formData.occupation;
@@ -110,11 +110,11 @@ export default function OnboardingForm() {
   };
 
   const isStep1Valid = formData.fullName.trim() !== "" && formData.nickname.trim() !== "";
-  
+
   const whatsappDigits = formData.whatsappNumber.replace(/\D/g, "");
   const isWhatsappValid = whatsappDigits.length >= 5 && whatsappDigits.length <= 13;
   const isStep2Valid = formData.birthPlace.trim() !== "" && formData.birthDate !== "" && isWhatsappValid;
-  const isStep3Valid = formData.occupation !== "" && 
+  const isStep3Valid = formData.occupation !== "" &&
     (formData.occupation !== "Lainnya" || formData.otherOccupation.trim() !== "");
 
   const canProceed = () => {
@@ -129,22 +129,21 @@ export default function OnboardingForm() {
       {/* Top Header & Progress */}
       <div className="px-6 py-6 border-b border-gray-100">
         <div className="flex items-center mb-6">
-          <button 
+          <button
             onClick={handleBack}
             className={`p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors ${step === 1 ? 'invisible' : 'visible'}`}
           >
             <ArrowLeft className="text-gray-500" size={20} />
           </button>
         </div>
-        
+
         {/* Progress Bar */}
         <div className="flex gap-2">
           {[1, 2, 3].map((i) => (
-            <div 
-              key={i} 
-              className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
-                i <= step ? "bg-gray-900" : "bg-gray-100"
-              }`}
+            <div
+              key={i}
+              className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i <= step ? "bg-gray-900" : "bg-gray-100"
+                }`}
             />
           ))}
         </div>
@@ -164,11 +163,11 @@ export default function OnboardingForm() {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Kenalan dulu yuk! 👋</h2>
               <p className="text-gray-500 text-sm">Beritahu kami nama lengkap dan nama panggilanmu.</p>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-                <Input 
+                <Input
                   placeholder="Misal: Budi Santoso"
                   value={formData.fullName}
                   onChange={(e) => updateForm("fullName", e.target.value)}
@@ -177,7 +176,7 @@ export default function OnboardingForm() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nama Panggilan / Panggung</label>
-                <Input 
+                <Input
                   placeholder="Misal: Budi"
                   value={formData.nickname}
                   onChange={(e) => updateForm("nickname", e.target.value)}
@@ -198,7 +197,7 @@ export default function OnboardingForm() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tempat Lahir</label>
-                  <Input 
+                  <Input
                     list="cities-datalist"
                     placeholder="Misal: Jakarta"
                     value={formData.birthPlace}
@@ -220,7 +219,7 @@ export default function OnboardingForm() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir</label>
-                  <DatePicker 
+                  <DatePicker
                     value={formData.birthDate}
                     onChange={(val) => updateForm("birthDate", val)}
                     placeholder="Pilih tanggal lahir"
@@ -229,7 +228,7 @@ export default function OnboardingForm() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">No Whatsapp</label>
-                <Input 
+                <Input
                   type="tel"
                   placeholder="Misal: 081234567890"
                   value={formData.whatsappNumber}
@@ -250,15 +249,15 @@ export default function OnboardingForm() {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">Pekerjaan saat ini</label>
-                <PillSelect 
+                <PillSelect
                   options={OCCUPATION_OPTIONS}
                   value={formData.occupation}
                   onChange={(val) => updateForm("occupation", val)}
                 />
-                
+
                 {formData.occupation === "Lainnya" && (
                   <div className="mt-4 animate-in fade-in zoom-in-95 duration-200">
-                    <Input 
+                    <Input
                       placeholder="Sebutkan pekerjaanmu..."
                       value={formData.otherOccupation}
                       onChange={(e) => updateForm("otherOccupation", e.target.value)}
@@ -272,7 +271,7 @@ export default function OnboardingForm() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Username Instagram (Opsional)</label>
                 <div className="relative">
                   <span className="absolute left-4 top-3 text-gray-400">@</span>
-                  <Input 
+                  <Input
                     className="pl-8"
                     placeholder="username"
                     value={formData.instagramUsername}
@@ -287,7 +286,7 @@ export default function OnboardingForm() {
 
       {/* Bottom Footer & Actions */}
       <div className="px-8 py-6 bg-gray-50/50 border-t border-gray-100 flex justify-center rounded-b-3xl">
-        <Button 
+        <Button
           onClick={handleNext}
           disabled={!canProceed() || loading}
           className="w-full sm:w-auto min-w-[200px]"

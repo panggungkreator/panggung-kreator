@@ -42,7 +42,7 @@ export default function Header({ isFixed = false }: { isFixed?: boolean }) {
     fetchSession();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setUser(session?.user ?? null);
     });
 
@@ -73,7 +73,7 @@ export default function Header({ isFixed = false }: { isFixed?: boolean }) {
   };
 
   return (
-    <header className={`${isFixed ? 'fixed' : 'sticky'} top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-200 dark:border-white/5 transition-colors duration-300`}>
+    <header className={`${isFixed ? 'fixed' : 'sticky'} top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-[#2c2c2c]/80 backdrop-blur-md border-b border-zinc-200 dark:border-white/5 transition-colors duration-300`}>
       <Logo size="md" />
 
       <div className="flex items-center gap-3">

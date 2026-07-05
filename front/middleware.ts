@@ -1,116 +1,235 @@
-// src/middleware.ts
-
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-    if (
-        request.nextUrl.pathname.startsWith("/_next") ||
-        request.nextUrl.pathname.includes(".")
-    ) {
-        return NextResponse.next();
-    }
+  const { pathname, search } = request.nextUrl;
 
-    // Kode di bawah ini tetap sama
-    let response = NextResponse.next({
-        request: {
-            headers: request.headers,
-        },
-    });
+  // 1. Skip static assets, favicon, files with extensions, etc.
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.includes(".") ||
+    pathname.startsWith("/api")
+  ) {
+    return NextResponse.next();
+  }
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return request.cookies.get(name)?.value;
-                },
-                set(name: string, value: string, options: CookieOptions) {
-                    request.cookies.set({ name, value, ...options });
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    });
-                    response.cookies.set({ name, value, ...options });
-                },
-                remove(name: string, options: CookieOptions) {
-                    request.cookies.set({ name, value: "", ...options });
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    });
-                    response.cookies.set({ name, value: "", ...options });
-                },
-            },
-        }
+  // 2. Detect subdomain, protocol, and port dynamically
+  const host = request.headers.get("host") || "";
+  const cleanHost = host.split(":")[0];
+  const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
+  
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "panggungkreator.web.id";
+  const protocol = request.nextUrl.protocol; // "http:" or "https:"
+  const rootHost = `${rootDomain}${port}`;
+
+  const sub = cleanHost.replace(`.${rootDomain}`, "").replace(rootDomain, "");
+  const isRootDomain = sub === "" || sub === "www" || sub === "localhost";
+  const isLocalhost = cleanHost === "localhost" || cleanHost.endsWith(".localhost");
+
+  // 3. Centralized login/register redirect
+  // If accessing auth routes on a subdomain (admin or akademi), redirect to root domain login center
+  const AUTH_PATHS = ["/login", "/register"];
+  const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
+
+  if (isAuthPath && !isRootDomain) {
+    return NextResponse.redirect(
+      new URL(`${protocol}//${rootHost}${pathname}${search}`)
     );
+  }
 
-    const {
-        data: { session },
-    } = await supabase.auth.getSession();
-    const pathname = request.nextUrl.pathname;
+  // 4. Initialize Supabase Client with dynamic cookie domain
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
 
-    const publicRoutes = ["/login", "/auth/callback", "/checkout"];
-    const isPublic = publicRoutes.some((route) => pathname.startsWith(route)) || pathname === "/";
+  const cookieDomain = `.${rootDomain}`;
 
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({ name, value, ...options });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+            domain: cookieDomain,
+          });
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: "", ...options });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+          response.cookies.set({
+            name,
+            value: "",
+            ...options,
+            domain: cookieDomain,
+          });
+        },
+      },
+    }
+  );
+
+  // 5. Check Session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  // 6. Direct Path Guards (for localhost or direct path access)
+  const isDirectAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isDirectAkademiDashboardPath = pathname === "/akademi/dashboard" || pathname.startsWith("/akademi/dashboard/");
+
+  if (isDirectAdminPath) {
     if (!session) {
-        if (!isPublic) {
-            return NextResponse.redirect(new URL("/login", request.url));
-        }
-        return response;
+      return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // Skip cek database untuk route auth/callback agar proses OAuth selesai
-    if (pathname.startsWith("/auth/callback")) {
-        return response;
-    }
-
-    // Cek apakah user sudah mengisi data onboarding dan statusnya lunas / admin
     const { data: member } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!member || member.role !== "admin") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
+
+  if (isDirectAkademiDashboardPath) {
+    if (!session) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    const { data: member } = await supabase
+      .from("members")
+      .select("role, membership_tier, payment_status")
+      .eq("id", session.user.id)
+      .single();
+
+    const isPaid =
+      member?.payment_status === "paid" ||
+      member?.membership_tier === "regular" ||
+      member?.membership_tier === "mvp";
+    const isAdmin = member?.role === "admin";
+
+    if (!isPaid && !isAdmin) {
+      return NextResponse.redirect(new URL("/akademi/checkout", request.url));
+    }
+  }
+
+  // 7. Router-Specific Guards & Rewrites
+
+  // A. Admin CMS Subdomain (admin.panggungkreator.web.id)
+  if (sub === "admin") {
+    if (!session) {
+      return NextResponse.redirect(new URL(`${protocol}//${rootHost}/login`, request.url));
+    }
+
+    const { data: member } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!member || member.role !== "admin") {
+      // If logged in but not admin, redirect to root homepage
+      return NextResponse.redirect(new URL(`${protocol}//${rootHost}/`, request.url));
+    }
+
+    // Rewrite request to /admin subfolder
+    return NextResponse.rewrite(new URL(`/admin${pathname}${search}`, request.url));
+  }
+
+  // B. Web Akademi Subdomain (akademi.panggungkreator.web.id)
+  if (sub === "akademi") {
+    if (pathname.startsWith("/dashboard")) {
+      if (!session) {
+        return NextResponse.redirect(new URL(`${protocol}//${rootHost}/login`, request.url));
+      }
+
+      const { data: member } = await supabase
         .from("members")
-        .select("id, payment_status, role")
+        .select("role, membership_tier, payment_status")
         .eq("id", session.user.id)
         .single();
 
-    const hasOnboarded = !!member && (member.payment_status === "paid" || member.role === "admin");
-    const isAdmin = !!member && member.role === "admin";
+      const isPaid =
+        member?.payment_status === "paid" ||
+        member?.membership_tier === "regular" ||
+        member?.membership_tier === "mvp";
+      const isAdmin = member?.role === "admin";
 
-    // Proteksi Rute Admin
-    if (pathname.startsWith("/admin")) {
-        if (!isAdmin) {
-            return NextResponse.redirect(
-                new URL(hasOnboarded ? "/dashboard" : "/checkout", request.url)
-            );
+      if (!isPaid && !isAdmin) {
+        // Rewrite to checkout page on the same akademi subdomain
+        return NextResponse.rewrite(new URL(`/akademi/checkout${search}`, request.url));
+      }
+    }
+
+    // Rewrite request to /akademi subfolder
+    return NextResponse.rewrite(new URL(`/akademi${pathname}${search}`, request.url));
+  }
+
+  // C. Web Komunitas (panggungkreator.web.id)
+  if (isRootDomain) {
+    if (pathname === "/myprofile") {
+      if (!session) {
+        return NextResponse.redirect(new URL("/login", request.url));
+      }
+    }
+
+    // If logged in and goes to login page, redirect based on role/tier
+    if (pathname === "/login" && session) {
+      const { data: member } = await supabase
+        .from("members")
+        .select("role, membership_tier")
+        .eq("id", session.user.id)
+        .single();
+
+      if (member) {
+        if (member.role === "admin") {
+          const defaultAdminUrl = isLocalhost 
+            ? `${protocol}//localhost${port}/admin`
+            : `${protocol}//admin.${rootHost}`;
+          const adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL 
+            ? `${process.env.NEXT_PUBLIC_ADMIN_URL}/`
+            : `${defaultAdminUrl}/`;
+          return NextResponse.redirect(new URL(adminRedirectUrl, request.url));
+        } else if (member.membership_tier !== "free") {
+          const defaultAkademiUrl = isLocalhost
+            ? `${protocol}//localhost${port}/akademi/dashboard`
+            : `${protocol}//akademi.${rootHost}/dashboard`;
+          const akademiRedirectUrl = process.env.NEXT_PUBLIC_AKADEMI_URL
+            ? process.env.NEXT_PUBLIC_AKADEMI_URL
+            : defaultAkademiUrl;
+          return NextResponse.redirect(new URL(akademiRedirectUrl, request.url));
+        } else {
+          return NextResponse.redirect(new URL("/myprofile", request.url));
         }
-        return response;
-    }
-
-    // Jika admin mengakses halaman member/login, langsung arahkan ke panel admin (kecuali checkout untuk keperluan testing)
-    if (isAdmin && (pathname === "/login" || pathname === "/dashboard")) {
-        return NextResponse.redirect(new URL("/admin", request.url));
-    }
-
-    if (pathname === "/login") {
-        if (hasOnboarded) {
-            return NextResponse.redirect(new URL("/dashboard", request.url));
-        }
-        return response;
-    }
-
-    if (!hasOnboarded && pathname !== "/checkout" && pathname !== "/") {
-        return NextResponse.redirect(new URL("/checkout", request.url));
-    }
-
-    if (hasOnboarded && !isAdmin && pathname === "/checkout") {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
     }
 
     return response;
+  }
+
+  return response;
 }
 
 export const config = {
-    matcher: ["/((?!api|_next/static|_next/image|.*\\..*|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|.*\\..*|favicon.ico).*)"],
 };

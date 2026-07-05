@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface DatePickerProps {
   value?: string; // YYYY-MM-DD
@@ -188,164 +189,167 @@ export function DatePicker({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full">
-      {/* DatePicker Input Trigger */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "flex h-12 w-full items-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-[#1a1a1a] transition-all hover:border-gray-300 focus:outline-none",
-          isOpen ? "ring-2 ring-gray-900 border-transparent" : "",
-          className
-        )}
-      >
-        <Calendar className="mr-3 h-5 w-5 text-gray-400 flex-shrink-0" />
-        <span className={cn("flex-grow text-left", !selectedDate && "text-gray-400")}>
-          {selectedDate ? formatDisplayDate(selectedDate) : placeholder}
-        </span>
-      </button>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "flex h-12 w-full items-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-[#2c2c2c] transition-all hover:border-gray-300 focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white font-bold",
+            isOpen ? "ring-2 ring-gray-900 border-transparent" : "",
+            className
+          )}
+        >
+          <Calendar className="mr-3 h-5 w-5 text-gray-400 flex-shrink-0" />
+          <span className={cn("flex-grow text-left", !selectedDate && "text-gray-400")}>
+            {selectedDate ? formatDisplayDate(selectedDate) : placeholder}
+          </span>
+        </button>
+      </PopoverTrigger>
 
-      {/* Dropdown Calendar Panel */}
-      {isOpen && (
-        <div className="absolute left-0 mt-2 w-full max-w-[328px] rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_12px_30px_rgba(0,0,0,0.06)] z-50 animate-in fade-in slide-in-from-top-2 duration-200 dark:bg-neutral-900 dark:border-neutral-800 dark:shadow-[0_12px_30px_rgba(0,0,0,0.4)]">
-          {view === "calendar" ? (
-            <div>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <button
-                  type="button"
-                  onClick={handlePrevMonth}
-                  className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView("year-month")}
-                  className="px-3 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-50 rounded-lg transition-colors dark:text-white dark:hover:bg-neutral-800"
-                >
-                  {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNextMonth}
-                  className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-
-              {/* Weekdays */}
-              <div className="grid grid-cols-7 gap-1 mb-2 text-center text-xs font-semibold text-gray-400 dark:text-neutral-500">
-                {WEEKDAY_NAMES.map((name) => (
-                  <div key={name} className="py-1">
-                    {name}
-                  </div>
-                ))}
-              </div>
-
-              {/* Days Grid */}
-              <div className="grid grid-cols-7 gap-1">
-                {daysGrid.map((cell, idx) => {
-                  const dayIsSelected = isSelected(cell.date);
-                  const dayIsToday = isToday(cell.date);
-
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleDaySelect(cell.date)}
-                      className={cn(
-                        "h-9 w-9 mx-auto flex items-center justify-center rounded-full text-sm font-medium transition-all focus:outline-none",
-                        // Base colors depending on whether day belongs to current month
-                        cell.isCurrentMonth
-                          ? "text-gray-800 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
-                          : "text-gray-300 dark:text-neutral-600 hover:bg-gray-50 dark:hover:bg-neutral-800/40",
-                        // Selected state (black in light mode, white in dark mode)
-                        dayIsSelected
-                          ? "bg-gray-900 text-white hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-white"
-                          : "",
-                        // Today's indicator (monochrome border outline)
-                        dayIsToday && !dayIsSelected
-                          ? "border border-gray-900/30 dark:border-white/30 font-bold"
-                          : ""
-                      )}
-                    >
-                      {cell.date.getDate()}
-                    </button>
-                  );
-                })}
-              </div>
+      <PopoverContent data-lenis-prevent className="w-[328px] p-4 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.4)] z-50" align="end" sideOffset={8}>
+        {view === "calendar" ? (
+          <div>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("year-month")}
+                className="px-3 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-50 rounded-lg transition-colors dark:text-white dark:hover:bg-neutral-800"
+              >
+                {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              </button>
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
             </div>
-          ) : (
-            /* Month & Year Select View */
-            <div className="flex flex-col h-[280px]">
-              {/* Header */}
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Pilih Bulan & Tahun
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setView("calendar")}
-                  className="text-xs text-gray-500 hover:underline dark:text-neutral-400"
-                >
-                  Kembali
-                </button>
-              </div>
 
-              {/* Selection Content */}
-              <div className="flex gap-4 flex-grow overflow-hidden">
-                {/* Months Grid */}
-                <div className="w-3/5 grid grid-cols-2 gap-1.5 overflow-y-auto pr-1">
-                  {MONTH_NAMES.map((month, index) => {
-                    const isCurrent = currentMonth.getMonth() === index;
+            {/* Weekdays */}
+            <div className="grid grid-cols-7 gap-1 mb-2 text-center text-xs font-semibold text-gray-400 dark:text-neutral-500">
+              {WEEKDAY_NAMES.map((name) => (
+                <div key={name} className="py-1">
+                  {name}
+                </div>
+              ))}
+            </div>
+
+            {/* Days Grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {daysGrid.map((cell, idx) => {
+                const dayIsSelected = isSelected(cell.date);
+                const dayIsToday = isToday(cell.date);
+
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleDaySelect(cell.date)}
+                    className={cn(
+                      "h-9 w-9 mx-auto flex items-center justify-center rounded-full text-sm font-medium transition-all focus:outline-none",
+                      // Base colors depending on whether day belongs to current month
+                      cell.isCurrentMonth
+                        ? "text-gray-900 dark:text-neutral-100 hover:bg-gray-100 dark:hover:bg-neutral-800 cursor-pointer"
+                        : "text-gray-300 dark:text-neutral-600 hover:bg-gray-50/50 dark:hover:bg-neutral-805/50 cursor-pointer",
+                      // Today's style (not selected)
+                      dayIsToday && !dayIsSelected
+                        ? "border border-gray-950 dark:border-white font-bold"
+                        : "",
+                      // Selected style
+                      dayIsSelected
+                        ? "bg-gray-950 text-white dark:bg-white dark:text-gray-950 font-bold shadow-xs hover:bg-gray-950 dark:hover:bg-white"
+                        : ""
+                    )}
+                  >
+                    {cell.date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div>
+            {/* Year-Month Selection View */}
+            <div className="flex items-center justify-between mb-4 border-b pb-2 dark:border-neutral-800">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                Pilih Bulan & Tahun
+              </span>
+              <button
+                type="button"
+                onClick={() => setView("calendar")}
+                className="text-xs text-gray-500 hover:text-gray-900 transition-colors dark:text-neutral-400 dark:hover:text-white font-bold"
+              >
+                Kembali
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 max-h-[240px] overflow-y-auto pr-1">
+              {/* Months Column */}
+              <div>
+                <span className="text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider block mb-2">
+                  Bulan
+                </span>
+                <div className="flex flex-col gap-1">
+                  {MONTH_NAMES.map((name, idx) => {
+                    const isCurrent = currentMonth.getMonth() === idx;
                     return (
                       <button
-                        key={month}
+                        key={name}
                         type="button"
-                        onClick={() => handleMonthSelect(index)}
+                        onClick={() => handleMonthSelect(idx)}
                         className={cn(
-                          "py-2 px-2 text-xs font-medium rounded-lg text-left transition-colors",
+                          "py-1.5 px-2 text-xs font-semibold rounded-md text-left transition-colors",
+                          isCurrent
+                            ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+                            : "text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-805"
+                        )}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Years Column */}
+              <div>
+                <span className="text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider block mb-2">
+                  Tahun
+                </span>
+                <div className="flex flex-col gap-1 max-h-[190px] overflow-y-auto pr-1">
+                  {years.map((year) => {
+                    const isCurrent = currentMonth.getFullYear() === year;
+                    return (
+                      <button
+                        key={year}
+                        type="button"
+                        onClick={() => handleYearSelect(year)}
+                        className={cn(
+                          "py-1.5 px-2 text-xs font-semibold rounded-md text-center transition-colors",
                           isCurrent
                             ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
                             : "text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                         )}
                       >
-                        {month}
+                        {year}
                       </button>
                     );
                   })}
                 </div>
-
-                {/* Years Scroll List */}
-                <div className="w-2/5 border-l border-gray-100 dark:border-neutral-800 pl-3 overflow-y-auto h-full scrollbar-thin">
-                  <div className="flex flex-col gap-1 pr-1">
-                    {years.map((year) => {
-                      const isCurrent = currentMonth.getFullYear() === year;
-                      return (
-                        <button
-                          key={year}
-                          type="button"
-                          onClick={() => handleYearSelect(year)}
-                          className={cn(
-                            "py-1.5 px-2 text-xs font-semibold rounded-md text-center transition-colors",
-                            isCurrent
-                              ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                              : "text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                          )}
-                        >
-                          {year}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             </div>
-          )}
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

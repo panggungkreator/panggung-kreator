@@ -87,7 +87,7 @@ export default function PackagesClient({ initialPackages }: PackagesClientProps)
     <div className="flex flex-col h-full animate-fade-in p-8 text-zinc-800 dark:text-zinc-200">
 
       {/* Header Panel */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-5 bg-white dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-white/5 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-5 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-white/5 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
         <div className="flex items-center gap-3">
           <div>
             <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Data Paket (Pricing)</h2>
@@ -102,7 +102,7 @@ export default function PackagesClient({ initialPackages }: PackagesClientProps)
         </div>
         <Link
           href="/admin/packages/create"
-          className="flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc/90 rounded-xl transition-all shadow-sm cursor-pointer shrink-0"
+          className="flex items-center gap-1.5 px-6 py-4 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 rounded-full transition-all shadow-sm cursor-pointer tracking-wider"
         >
           <Plus className="w-4 h-4" />
           <span>Tambah Paket</span>
@@ -110,17 +110,17 @@ export default function PackagesClient({ initialPackages }: PackagesClientProps)
       </div>
 
       {/* Table Container */}
-      <div className="bg-white dark:bg-zinc-900/40 rounded-2xl overflow-hidden flex-1 border border-zinc-200/70 dark:border-zinc-800/60 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+      <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden flex-1">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">
-                <th className="py-4 px-6 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Urutan</th>
-                <th className="py-4 px-6 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Nama Paket</th>
-                <th className="py-4 px-6 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Harga</th>
-                <th className="py-4 px-6 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Status</th>
-                <th className="py-4 px-6 border-b border-r border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Default</th>
-                <th className="py-4 px-6 text-center border-b border-zinc-200/70 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">Aksi</th>
+                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Urutan</th>
+                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Nama Paket</th>
+                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Harga</th>
+                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Status</th>
+                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Default</th>
+                <th className="py-4 px-6 text-center border-b border-border-default/70 bg-bg-well/50">Aksi</th>
               </tr>
             </thead>
             {isMounted ? (
@@ -137,7 +137,7 @@ export default function PackagesClient({ initialPackages }: PackagesClientProps)
                       ) : (
                         packages.map((pkg, index) => {
                           const isLastRow = index === packages.length - 1;
-                          const cellBorderClass = `${isLastRow ? "" : "border-b"} border-r border-zinc-100 dark:border-zinc-800/40 last:border-r-0 py-4 px-6 bg-white dark:bg-zinc-900/40`;
+                          const cellBorderClass = `${isLastRow ? "" : "border-b"} border-r border-border-default/30 last:border-r-0 py-4 px-6 bg-bg-card`;
 
                           return (
                             <Draggable key={pkg.id} draggableId={pkg.id} index={index}>
@@ -145,7 +145,7 @@ export default function PackagesClient({ initialPackages }: PackagesClientProps)
                                 <tr
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
-                                  className={`hover:bg-zinc-50/50 dark:hover:bg-zinc-900/20 transition-colors group ${snapshot.isDragging ? 'shadow-xl shadow-red-500/10 z-50 relative' : ''}`}
+                                  className={`hover:bg-bg-well/30 transition-colors group ${snapshot.isDragging ? 'shadow-xl shadow-red-500/10 z-50 relative' : ''}`}
                                 >
                                   <td className={`${cellBorderClass} font-bold text-zinc-900 dark:text-white`}>
                                     <div className="flex items-center gap-3">
@@ -161,12 +161,14 @@ export default function PackagesClient({ initialPackages }: PackagesClientProps)
                                       </span>
                                     </div>
                                   </td>
-                                  <td className={cellBorderClass}>
-                                    <div className="font-bold text-zinc-900 dark:text-zinc-100 text-sm leading-tight">{pkg.name}</div>
-                                    {pkg.subtitle && <div className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">{pkg.subtitle}</div>}
+                                  <td className={`${cellBorderClass} font-extrabold text-zinc-900 dark:text-zinc-100`}>
+                                    <div>
+                                      <div className="text-sm font-black">{pkg.name}</div>
+                                      {pkg.subtitle && <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium mt-0.5">{pkg.subtitle}</div>}
+                                    </div>
                                   </td>
-                                  <td className={cellBorderClass}>
-                                    <div className="font-bold text-[#bc151b] text-sm">{pkg.price}</div>
+                                  <td className={`${cellBorderClass} font-bold text-zinc-800 dark:text-zinc-200 text-sm`}>
+                                    <div>{pkg.price}</div>
                                     {pkg.original_price && <div className="text-xs text-zinc-400 dark:text-zinc-500 line-through mt-0.5">{pkg.original_price}</div>}
                                   </td>
                                   <td className={cellBorderClass}>
@@ -198,14 +200,14 @@ export default function PackagesClient({ initialPackages }: PackagesClientProps)
                                     <div className="flex items-center justify-center gap-2">
                                       <Link
                                         href={`/admin/packages/${pkg.id}/edit`}
-                                        className="p-2 text-[#15803d] bg-[#dcfce7] dark:bg-emerald-950/30 hover:bg-[#bbf7d0] dark:hover:bg-emerald-950/50 rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                                        className="p-1.5 text-[#15803d] hover:text-emerald-700 bg-green-500/10 hover:bg-green-500/20 border border-emerald-500/20 rounded-lg cursor-pointer flex items-center justify-center"
                                         title="Edit Paket"
                                       >
                                         <Edit className="w-4 h-4" />
                                       </Link>
                                       <button
                                         onClick={() => handleDelete(pkg.id, pkg.name)}
-                                        className="p-2 text-[#b91c1c] bg-[#fee2e2] dark:bg-red-950/30 hover:bg-[#fecaca] dark:hover:bg-red-950/50 rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                                        className="p-1.5 text-[#b91c1c] hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer flex items-center justify-center"
                                         title="Hapus Paket"
                                       >
                                         <Trash2 className="w-4 h-4" />

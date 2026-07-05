@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 // Generic hook for sections
 function useSectionEditor(id: string, content: any) {
   const router = useRouter();
-  
+
   const handleSave = async (key: string, value: any) => {
     const newContent = { ...content, [key]: value };
     await updateLandingSectionAction(id, newContent);
@@ -46,7 +46,7 @@ export function TargetAudienceSection({ id, isVisible, content }: any) {
   if (!isEditMode && !isVisible) return null;
 
   return (
-    <section className={`py-24 px-6 md:px-12 bg-zinc-50 dark:bg-[#0a0a0a] relative transition-opacity duration-300 ${!isVisible ? "opacity-50 grayscale" : ""}`}>
+    <section className={`py-24 px-6 md:px-12 bg-zinc-50 dark:bg-[#2c2c2c] relative transition-opacity duration-300 ${!isVisible ? "opacity-50 grayscale" : ""}`}>
       {isEditMode && !isVisible && <div className="absolute top-4 right-4 bg-amber-500 text-white text-xs px-2 py-1 rounded z-50">Section disembunyikan</div>}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#bc151b]/5 rounded-full blur-[130px] pointer-events-none" />
       <div className="max-w-4xl mx-auto z-10">
@@ -65,7 +65,7 @@ export function TargetAudienceSection({ id, isVisible, content }: any) {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-zinc-700 dark:text-zinc-300 text-sm md:text-base">
             {content.items && content.items.map((item: string, index: number) => (
-              <div key={index} className="flex items-start gap-3 bg-zinc-50 dark:bg-[#0a0a0a]/30 p-4 rounded-xl border border-zinc-200 dark:border-white/5 relative group">
+              <div key={index} className="flex items-start gap-3 bg-zinc-50 dark:bg-[#2c2c2c]/30 p-4 rounded-xl border border-zinc-200 dark:border-white/5 relative group">
                 <div className="w-6 h-6 rounded-full bg-[#bc151b]/15 border border-[#bc151b]/40 flex items-center justify-center flex-shrink-0">
                   <svg className="w-3.5 h-3.5 text-[#bc151b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
                 </div>
@@ -147,7 +147,7 @@ export function VisionSection({ id, isVisible, content }: any) {
   if (!isEditMode && !isVisible) return null;
 
   return (
-    <section className={`py-24 px-6 md:px-12 bg-zinc-50 dark:bg-[#0a0a0a] relative transition-opacity duration-300 ${!isVisible ? "opacity-50 grayscale" : ""}`}>
+    <section className={`py-24 px-6 md:px-12 bg-zinc-50 dark:bg-[#2c2c2c] relative transition-opacity duration-300 ${!isVisible ? "opacity-50 grayscale" : ""}`}>
       {isEditMode && !isVisible && <div className="absolute top-4 right-4 bg-amber-500 text-white text-xs px-2 py-1 rounded z-50">Section disembunyikan</div>}
       <div className="max-w-4xl mx-auto z-10 text-center">
         <h2 className="text-3xl md:text-5xl font-title font-bold uppercase tracking-wide mb-6 text-zinc-900 dark:text-white">
@@ -214,7 +214,7 @@ export function FacilitiesSection({ id, isVisible, content }: any) {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {content.facilities && content.facilities.map((item: string, index: number) => (
-                <div key={index} className="flex items-center gap-3 bg-white dark:bg-[#0a0a0a] p-4 rounded-xl border border-zinc-200 dark:border-white/5 relative group">
+                <div key={index} className="flex items-center gap-3 bg-white dark:bg-[#2c2c2c] p-4 rounded-xl border border-zinc-200 dark:border-white/5 relative group">
                   <svg className="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                   <div className="flex-1">
                     <InlineEditText tagName="span" className="text-zinc-700 dark:text-zinc-300 text-sm font-semibold" value={item} onSave={(v) => handleArraySave("facilities", index, v)} />
@@ -277,7 +277,7 @@ export function TestimonialsSection({ id, isVisible, content }: any) {
   if (!isEditMode && !isVisible) return null;
 
   return (
-    <section className={`py-24 px-6 md:px-12 bg-zinc-50 dark:bg-[#0a0a0a] relative transition-opacity duration-300 ${!isVisible ? "opacity-50 grayscale" : ""}`}>
+    <section className={`py-24 px-6 md:px-12 bg-zinc-50 dark:bg-[#2c2c2c] relative transition-opacity duration-300 ${!isVisible ? "opacity-50 grayscale" : ""}`}>
       {isEditMode && !isVisible && <div className="absolute top-4 right-4 bg-amber-500 text-white text-xs px-2 py-1 rounded z-50">Section disembunyikan</div>}
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
@@ -305,10 +305,10 @@ export function TestimonialsSection({ id, isVisible, content }: any) {
               </div>
               <div className="flex items-center gap-3 border-t border-zinc-200 dark:border-white/5 pt-4">
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold font-title text-zinc-500 shrink-0">
-                  <InlineImage 
-                    src={item.avatar || `https://ui-avatars.com/api/?name=${item.name || 'M'}&background=bc151b&color=fff`} 
-                    alt={`${item.name} Avatar`} 
-                    onSave={(v) => handleArraySave("items", idx, { ...item, avatar: v })} 
+                  <InlineImage
+                    src={item.avatar || `https://ui-avatars.com/api/?name=${item.name || 'M'}&background=bc151b&color=fff`}
+                    alt={`${item.name} Avatar`}
+                    onSave={(v) => handleArraySave("items", idx, { ...item, avatar: v })}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -387,7 +387,7 @@ export function FaqSection({ id, isVisible, content }: any) {
   };
 
   return (
-    <section className={`py-24 px-6 md:px-12 bg-zinc-50 dark:bg-[#0a0a0a] transition-opacity duration-300 ${!isVisible ? "opacity-50 grayscale" : ""}`}>
+    <section className={`py-24 px-6 md:px-12 bg-zinc-50 dark:bg-[#2c2c2c] transition-opacity duration-300 ${!isVisible ? "opacity-50 grayscale" : ""}`}>
       {isEditMode && !isVisible && <div className="absolute top-4 right-4 bg-amber-500 text-white text-xs px-2 py-1 rounded z-50">Section disembunyikan</div>}
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-16">
@@ -455,17 +455,17 @@ export function FooterSection({ id, isVisible, content }: any) {
       <div className="max-w-4xl mx-auto">
         <div className="w-auto h-auto rounded-xl flex items-center justify-center font-title font-bold text-white text-lg mx-auto mb-6">
           <div className="block dark:hidden w-36 h-auto">
-            <InlineImage 
-              src={content.logoLight || "/logo-light.png"} 
-              alt={`${content.brandName} Logo Light`} 
-              onSave={(v) => handleSave("logoLight", v)} 
+            <InlineImage
+              src={content.logoLight || "/logo-light.png"}
+              alt={`${content.brandName} Logo Light`}
+              onSave={(v) => handleSave("logoLight", v)}
             />
           </div>
           <div className="hidden dark:block w-36 h-auto">
-            <InlineImage 
-              src={content.logoDark || "/logo-dark.png"} 
-              alt={`${content.brandName} Logo Dark`} 
-              onSave={(v) => handleSave("logoDark", v)} 
+            <InlineImage
+              src={content.logoDark || "/logo-dark.png"}
+              alt={`${content.brandName} Logo Dark`}
+              onSave={(v) => handleSave("logoDark", v)}
             />
           </div>
         </div>

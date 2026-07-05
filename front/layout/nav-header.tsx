@@ -54,7 +54,7 @@ export default function NavHeader() {
     fetchSession();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setUser(session?.user ?? null);
     });
 
@@ -94,8 +94,8 @@ export default function NavHeader() {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 border-b ${isScrolled
-          ? "bg-white/90 dark:bg-[#0a0a0a]/90 backdrop-blur-md py-4 border-zinc-200 dark:border-zinc-800 shadow-sm"
-          : "bg-transparent py-6 border-transparent"
+        ? "bg-white/90 dark:bg-[#2c2c2c]/90 backdrop-blur-md py-4 border-zinc-200 dark:border-zinc-800 shadow-sm"
+        : "bg-transparent py-6 border-transparent"
         }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
@@ -169,7 +169,7 @@ export default function NavHeader() {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 top-[73px] z-40 bg-white dark:bg-[#0a0a0a] border-t border-zinc-100 dark:border-zinc-900 md:hidden animate-fade-in">
+        <div className="fixed inset-0 top-[73px] z-40 bg-white dark:bg-[#2c2c2c] border-t border-zinc-100 dark:border-zinc-900 md:hidden animate-fade-in">
           <div className="flex flex-col p-6 gap-6 h-full justify-between">
             <nav className="flex flex-col gap-5">
               {navLinks.map((link) => (

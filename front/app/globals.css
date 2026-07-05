@@ -1,35 +1,172 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+
+  /* Admin CMS Theme Variables (Ecomora Style) */
+  --bg-page: #F2F4F7;
+  --bg-card: #FFFFFF;
+  --bg-well: #F5F5F5;
+  --bg-sidebar: #FFFFFF;
+  --text-primary: #111111;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --border-default: #E5E7EB;
+  --accent-green: #BAFF6A;
+  --accent-red: #FF6B6B;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+
+  /* Admin CMS Theme Variables - Dark Mode */
+  --bg-page: #0F1117;
+  --bg-card: #1A1D27;
+  --bg-well: #22263A;
+  --bg-sidebar: #1C1C1F;
+  --text-primary: #F0F0F0;
+  --text-secondary: #8B8FA8;
+  --text-muted: #55596E;
+  --border-default: #2A2E42;
+  --accent-green: #A3E85A;
+  --accent-red: #FF5252;
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-title: var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-playfair-display), ui-serif, Georgia, serif;
+  --font-sans: var(--font-sans);
+  --font-title: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, monospace;
+
+  /* Admin CMS Custom Colors */
+  --color-bg-page: var(--bg-page);
+  --color-bg-card: var(--bg-card);
+  --color-bg-well: var(--bg-well);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border-default: var(--border-default);
+  --color-accent-green: var(--accent-green);
+  --color-accent-red: var(--accent-red);
+
+  /* Admin CMS Radius Tokens */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
   font-family: var(--font-sans);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Lenis smooth scroll helper classes */
-html.lenis, html.lenis body {
+html.lenis,
+html.lenis body {
   height: auto;
 }
 
@@ -47,4 +184,241 @@ html.lenis, html.lenis body {
 
 .lenis-scrolling iframe {
   pointer-events: none;
+}
+
+/* Stabilo (Highlighter) Effect Class with sliding animation */
+.highlight-stabilo {
+  background: linear-gradient(180deg, transparent 40%, #ffe78a 40%, #ffe78a 85%, transparent 85%);
+  background-size: 0% 100%;
+  background-repeat: no-repeat;
+  background-position: left center;
+  padding: 0 6px;
+  display: inline;
+  border-radius: 2px;
+  animation: draw-stabilo 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 0.8s;
+  /* Wait for headline fadeUp to start */
+}
+
+@keyframes draw-stabilo {
+  to {
+    background-size: 100% 100%;
+    color: #000000 !important;
+    /* Transition to readable black text */
+  }
+}
+
+/* Dark Mode Override for Stabilo */
+.dark .highlight-stabilo {
+  background: linear-gradient(180deg, transparent 40%, #0762bd 40%, #0762bd 85%, transparent 85%);
+  animation: draw-stabilo-dark 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 0.8s;
+}
+
+@keyframes draw-stabilo-dark {
+  to {
+    background-size: 100% 100%;
+    color: #ffffff !important;
+    /* Transition to readable white text on blue background */
+  }
+}
+
+/* Sidebar Active Nav Highlighter Override (Immediate Drawing) */
+.highlight-stabilo-nav {
+  animation-delay: 0s !important;
+}
+
+/* Standard Shadcn UI Dialog Animation classes mapping */
+.animate-in {
+  animation-duration: 200ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: forwards;
+}
+
+.animate-out {
+  animation-duration: 150ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: forwards;
+}
+
+/* fade-in-0 */
+[data-state="open"].fade-in-0,
+.animate-in.fade-in-0 {
+  animation-name: shadcn-fade-in;
+}
+
+/* fade-out-0 */
+[data-state="closed"].fade-out-0,
+.animate-out.fade-out-0 {
+  animation-name: shadcn-fade-out;
+}
+
+/* zoom-in-95 */
+/* [data-state="open"].zoom-in-95,
+.animate-in.zoom-in-95 {
+  animation-name: shadcn-zoom-in;
+} */
+
+/* zoom-out-95 */
+[data-state="closed"].zoom-out-95,
+.animate-out.zoom-out-95 {
+  animation-name: shadcn-zoom-out;
+}
+
+@keyframes shadcn-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shadcn-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes shadcn-zoom-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shadcn-zoom-out {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* Dialog Specific Centered Animations */
+@keyframes dialog-zoom-in {
+  from {
+    transform: translate(-50%, -48%) scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-zoom-out {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+
+  to {
+    transform: translate(-50%, -48%) scale(0.95);
+    opacity: 0;
+  }
+}
+
+.animate-dialog-in {
+  animation: dialog-zoom-in 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-dialog-out {
+  animation: dialog-zoom-out 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Radix UI Dialog Scroll Lock & Pointer Events Override for Lenis */
+html[style*="pointer-events: none"],
+body[style*="pointer-events: none"] {
+  pointer-events: auto !important;
+}
+
+body[style*="overflow: hidden"] {
+  overflow: auto !important;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Custom Scrollbar Styles - Auto Hide when not hovered */
+html {
+  /* For Firefox */
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+  transition: scrollbar-color 0.3s ease;
+}
+
+html:hover {
+  scrollbar-color: #cccccc transparent;
+}
+
+.dark html:hover {
+  scrollbar-color: #3f3f46 transparent;
+}
+
+/* For Chrome, Safari, and Edge */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+}
+
+/* Show scrollbar thumb on hover of the scrollable container */
+*:hover::-webkit-scrollbar-thumb {
+  background: #cccccc;
+}
+
+.dark *:hover::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+
+*:hover::-webkit-scrollbar-thumb:hover {
+  background: #b3b3b3;
+}
+
+.dark *:hover::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* Hide scrollbar helper class */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

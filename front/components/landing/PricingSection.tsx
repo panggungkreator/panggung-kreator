@@ -72,7 +72,7 @@ export function PricingSection({ id, isVisible, content, packagesData }: Pricing
             packagesData.map((pkg) => (
               <div
                 key={pkg.id}
-                className={`relative flex flex-col w-full lg:w-1/3 bg-white dark:bg-[#0a0a0a] rounded-3xl transition-all duration-300 ${pkg.is_highlighted
+                className={`relative flex flex-col w-full lg:w-1/3 bg-white dark:bg-[#2c2c2c] rounded-3xl transition-all duration-300 ${pkg.is_highlighted
                   ? "border-2 border-[#bc151b] shadow-[0_0_40px_rgba(188,21,27,0.15)] lg:-mt-4 lg:mb-4 z-10"
                   : "border border-zinc-200 dark:border-white/5 shadow-md dark:shadow-none mt-0 opacity-90 hover:opacity-100"
                   }`}

@@ -1,8 +1,8 @@
 const { createClient } = require('@supabase/supabase-js');
 const { loadEnvConfig } = require('@next/env');
 
-// Load environment variables dari file .env
-loadEnvConfig(process.cwd());
+// Load environment variables dari folder front (tempat .env berada)
+loadEnvConfig(__dirname);
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
@@ -81,12 +81,59 @@ async function run() {
       instagram_username: 'adminpangkreas',
       occupation: 'Admin',
       payment_status: 'paid',
-      role: 'admin'
+      role: 'admin',
+      membership_tier: 'mvp'     // Default tier untuk admin utama
     });
 
   if (dbError) {
     console.error("Failed to insert profile in members table:", dbError);
     return;
+  }
+
+  console.log("Insert admin role into admin_roles...");
+  const { data: newRole, error: roleError } = await supabase
+    .from('admin_roles')
+    .insert({
+      member_id: userId,
+      label: 'Super Admin',
+      color: 'slate',
+      status: 'active'
+    })
+    .select('id')
+    .single();
+
+  if (roleError) {
+    console.error("Failed to insert admin role:", roleError);
+    return;
+  }
+
+  console.log("Seeding initial super admin permissions...");
+  const { data: items } = await supabase
+    .from('privilege_items')
+    .select('id, available_actions');
+
+  if (items) {
+    const inserts = [];
+    items.forEach(item => {
+      if (item.available_actions && Array.isArray(item.available_actions)) {
+        item.available_actions.forEach(actionId => {
+          inserts.push({
+            admin_role_id: newRole.id,
+            privilege_item_id: item.id,
+            action_id: actionId
+          });
+        });
+      }
+    });
+
+    if (inserts.length > 0) {
+      const { error: permError } = await supabase
+        .from('admin_role_permissions')
+        .insert(inserts);
+      if (permError) {
+        console.error("Failed to seed admin permissions:", permError);
+      }
+    }
   }
 
   console.log("Admin account set up successfully!");

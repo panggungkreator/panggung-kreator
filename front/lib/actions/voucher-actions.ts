@@ -2,6 +2,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { checkPermission } from "@/lib/check-permission";
 
 export async function getVouchersAction() {
   const cookieStore = await cookies();
@@ -15,18 +16,13 @@ export async function getVouchersAction() {
     }
   );
 
-  // Verifikasi role admin
+  // Verifikasi role admin & permissions
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { success: false, error: "Tidak diotorisasi" };
 
-  const { data: adminMember } = await supabase
-    .from("members")
-    .select("role")
-    .eq("id", session.user.id)
-    .single();
-
-  if (!adminMember || adminMember.role !== "admin") {
-    return { success: false, error: "Hanya admin yang diperbolehkan." };
+  const hasAccess = await checkPermission("voucher", "view");
+  if (!hasAccess) {
+    return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk melihat voucher." };
   }
 
   const { data: vouchers, error } = await supabase
@@ -55,11 +51,14 @@ export async function createVoucherAction(data: {
     }
   );
 
-  // Verifikasi admin
+  // Verifikasi admin & permissions
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { success: false, error: "Tidak diotorisasi" };
-  const { data: adminMember } = await supabase.from("members").select("role").eq("id", session.user.id).single();
-  if (!adminMember || adminMember.role !== "admin") return { success: false, error: "Hanya admin yang diperbolehkan." };
+  
+  const hasAccess = await checkPermission("voucher", "create");
+  if (!hasAccess) {
+    return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk membuat voucher." };
+  }
 
   const supabaseAdmin = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -90,8 +89,11 @@ export async function deleteVoucherAction(id: string) {
 
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { success: false, error: "Tidak diotorisasi" };
-  const { data: adminMember } = await supabase.from("members").select("role").eq("id", session.user.id).single();
-  if (!adminMember || adminMember.role !== "admin") return { success: false, error: "Hanya admin yang diperbolehkan." };
+  
+  const hasAccess = await checkPermission("voucher", "delete");
+  if (!hasAccess) {
+    return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk menghapus voucher." };
+  }
 
   const supabaseAdmin = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -112,8 +114,11 @@ export async function toggleVoucherAction(id: string, currentStatus: boolean) {
 
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { success: false, error: "Tidak diotorisasi" };
-  const { data: adminMember } = await supabase.from("members").select("role").eq("id", session.user.id).single();
-  if (!adminMember || adminMember.role !== "admin") return { success: false, error: "Hanya admin yang diperbolehkan." };
+  
+  const hasAccess = await checkPermission("voucher", "edit");
+  if (!hasAccess) {
+    return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk mengedit voucher." };
+  }
 
   const supabaseAdmin = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -143,11 +148,14 @@ export async function updateVoucherAction(id: string, data: {
     }
   );
 
-  // Verifikasi admin
+  // Verifikasi admin & permissions
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { success: false, error: "Tidak diotorisasi" };
-  const { data: adminMember } = await supabase.from("members").select("role").eq("id", session.user.id).single();
-  if (!adminMember || adminMember.role !== "admin") return { success: false, error: "Hanya admin yang diperbolehkan." };
+  
+  const hasAccess = await checkPermission("voucher", "edit");
+  if (!hasAccess) {
+    return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk mengedit voucher." };
+  }
 
   const supabaseAdmin = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -147,7 +147,7 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="Misal: Basic, Advanced"
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#bc151b]/50 text-zinc-900 dark:text-white transition-all"
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#bc151b]/50 text-zinc-900 dark:text-white transition-all"
                 />
               </div>
 
@@ -161,7 +161,7 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
                   onChange={handleChange}
                   placeholder="Misal: Bayar sekali, untuk selamanya"
                   rows={2}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#bc151b]/50 text-zinc-900 dark:text-white resize-none transition-all"
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#bc151b]/50 text-zinc-900 dark:text-white resize-none transition-all"
                 />
               </div>
 
@@ -177,7 +177,7 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
                     value={formData.price}
                     onChange={handleChange}
                     placeholder="Rp 349.000"
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#bc151b]/50 text-zinc-900 dark:text-white transition-all"
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#bc151b]/50 text-zinc-900 dark:text-white transition-all"
                   />
                 </div>
                 <div>
@@ -190,7 +190,7 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
                     value={formData.original_price}
                     onChange={handleChange}
                     placeholder="Rp 599.000"
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#bc151b]/50 text-zinc-900 dark:text-white transition-all"
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#bc151b]/50 text-zinc-900 dark:text-white transition-all"
                   />
                 </div>
               </div>
@@ -207,7 +207,7 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
                     value={formData.cta_text}
                     onChange={handleChange}
                     placeholder="JOIN SEKARANG"
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#bc151b]/50 text-zinc-900 dark:text-white uppercase transition-all"
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#bc151b]/50 text-zinc-900 dark:text-white uppercase transition-all"
                   />
                 </div>
               </div>
@@ -243,8 +243,8 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
               <DragDropContext onDragEnd={handleDragEnd}>
                 <Droppable droppableId="benefits-list">
                   {(provided) => (
-                    <div 
-                      {...provided.droppableProps} 
+                    <div
+                      {...provided.droppableProps}
                       ref={provided.innerRef}
                       className="space-y-3"
                     >
@@ -254,7 +254,7 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
                             <div
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              className={`flex items-center gap-4 bg-zinc-50 dark:bg-[#0a0a0a] border ${snapshot.isDragging ? 'border-[#bc151b] shadow-lg shadow-red-500/10' : 'border-zinc-200 dark:border-white/10'} p-4 rounded-xl group relative transition-all hover:border-zinc-300 dark:hover:border-white/20`}
+                              className={`flex items-center gap-4 bg-zinc-50 dark:bg-[#2c2c2c] border ${snapshot.isDragging ? 'border-[#bc151b] shadow-lg shadow-red-500/10' : 'border-zinc-200 dark:border-white/10'} p-4 rounded-xl group relative transition-all hover:border-zinc-300 dark:hover:border-white/20`}
                             >
                               <div
                                 {...provided.dragHandleProps}
@@ -263,7 +263,7 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
                               >
                                 <GripVertical size={20} />
                               </div>
-                              
+
                               <div className="flex flex-col gap-1.5 items-center shrink-0">
                                 <label className="text-[10px] text-zinc-400 font-bold uppercase text-center w-full">Dapat?</label>
                                 <input
@@ -274,7 +274,7 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
                                   title="Centang jika materi/benefit ini didapatkan"
                                 />
                               </div>
-                              
+
                               <div className="flex-1">
                                 <input
                                   type="text"
@@ -284,7 +284,7 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
                                   className="w-full bg-transparent border-none focus:outline-none text-base text-zinc-900 dark:text-white"
                                 />
                               </div>
-                              
+
                               <button
                                 type="button"
                                 onClick={() => handleRemoveBenefit(index)}
@@ -304,19 +304,19 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
               </DragDropContext>
             )}
 
-              {benefits.length === 0 && (
-                <div className="text-center text-sm text-zinc-500 py-10 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl bg-zinc-50 dark:bg-[#0a0a0a]">
-                  Belum ada benefit. Klik "Tambah Benefit" untuk memulai.
-                </div>
-              )}
+            {benefits.length === 0 && (
+              <div className="text-center text-sm text-zinc-500 py-10 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl bg-zinc-50 dark:bg-[#2c2c2c]">
+                Belum ada benefit. Klik "Tambah Benefit" untuk memulai.
+              </div>
+            )}
 
-              <button
-                type="button"
-                onClick={handleAddBenefit}
-                className="w-full py-4 mt-2 border-2 border-dashed border-zinc-200 dark:border-white/10 text-sm text-zinc-500 hover:text-[#bc151b] hover:border-[#bc151b]/50 hover:bg-red-50/50 dark:hover:bg-red-500/5 rounded-xl font-bold flex justify-center items-center gap-2 transition-all"
-              >
-                <Plus size={18} /> Tambah Benefit
-              </button>
+            <button
+              type="button"
+              onClick={handleAddBenefit}
+              className="w-full py-4 mt-2 border-2 border-dashed border-zinc-200 dark:border-white/10 text-sm text-zinc-500 hover:text-[#bc151b] hover:border-[#bc151b]/50 hover:bg-red-50/50 dark:hover:bg-red-500/5 rounded-xl font-bold flex justify-center items-center gap-2 transition-all"
+            >
+              <Plus size={18} /> Tambah Benefit
+            </button>
           </div>
         </div>
       </div>

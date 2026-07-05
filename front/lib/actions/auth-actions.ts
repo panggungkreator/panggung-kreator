@@ -132,10 +132,18 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
                     return cookieStore.get(name)?.value;
                 },
                 set(name: string, value: string, options: CookieOptions) {
-                    cookieStore.set({ name, value, ...options });
+                    try {
+                        cookieStore.set({ name, value, ...options });
+                    } catch (err) {
+                        console.error("Error setting cookie in signin action:", err);
+                    }
                 },
                 remove(name: string, options: CookieOptions) {
-                    cookieStore.set({ name, value: "", ...options });
+                    try {
+                        cookieStore.set({ name, value: "", ...options });
+                    } catch (err) {
+                        console.error("Error removing cookie in signin action:", err);
+                    }
                 },
             },
         }
@@ -169,6 +177,9 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
 
     if (error) {
         console.error("Login error:", error);
+        if (error.status === 429 || error.code === "over_request_rate_limit" || (error as any).__isAuthError) {
+            return { success: false, error: "Terlalu banyak percobaan masuk (rate limit). Silakan tunggu beberapa menit sebelum mencoba lagi." };
+        }
         return { success: false, error: "Password salah atau kredensial tidak valid" };
     }
 

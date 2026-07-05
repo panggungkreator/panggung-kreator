@@ -38,7 +38,7 @@ export function PainPointsSection({ id, isVisible, content }: any) {
   };
 
   return (
-    <section className={`py-24 px-6 md:px-12 bg-zinc-50 dark:bg-[#0a0a0a] relative transition-opacity duration-300 ${!isVisible ? "opacity-50 grayscale" : ""}`}>
+    <section className={`py-24 px-6 md:px-12 bg-zinc-50 dark:bg-[#2c2c2c] relative transition-opacity duration-300 ${!isVisible ? "opacity-50 grayscale" : ""}`}>
       {/* Visibility Indicator */}
       {isEditMode && !isVisible && (
         <div className="absolute top-4 right-4 bg-amber-500 text-white text-xs px-2 py-1 rounded z-50">
@@ -66,7 +66,7 @@ export function PainPointsSection({ id, isVisible, content }: any) {
           {content.cards && content.cards.map((item: any, index: number) => (
             <div key={index} className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-white/5 p-6 rounded-2xl hover:border-[#bc151b]/40 hover:bg-[#bc151b]/5 dark:hover:bg-[#bc151b]/5 transition-all group shadow-xs dark:shadow-none relative">
               {isEditMode && (
-                <button 
+                <button
                   onClick={() => handleRemoveCard(index)}
                   className="absolute right-2 top-2 text-red-500 opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 rounded-full transition-opacity z-10"
                 >
@@ -93,7 +93,7 @@ export function PainPointsSection({ id, isVisible, content }: any) {
             </div>
           ))}
           {isEditMode && (
-            <div 
+            <div
               onClick={handleAddCard}
               className="bg-zinc-50 dark:bg-zinc-900/10 border border-dashed border-zinc-300 dark:border-zinc-700 p-6 rounded-2xl flex flex-col items-center justify-center text-zinc-400 hover:text-[#bc151b] hover:border-[#bc151b] hover:bg-[#bc151b]/5 transition-all cursor-pointer min-h-[200px]"
             >

@@ -73,7 +73,7 @@ export function WelcomeSection({ id, isVisible, content }: any) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm md:text-base">
             {content.items && content.items.map((item: string, index: number) => (
-              <div key={index} className="flex items-center gap-3 bg-zinc-50 dark:bg-[#0a0a0a]/50 p-4 rounded-xl border border-zinc-200/60 dark:border-white/5 transition-colors duration-300 relative group">
+              <div key={index} className="flex items-center gap-3 bg-zinc-50 dark:bg-[#2c2c2c]/50 p-4 rounded-xl border border-zinc-200/60 dark:border-white/5 transition-colors duration-300 relative group">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#bc151b] flex-shrink-0" />
                 <div className="flex-1">
                   <InlineEditText
@@ -84,7 +84,7 @@ export function WelcomeSection({ id, isVisible, content }: any) {
                   />
                 </div>
                 {isEditMode && (
-                  <button 
+                  <button
                     onClick={() => handleRemoveArrayItem("items", index)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded transition-opacity"
                   >
@@ -96,7 +96,7 @@ export function WelcomeSection({ id, isVisible, content }: any) {
           </div>
           {isEditMode && (
             <div className="mt-4 flex justify-center">
-              <button 
+              <button
                 onClick={() => handleAddArrayItem("items", "Materi baru...")}
                 className="text-xs text-[#bc151b] flex items-center gap-1 hover:underline bg-[#bc151b]/10 px-3 py-1.5 rounded-full"
               >
