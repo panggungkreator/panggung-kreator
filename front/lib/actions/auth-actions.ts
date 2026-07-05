@@ -118,6 +118,7 @@ export async function signInWithGithub() {
 }
 
 export async function signInWithPasswordAction(emailOrUsername: string, password: string) {
+    console.log("[AUTH ACTION] Menggunakan NEXT_PUBLIC_SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
     if (!emailOrUsername || !password) {
         return { success: false, error: "Email/Username dan Password wajib diisi" };
     }
@@ -159,13 +160,13 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
 
         if (searchError) {
             console.error("Error searching username in database:", searchError);
-            return { success: false, error: "Gagal mencari username di database" };
+            return { success: false, error: `Database Error: ${searchError.message}` };
         }
 
         if (memberEmail) {
             loginEmail = memberEmail;
         } else {
-            return { success: false, error: "Username tidak terdaftar sebagai member" };
+            return { success: false, error: `Username "${loginEmail}" tidak terdaftar sebagai member.` };
         }
     }
 
@@ -177,28 +178,7 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
 
     if (error) {
         console.error("Login error:", error);
-        if (error.status === 429 || error.code === "over_request_rate_limit" || error.message?.toLowerCase().includes("rate limit")) {
-            return { success: false, error: "Terlalu banyak percobaan masuk (rate limit). Silakan tunggu beberapa menit sebelum mencoba lagi." };
-        }
-
-        // Jika input berupa username dan sudah lolos pengecekan di atas (baris 155-169),
-        // berarti username ditemukan tapi password salah
-        if (!emailOrUsername.includes("@")) {
-            return { success: false, error: "Password salah. Silakan coba lagi." };
-        }
-
-        // Jika input berupa email, cek apakah email terdaftar di tabel members
-        const { data: existingMember } = await supabase
-            .from("members")
-            .select("id")
-            .eq("email", loginEmail)
-            .single();
-
-        if (!existingMember) {
-            return { success: false, error: "Email tidak terdaftar sebagai member." };
-        }
-
-        return { success: false, error: "Password salah. Silakan coba lagi." };
+        return { success: false, error: `Supabase Auth Error: ${error.message}` };
     }
 
     let isAdmin = false;
