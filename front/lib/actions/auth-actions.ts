@@ -117,6 +117,31 @@ export async function signInWithGithub() {
     return redirect(data.url);
 }
 
+function formatSupabaseError(error: any): string {
+    if (!error) return "Unknown error";
+    
+    const keys = Object.getOwnPropertyNames(error);
+    const details: Record<string, any> = {};
+    for (const key of keys) {
+        details[key] = error[key];
+    }
+    
+    let msg = error.message;
+    if (!msg || msg === "{}" || typeof msg !== "string") {
+        msg = error.error_description || error.error || error.name || "Unknown Auth Error";
+    }
+    
+    if (typeof msg === "object") {
+        try {
+            msg = JSON.stringify(msg);
+        } catch {
+            msg = String(msg);
+        }
+    }
+    
+    return `${msg} (Status: ${error.status || 'N/A'}, Code: ${error.code || 'N/A'}, Details: ${JSON.stringify(details)})`;
+}
+
 export async function signInWithPasswordAction(emailOrUsername: string, password: string) {
     console.log("[AUTH ACTION] Menggunakan NEXT_PUBLIC_SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
     if (!emailOrUsername || !password) {
@@ -160,7 +185,7 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
 
         if (searchError) {
             console.error("Error searching username in database:", searchError);
-            return { success: false, error: `Database Error: ${searchError.message}` };
+            return { success: false, error: `Database Error: ${formatSupabaseError(searchError)}` };
         }
 
         if (memberEmail) {
@@ -178,7 +203,7 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
 
     if (error) {
         console.error("Login error:", error);
-        return { success: false, error: `Supabase Auth Error: ${error.message}` };
+        return { success: false, error: `Supabase Auth Error: ${formatSupabaseError(error)}` };
     }
 
     let isAdmin = false;
