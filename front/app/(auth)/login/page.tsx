@@ -28,7 +28,7 @@ export default function LoginPage() {
         const protocol = window.location.protocol;
         const hostname = window.location.hostname;
         const port = window.location.port ? `:${window.location.port}` : "";
-        
+
         const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
         const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "panggungkreator.web.id";
         const rootHost = `${rootDomain}${port}`;
@@ -37,14 +37,14 @@ export default function LoginPage() {
         let akademiRedirectUrl = process.env.NEXT_PUBLIC_AKADEMI_URL;
 
         if (!adminRedirectUrl) {
-          adminRedirectUrl = isLocalhost 
-            ? "/admin" 
+          adminRedirectUrl = isLocalhost
+            ? "/admin"
             : `${protocol}//admin.${rootHost}/`;
         }
 
         if (!akademiRedirectUrl) {
-          akademiRedirectUrl = isLocalhost 
-            ? "/dashboard" 
+          akademiRedirectUrl = isLocalhost
+            ? "/dashboard"
             : `${protocol}//akademi.${rootHost}/dashboard`;
         }
 
@@ -151,7 +151,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1 text-[9px] font-mono tracking-wider uppercase text-zinc-400">
+            {/* <div className="flex items-center justify-between pt-1 text-[9px] font-mono tracking-wider uppercase text-zinc-400">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -162,7 +162,7 @@ export default function LoginPage() {
               <Link href="#" className="hover:text-black dark:hover:text-white transition-colors">
                 LUPA PASSWORD?
               </Link>
-            </div>
+            </div> */}
 
             <div className="pt-2 flex flex-col gap-3">
               <button
@@ -184,7 +184,7 @@ export default function LoginPage() {
                 )}
               </button>
 
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-sans">
+              {/* <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-sans">
                 Belum punya akun?{" "}
                 <Link
                   href="/register"
@@ -192,7 +192,7 @@ export default function LoginPage() {
                 >
                   Daftar di sini
                 </Link>
-              </p>
+              </p> */}
             </div>
           </form>
         </div>

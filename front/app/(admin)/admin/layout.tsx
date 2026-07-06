@@ -29,7 +29,9 @@ import {
   Briefcase,
   Home,
   LayoutDashboard,
-  Settings
+  Settings,
+  Menu,
+  X
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 interface Permission {
@@ -135,6 +137,7 @@ export default function AdminLayout({
   const [mounted, setMounted] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Auth & RBAC State
@@ -194,6 +197,11 @@ export default function AdminLayout({
 
     fetchSidebarStructure();
   }, []);
+
+  // Close sidebar on page change (mobile)
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     setMounted(true);
@@ -372,20 +380,29 @@ export default function AdminLayout({
     <div className="flex flex-col h-screen bg-bg-page overflow-hidden font-sans text-text-primary transition-colors duration-300">
 
       {/* Top Header Bar - Spans full width from left to right (z-30) */}
-      <header className="h-18 border-b border-border-default flex items-center justify-between px-6 bg-bg-card shrink-0 z-30 transition-colors duration-300">
+      <header className="h-18 border-b border-border-default flex items-center justify-between px-6 bg-bg-card shrink-0 z-30 transition-colors duration-300 relative">
 
         {/* Left Section: Logo & Breadcrumbs (Grouped together) */}
         <div className="flex items-center gap-6">
-          <Link href="/admin" className="flex items-center gap-2 font-black text-sm tracking-widest text-text-primary hover:opacity-85 transition-opacity shrink-0">
+          {/* Hamburger Menu Button (Mobile only) */}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="lg:hidden p-1.5 rounded-md hover:bg-bg-well border border-border-default text-text-primary cursor-pointer shrink-0"
+            aria-label="Toggle Navigation"
+          >
+            {isSidebarOpen ? <X size={16} /> : <Menu size={16} />}
+          </button>
+
+          <Link href="/admin" className="flex items-center gap-2 font-black text-sm tracking-widest text-text-primary hover:opacity-85 transition-opacity shrink-0 max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2">
             <img src="/logo-dark.png" alt="Logo" className="h-20 w-auto dark:block hidden" />
             <img src="/logo-light.png" alt="Logo" className="h-20 w-auto dark:hidden" />
           </Link>
 
           {/* Vertical divider */}
-          <div className="h-5 w-px bg-border-default shrink-0" />
+          <div className="hidden sm:block h-5 w-px bg-border-default shrink-0" />
 
           {/* Breadcrumbs */}
-          <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-text-secondary/50 select-none">
+          <div className="hidden sm:flex items-center gap-2 text-[10px] font-black tracking-widest text-text-secondary/50 select-none">
             <span>[ ADMIN ]</span>
             {breadcrumbs.map((crumb, idx) => (
               <React.Fragment key={crumb}>
@@ -405,7 +422,7 @@ export default function AdminLayout({
           {pendingCount > 0 && (
             <Link
               href="/admin/akademi/payment"
-              className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold tracking-wider uppercase bg-red-500 text-white rounded-full animate-pulse shrink-0"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold tracking-wider uppercase bg-red-500 text-white rounded-full animate-pulse shrink-0"
             >
               <Bell size={10} />
               <span>{pendingCount} BUTUH KONFIRMASI</span>
@@ -471,11 +488,22 @@ export default function AdminLayout({
 
       {/* Body Area - Under Header (Contains Sidebar on left, Content on right) */}
       <div className="flex flex-1 overflow-hidden w-full relative z-20">
+        {/* Mobile Sidebar Backdrop */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 z-30 lg:hidden animate-fade-in"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
 
         {/* Sidebar Navigation - Starts below header, w-56, scrollable */}
         <aside
           data-lenis-prevent
-          className="w-56 flex-shrink-0 flex flex-col bg-bg-sidebar border-r border-border-default h-full overflow-y-auto no-scrollbar"
+          className={`w-56 flex-shrink-0 flex flex-col bg-bg-sidebar border-r border-border-default overflow-y-auto no-scrollbar transition-all duration-300 z-40
+            ${isSidebarOpen
+              ? "translate-x-0 fixed left-0 top-18 bottom-0 bg-bg-sidebar shadow-2xl"
+              : "-translate-x-full fixed left-0 top-18 bottom-0 lg:translate-x-0 lg:static lg:h-full"
+            }`}
         >
           <nav className="py-5 space-y-5">
             {/* Dashboard (Always at top, no module constraint) */}
