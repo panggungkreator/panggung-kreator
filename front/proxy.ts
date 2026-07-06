@@ -150,6 +150,12 @@ export async function proxy(request: NextRequest) {
 
   // A. Admin CMS Subdomain (admin.panggungkreator.web.id)
   if (sub === "admin") {
+    // Redirect untuk menghilangkan prefix "/admin" jika diakses via subdomain admin
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      const strippedPath = pathname.replace(/^\/admin/, "") || "/";
+      return NextResponse.redirect(new URL(`${protocol}//${host}${strippedPath}${search}`));
+    }
+
     if (!session) {
       return NextResponse.redirect(new URL(`${protocol}//${rootHost}/login`, request.url));
     }
