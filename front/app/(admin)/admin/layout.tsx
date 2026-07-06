@@ -31,7 +31,8 @@ import {
   LayoutDashboard,
   Settings,
   Menu,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 interface Permission {
@@ -138,6 +139,7 @@ export default function AdminLayout({
   const [pendingCount, setPendingCount] = useState(0);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Auth & RBAC State
@@ -342,10 +344,12 @@ export default function AdminLayout({
   };
 
   const handleSignOut = async () => {
+    setIsSigningOut(true);
     try {
       await signout();
     } catch (error) {
       console.error("Gagal keluar:", error);
+      setIsSigningOut(false);
     }
   };
 
@@ -474,10 +478,11 @@ export default function AdminLayout({
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-red-500 hover:bg-red-500/10 rounded-md transition-all duration-150 cursor-pointer"
+                  disabled={isSigningOut}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-red-500 hover:bg-red-500/10 rounded-md transition-all duration-150 cursor-pointer disabled:opacity-50"
                 >
-                  <LogOut size={13} />
-                  <span>Keluar</span>
+                  {isSigningOut ? <Loader2 size={13} className="animate-spin" /> : <LogOut size={13} />}
+                  <span>{isSigningOut ? "logout..." : "Keluar"}</span>
                 </button>
               </div>
             )}

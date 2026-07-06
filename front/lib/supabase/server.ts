@@ -1,10 +1,16 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export async function createClient() {
   const cookieStore = await cookies();
+  const headersList = await headers();
+  
+  const host = headersList.get("host") || "";
+  const cleanHost = host.split(":")[0];
+  const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
+  
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "panggungkreator.web.id";
-  const cookieDomain = `.${rootDomain}`;
+  const cookieDomain = isLocalhost ? undefined : `.${rootDomain}`;
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,26 +22,32 @@ export async function createClient() {
         },
         set(name: string, value: string, options: CookieOptions) {
           try {
-            cookieStore.set({
+            const cookieOptions: any = {
               name,
               value,
               ...options,
-              domain: cookieDomain,
               path: "/",
-            });
+            };
+            if (cookieDomain) {
+              cookieOptions.domain = cookieDomain;
+            }
+            cookieStore.set(cookieOptions);
           } catch (error) {
             // Diabaikan jika dipanggil dari Server Component
           }
         },
         remove(name: string, options: CookieOptions) {
           try {
-            cookieStore.set({
+            const cookieOptions: any = {
               name,
               value: "",
               ...options,
-              domain: cookieDomain,
               path: "/",
-            });
+            };
+            if (cookieDomain) {
+              cookieOptions.domain = cookieDomain;
+            }
+            cookieStore.set(cookieOptions);
           } catch (error) {
             // Diabaikan jika dipanggil dari Server Component
           }

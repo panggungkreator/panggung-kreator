@@ -44,7 +44,7 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const cookieDomain = `.${rootDomain}`;
+  const cookieDomain = isLocalhost ? undefined : `.${rootDomain}`;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -61,12 +61,15 @@ export async function proxy(request: NextRequest) {
               headers: request.headers,
             },
           });
-          response.cookies.set({
+          const cookieOptions: any = {
             name,
             value,
             ...options,
-            domain: cookieDomain,
-          });
+          };
+          if (cookieDomain) {
+            cookieOptions.domain = cookieDomain;
+          }
+          response.cookies.set(cookieOptions);
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: "", ...options });
@@ -75,12 +78,15 @@ export async function proxy(request: NextRequest) {
               headers: request.headers,
             },
           });
-          response.cookies.set({
+          const cookieOptions: any = {
             name,
             value: "",
             ...options,
-            domain: cookieDomain,
-          });
+          };
+          if (cookieDomain) {
+            cookieOptions.domain = cookieDomain;
+          }
+          response.cookies.set(cookieOptions);
         },
       },
     }
@@ -193,8 +199,8 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    // If logged in and goes to login page, redirect based on role/tier
-    if (pathname === "/login" && session) {
+    // If logged in and goes to login page via GET (page load), redirect based on role/tier
+    if (pathname === "/login" && session && request.method === "GET") {
       const { data: member } = await supabase
         .from("members")
         .select("role, membership_tier")
