@@ -97,6 +97,13 @@ export async function proxy(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
+  // DEBUG: Log session state for diagnosis
+  const allCookieNames = request.cookies.getAll().map(c => c.name);
+  console.log(`[PROXY DEBUG] host=${host} sub="${sub}" isRootDomain=${isRootDomain} pathname=${pathname}`);
+  console.log(`[PROXY DEBUG] cookieDomain=${cookieDomain ?? "undefined (localhost)"} session=${session ? session.user.email : "NULL"}`);
+  console.log(`[PROXY DEBUG] cookies present: ${allCookieNames.join(", ") || "(none)"}`);
+
+
   // 6. Direct Path Guards (for localhost or direct path access)
   const isDirectAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
   const isDirectAkademiDashboardPath = pathname === "/akademi/dashboard" || pathname.startsWith("/akademi/dashboard/");
