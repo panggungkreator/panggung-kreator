@@ -366,6 +366,20 @@ export default function AdminLayout({
     return permissions[module]?.can_view || false;
   };
 
+  // Helper to dynamically adjust links for subdomain vs localhost
+  const getCleanHref = (href: string) => {
+    if (!mounted) return href;
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
+    
+    if (isLocalhost) {
+      return href;
+    }
+    
+    // On production (admin subdomain), strip the "/admin" prefix
+    return href.replace(/^\/admin/, "") || "/";
+  };
+
 
 
   // Helper to build a clean breadcrumb title in header
@@ -397,7 +411,7 @@ export default function AdminLayout({
             {isSidebarOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
 
-          <Link href="/admin" className="flex items-center gap-2 font-black text-sm tracking-widest text-text-primary hover:opacity-85 transition-opacity shrink-0 max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2">
+          <Link href={getCleanHref("/admin")} className="flex items-center gap-2 font-black text-sm tracking-widest text-text-primary hover:opacity-85 transition-opacity shrink-0">
             <img src="/logo-dark.png" alt="Logo" className="h-20 w-auto dark:block hidden" />
             <img src="/logo-light.png" alt="Logo" className="h-20 w-auto dark:hidden" />
           </Link>
@@ -469,7 +483,7 @@ export default function AdminLayout({
                   </p>
                 </div>
                 <Link
-                  href="/admin/sidebar-layout"
+                  href={getCleanHref("/admin/sidebar-layout")}
                   onClick={() => setIsProfileOpen(false)}
                   className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-page rounded-md transition-all duration-150 cursor-pointer"
                 >
@@ -514,14 +528,14 @@ export default function AdminLayout({
             {/* Dashboard (Always at top, no module constraint) */}
             <div className="px-2">
               <Link
-                href="/admin"
-                className={`flex items-center gap-3 rounded-md px-2 py-2 text-xs font-semibold tracking-wider transition-all duration-150 ${pathname === "/admin" || pathname === "/admin/"
+                href={getCleanHref("/admin")}
+                className={`flex items-center gap-3 rounded-md px-2 py-2 text-xs font-semibold tracking-wider transition-all duration-150 ${pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/")
                   ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
                   : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
                   }`}
               >
                 <LayoutDashboard size={14} />
-                <span className={pathname === "/admin" || pathname === "/admin/" ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}>
+                <span className={pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/") ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}>
                   Dashboard
                 </span>
               </Link>
@@ -539,11 +553,12 @@ export default function AdminLayout({
                   </div>
                   <div className="space-y-0.5">
                     {visibleItems.map((item) => {
-                      const isActive = pathname.startsWith(item.href);
+                      const cleanHref = getCleanHref(item.href);
+                      const isActive = pathname === cleanHref || (cleanHref !== "/" && pathname.startsWith(cleanHref + "/"));
                       return (
                         <Link
                           key={item.href}
-                          href={item.href}
+                          href={cleanHref}
                           className={`flex items-center gap-2.5 px-4 py-3 text-xs font-semibold tracking-wider transition-all duration-150 ${isActive
                             ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
                             : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
