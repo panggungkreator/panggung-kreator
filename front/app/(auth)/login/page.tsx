@@ -24,9 +24,30 @@ export default function LoginPage() {
     try {
       const result = await signInWithPasswordAction(emailOrUsername, password);
       if (result.success) {
-        // Redirect menggunakan location.href agar middleware mengevaluasi session baru
-        const adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL || "/admin";
-        const akademiRedirectUrl = process.env.NEXT_PUBLIC_AKADEMI_URL || "/dashboard";
+        // Redirect menggunakan location.href agar middleware/proxy mengevaluasi session baru
+        const protocol = window.location.protocol;
+        const hostname = window.location.hostname;
+        const port = window.location.port ? `:${window.location.port}` : "";
+        
+        const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "panggungkreator.web.id";
+        const rootHost = `${rootDomain}${port}`;
+
+        let adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
+        let akademiRedirectUrl = process.env.NEXT_PUBLIC_AKADEMI_URL;
+
+        if (!adminRedirectUrl) {
+          adminRedirectUrl = isLocalhost 
+            ? "/admin" 
+            : `${protocol}//admin.${rootHost}/`;
+        }
+
+        if (!akademiRedirectUrl) {
+          akademiRedirectUrl = isLocalhost 
+            ? "/dashboard" 
+            : `${protocol}//akademi.${rootHost}/dashboard`;
+        }
+
         window.location.href = result.isAdmin ? adminRedirectUrl : akademiRedirectUrl;
       } else {
         setError(result.error || "Terjadi kesalahan saat masuk.");
@@ -53,7 +74,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right Column - Branding & Form */}
-      <div className="col-span-12 md:col-span-6 p-6 md:p-12 lg:p-16 flex flex-col justify-between bg-[#F9F9F9] dark:bg-[#121212] text-[#0A0A0A] dark:text-white h-full relative overflow-hidden">
+      <div className="col-span-12 md:col-span-6 p-6 md:p-12 lg:p-16 flex flex-col justify-between bg-[#F9F9F9] dark:bg-[#121212] text-[#0A0A0A] dark:text-white h-full relative overflow-auto">
         {/* Logo at top-right corner */}
         <div className="absolute top-6 right-6 md:top-8 md:right-8 z-10">
           <Logo size="sm" isLink={true} className="text-[#0A0A0A] dark:text-white" />
