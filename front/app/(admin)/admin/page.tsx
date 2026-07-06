@@ -29,7 +29,7 @@ export default async function AdminDashboardPage() {
   return (
     <div className="flex items-center justify-center min-h-[60vh] w-full">
       <div className="text-center font-mono text-xs md:text-sm tracking-widest text-text-secondary uppercase select-none">
-        Dashboard under construction !
+        Dashboard under construction !!!
       </div>
     </div>
   );
