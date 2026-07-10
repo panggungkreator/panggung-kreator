@@ -175,7 +175,9 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
 
           const { error: uploadError } = await supabase.storage
             .from("venues")
-            .upload(filePath, compressedFile);
+            .upload(filePath, compressedFile, {
+              contentType: compressedFile.type || "image/jpeg"
+            });
 
           if (uploadError) throw new Error("Upload foto gagal: " + uploadError.message);
 

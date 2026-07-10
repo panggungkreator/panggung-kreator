@@ -80,7 +80,8 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
   });
 
   const [initialHeroImageUrl] = useState(initialAlbum?.hero_image_url || "");
-  const [heroImageUrl, setHeroImageUrl] = useState(initialAlbum?.hero_image_url || "");
+  const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState(initialAlbum?.hero_image_url || "");
   const [albumLink, setAlbumLink] = useState(initialAlbum?.album_link || "");
   const [description, setDescription] = useState(initialAlbum?.description || "");
   const [isPublished, setIsPublished] = useState(initialAlbum ? initialAlbum.is_published : true);
@@ -99,61 +100,28 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
       .replace(/-+$/, "");
   };
 
-  // Handle image upload to Supabase Storage
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle image selection (no immediate upload)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setIsUploading(true);
-    try {
-      const file = files[0];
-      
-      // Perform initial compression (max 1600x1600, quality 0.7)
-      let compressedFile = await compressImage(file, 1600, 1600, 0.7);
-      
-      // If it is still over 1MB, compress further (max 1200x1200, quality 0.6)
-      if (compressedFile.size > 1024 * 1024) {
-        compressedFile = await compressImage(compressedFile, 1200, 1200, 0.6);
-      }
+    const file = files[0];
+    setHeroImageFile(file);
 
-      const fileExt = compressedFile.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const supabase = createClient();
-
-      const { data, error } = await supabase.storage
-        .from("gallery")
-        .upload(filePath, compressedFile, {
-          cacheControl: "3600",
-          upsert: false
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("gallery")
-        .getPublicUrl(filePath);
-
-      // Delete old file if present, but only if it is NOT the initial image
-      // (so if the user cancels the edit form, the original live image is preserved)
-      if (heroImageUrl && heroImageUrl !== initialHeroImageUrl) {
-        const oldPath = getStoragePathFromUrl(heroImageUrl, "gallery");
-        if (oldPath) {
-          await supabase.storage.from("gallery").remove([oldPath]);
-        }
-      }
-
-      setHeroImageUrl(publicUrl);
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      alert("Gagal mengunggah gambar: " + (error.message || error));
-    } finally {
-      setIsUploading(false);
+    // Revoke old blob URL to prevent memory leaks
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
     }
+
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleDeleteImage = () => {
+    setHeroImageFile(null);
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl("");
   };
 
   // Handle Form Submit (Insert / Update)
@@ -165,8 +133,54 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
     }
 
     setIsLoading(true);
+    let finalHeroImageUrl = initialHeroImageUrl;
+
     try {
       const supabase = createClient();
+
+      // 1. If a new image was selected locally, compress and upload it now
+      if (heroImageFile) {
+        setIsUploading(true);
+        try {
+          // Perform initial compression (max 1600x1600, quality 0.7)
+          let compressedFile = await compressImage(heroImageFile, 1600, 1600, 0.7);
+          
+          // If it is still over 1MB, compress further (max 1200x1200, quality 0.6)
+          if (compressedFile.size > 1024 * 1024) {
+            compressedFile = await compressImage(compressedFile, 1200, 1200, 0.6);
+          }
+
+          const fileExt = compressedFile.name.split(".").pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+          const filePath = `${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("gallery")
+            .upload(filePath, compressedFile, {
+              cacheControl: "3600",
+              upsert: false,
+              contentType: compressedFile.type || "image/jpeg"
+            });
+
+          if (uploadError) throw uploadError;
+
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from("gallery")
+            .getPublicUrl(filePath);
+
+          finalHeroImageUrl = publicUrl;
+        } catch (uploadErr: any) {
+          console.error("Upload error:", uploadErr);
+          throw new Error("Gagal mengunggah gambar: " + (uploadErr.message || uploadErr));
+        } finally {
+          setIsUploading(false);
+        }
+      } else if (!previewUrl) {
+        // Image was cleared/removed
+        finalHeroImageUrl = "";
+      }
+
       const slug = generateSlug(title);
 
       const albumData = {
@@ -174,7 +188,7 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
         slug,
         category,
         event_date: eventDate,
-        hero_image_url: heroImageUrl.trim() || null,
+        hero_image_url: finalHeroImageUrl.trim() || null,
         album_link: albumLink.trim() || null,
         description: description.trim() || null,
         is_published: isPublished,
@@ -191,8 +205,8 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
 
         if (error) throw error;
 
-        // Clean up initial image from storage if it was replaced or removed
-        if (initialHeroImageUrl && initialHeroImageUrl !== heroImageUrl) {
+        // Clean up old image from storage if it was replaced or removed
+        if (initialHeroImageUrl && initialHeroImageUrl !== finalHeroImageUrl) {
           const oldPath = getStoragePathFromUrl(initialHeroImageUrl, "gallery");
           if (oldPath) {
             await supabase.storage.from("gallery").remove([oldPath]);
@@ -375,15 +389,17 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
             </div>
 
             {/* URL Mirror & Image Preview */}
-            {heroImageUrl && (
+            {previewUrl && (
               <div className="mt-3 space-y-2">
-                <div className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 truncate">
-                  URL: <span className="font-semibold text-zinc-650 dark:text-zinc-350">{heroImageUrl}</span>
-                </div>
+                {!previewUrl.startsWith("blob:") && (
+                  <div className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 truncate">
+                    URL: <span className="font-semibold text-zinc-650 dark:text-zinc-350">{previewUrl}</span>
+                  </div>
+                )}
                 <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={heroImageUrl}
+                    src={previewUrl}
                     alt="Preview"
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -392,7 +408,7 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
                   />
                   <Button
                     type="button"
-                    onClick={() => setHeroImageUrl("")}
+                    onClick={handleDeleteImage}
                     className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow-md cursor-pointer h-auto w-auto min-w-0"
                     title="Hapus gambar"
                   >

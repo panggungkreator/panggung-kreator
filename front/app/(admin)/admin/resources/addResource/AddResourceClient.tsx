@@ -149,7 +149,8 @@ export default function AddResourceClient({ initialResource }: AddResourceClient
             .from("resources")
             .upload(filePath, compressedFile, {
               cacheControl: "3600",
-              upsert: false
+              upsert: false,
+              contentType: compressedFile.type || "application/octet-stream"
             });
 
           if (uploadError) throw new Error("Upload berkas baru gagal: " + uploadError.message);
@@ -197,7 +198,8 @@ export default function AddResourceClient({ initialResource }: AddResourceClient
           .from("resources")
           .upload(filePath, compressedFile, {
             cacheControl: "3600",
-            upsert: false
+            upsert: false,
+            contentType: compressedFile.type || "application/octet-stream"
           });
 
         if (uploadError) throw new Error("Upload berkas gagal: " + uploadError.message);

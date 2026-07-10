@@ -139,7 +139,8 @@ export default function MediaLibraryClient() {
         .from(bucket)
         .upload(fileName, compressedFile, {
           cacheControl: "3600",
-          upsert: false
+          upsert: false,
+          contentType: compressedFile.type || "image/jpeg"
         });
 
       if (uploadErr) throw new Error(uploadErr.message);
