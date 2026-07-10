@@ -21,118 +21,8 @@ interface GaleriFilterSectionProps {
   initialAlbums: Album[];
 }
 
-const categories = [
-  { label: "SEMUA", value: "all" },
-  { label: "OPEN MIC", value: "open-mic" },
-  { label: "PUBLIC SPEAKING", value: "public-speaking" },
-  { label: "MC PRACTICE", value: "mc-practice" },
-  { label: "NETWORKING", value: "networking" },
-  { label: "CONTENT CLASS", value: "content-class" },
-  { label: "LAINNYA", value: "lainnya" },
-];
-
-const dummyAlbums: Album[] = [
-  {
-    id: "dummy-1",
-    title: "OPEN MIC NIGHT - PANGGUNG KE 10",
-    slug: "open-mic-night-panggung-ke-10",
-    category: "open-mic",
-    event_date: "2026-06-12",
-    hero_image_url: null,
-    album_link: "https://drive.google.com",
-    description: "Sesi open mic spesial ke-10, menampilkan 15 kreator berbakat di panggung utama.",
-    is_published: true,
-    display_order: 1
-  },
-  {
-    id: "dummy-2",
-    title: "PUBLIC SPEAKING BOOTCAMP",
-    slug: "public-speaking-bootcamp",
-    category: "public-speaking",
-    event_date: "2026-05-24",
-    hero_image_url: null,
-    album_link: "https://drive.google.com",
-    description: "Pelatihan intensif 2 hari tentang penguasaan panggung dan teknik berbicara.",
-    is_published: true,
-    display_order: 2
-  },
-  {
-    id: "dummy-3",
-    title: "MC PRACTICE SESSIONS",
-    slug: "mc-practice-sessions",
-    category: "mc-practice",
-    event_date: "2026-05-10",
-    hero_image_url: null,
-    album_link: "https://drive.google.com",
-    description: "Praktik langsung memandu protokoler formal dan non-formal bagi pemula.",
-    is_published: true,
-    display_order: 3
-  },
-  {
-    id: "dummy-4",
-    title: "CREATIVE NETWORKING DAY",
-    slug: "creative-networking-day",
-    category: "networking",
-    event_date: "2026-04-19",
-    hero_image_url: null,
-    album_link: "https://drive.google.com",
-    description: "Temu kolaborasi antar kreator, influencer, dan praktisi industri kreatif.",
-    is_published: true,
-    display_order: 4
-  },
-  {
-    id: "dummy-5",
-    title: "CONTENT CREATION WORKSHOP",
-    slug: "content-creation-workshop",
-    category: "content-class",
-    event_date: "2026-03-15",
-    hero_image_url: null,
-    album_link: "https://drive.google.com",
-    description: "Sesi interaktif kupas tuntas pra-produksi, syuting, hingga pasca-produksi.",
-    is_published: true,
-    display_order: 5
-  },
-  {
-    id: "dummy-6",
-    title: "GATHERING PANGGUNG KREATOR",
-    slug: "gathering-panggung-kreator",
-    category: "lainnya",
-    event_date: "2026-02-28",
-    hero_image_url: null,
-    album_link: "https://drive.google.com",
-    description: "Sesi kebersamaan perayaan pencapaian tahunan komunitas.",
-    is_published: true,
-    display_order: 6
-  },
-  {
-    id: "dummy-7",
-    title: "MASTERCLASS CREATOR WEEKEND",
-    slug: "masterclass-creator-weekend",
-    category: "content-class",
-    event_date: "2026-01-20",
-    hero_image_url: null,
-    album_link: "https://drive.google.com",
-    description: "Praktik langsung membuat hook konten yang memikat audiens.",
-    is_published: true,
-    display_order: 7
-  },
-  {
-    id: "dummy-8",
-    title: "PUBLIC SPEAKING SEMINAR",
-    slug: "public-speaking-seminar",
-    category: "public-speaking",
-    event_date: "2026-01-05",
-    hero_image_url: null,
-    album_link: "https://drive.google.com",
-    description: "Seminar awal tahun membangun rasa percaya diri di depan umum.",
-    is_published: true,
-    display_order: 8
-  }
-];
-
 export default function GaleriFilterSection({ initialAlbums }: GaleriFilterSectionProps) {
   const { fadeUp, parallax, staggerIn } = useScrollAnimations();
-  const [activeCategory, setActiveCategory] = useState("all");
 
   // Pagination / Load More states
   const [limit, setLimit] = useState(6);
@@ -149,35 +39,28 @@ export default function GaleriFilterSection({ initialAlbums }: GaleriFilterSecti
     }
   }, [fadeUp]);
 
-  // Reset limit when category changes
-  useEffect(() => {
-    setLimit(6);
-  }, [activeCategory]);
-
   useEffect(() => {
     // Re-trigger stagger animation when items change (including pagination/load-more)
     if (itemsRef.current.length > 0) {
       const validItems = itemsRef.current.filter((item) => item !== null) as HTMLElement[];
       staggerIn(validItems, 0.08, 30);
     }
-  }, [staggerIn, activeCategory, limit]);
+  }, [staggerIn, limit]);
 
   // Apply parallax on images or wrappers
   useEffect(() => {
     imgRefs.current.forEach((img) => {
       if (img) parallax(img, 0.08);
     });
-  }, [parallax, activeCategory, limit]);
+  }, [parallax, limit]);
 
-  // Fallback to dummy data if initialAlbums is empty
-  const albumsToUse = initialAlbums && initialAlbums.length > 0 ? initialAlbums : dummyAlbums;
-
-  const filteredItems = albumsToUse.filter(
-    (item) => activeCategory === "all" || item.category === activeCategory
+  // Sort by event_date descending
+  const albumsToUse = [...(initialAlbums || [])].sort(
+    (a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
   );
 
-  const displayedItems = filteredItems.slice(0, limit);
-  const hasMore = filteredItems.length > limit;
+  const displayedItems = albumsToUse.slice(0, limit);
+  const hasMore = albumsToUse.length > limit;
 
   const handleLoadMore = () => {
     setIsLoadingMore(true);
@@ -202,53 +85,13 @@ export default function GaleriFilterSection({ initialAlbums }: GaleriFilterSecti
     }
   };
 
-  // Helper to get category details
-  const getCategoryInfo = (cat: string) => {
-    switch (cat) {
-      case "open-mic":
-        return { label: "OPEN MIC", emoji: "🎤" };
-      case "public-speaking":
-        return { label: "PUBLIC SPEAKING", emoji: "🗣️" };
-      case "mc-practice":
-        return { label: "MC PRACTICE", emoji: "🎙️" };
-      case "networking":
-        return { label: "NETWORKING", emoji: "💡" };
-      case "content-class":
-        return { label: "CONTENT CLASS", emoji: "🎬" };
-      case "lainnya":
-      default:
-        return { label: "LAINNYA", emoji: "📁" };
-    }
-  };
-
   return (
-    <section className="relative bg-white dark:bg-[#2c2c2c] border-b border-[#2c2c2c] dark:border-white z-10 mb-16 md:mb-24">
-      {/* Filter Bar */}
-      <div
-        ref={filterRef}
-        className="p-6 md:px-16 border-b border-[#2c2c2c] dark:border-white bg-white dark:bg-[#2c2c2c] sticky top-[80px] z-20 flex gap-3 overflow-x-auto scrollbar-none"
-      >
-        <div className="flex gap-2 mx-auto">
-          {categories.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => setActiveCategory(cat.value)}
-              className={`px-4 py-2 border text-[10px] md:text-xs font-black uppercase tracking-[0.2em] transition-colors duration-250 rounded-none whitespace-nowrap cursor-pointer ${activeCategory === cat.value
-                ? "bg-[#2c2c2c] text-white border-[#2c2c2c] dark:bg-white dark:text-[#2c2c2c] dark:border-white"
-                : "border-[#2c2c2c]/10 dark:border-white/10 text-[#2c2c2c]/60 dark:text-white/60 hover:border-[#2c2c2c] dark:hover:border-white"
-                }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
+    <section className="relative bg-white dark:bg-[#2c2c2c] border-b border-[#2c2c2c] dark:border-white z-10 mb-16 md:mb-24 pt-6">
       {/* Grid Container - Perfect 1px borders */}
-      {filteredItems.length === 0 ? (
+      {albumsToUse.length === 0 ? (
         <div className="py-24 text-center bg-white dark:bg-[#2c2c2c] border-b border-[#2c2c2c] dark:border-white">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2c2c2c]/40 dark:text-white/30">
-            Belum ada dokumentasi untuk kategori ini.
+            Belum ada dokumentasi.
           </p>
         </div>
       ) : (
@@ -258,7 +101,6 @@ export default function GaleriFilterSection({ initialAlbums }: GaleriFilterSecti
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 bg-[#2c2c2c] dark:bg-white gap-[1px]"
           >
             {displayedItems.map((album, idx) => {
-              const catInfo = getCategoryInfo(album.category);
               const CardElement = album.album_link ? "a" : "div";
 
               return (
