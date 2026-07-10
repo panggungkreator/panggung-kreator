@@ -110,7 +110,7 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
     try {
       const file = files[0];
       const compressedFile = await compressImage(file);
-      
+
       const fileExt = compressedFile.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `${fileName}`;
@@ -209,8 +209,8 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
   };
 
   return (
-    <div className="min-h-screen bg-white py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8">
+    <div className="min-h-screen bg-card py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto bg-card border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-6">

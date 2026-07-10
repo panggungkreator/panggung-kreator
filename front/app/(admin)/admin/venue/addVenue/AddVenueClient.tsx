@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Loader,
@@ -11,12 +11,14 @@ import {
   Trash2,
   X,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/file-compress";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/Button";
 
 interface Venue {
   id: string;
@@ -27,13 +29,9 @@ interface Venue {
   capacity: number;
   contact_wa: string;
   contact_name: string;
-  maps_url: string;
+  latitude: number;
+  longitude: number;
   photo_urls: string[];
-  amenities: string[];
-  pros: string[];
-  cons: string[];
-  internal_notes: string;
-  is_recommended: boolean;
 }
 
 interface AddVenueClientProps {
@@ -52,88 +50,111 @@ const getStoragePathFromUrl = (url: string, bucketName: string): string | null =
   return null;
 };
 
+const formatPhone = (val: string): string => {
+  let digits = val.replace(/\D/g, "");
+  if (digits.length > 0 && !digits.startsWith("0")) {
+    digits = "0" + digits;
+  }
+  if (digits.length > 13) {
+    digits = digits.substring(0, 13);
+  }
+  const parts = [];
+  for (let i = 0; i < digits.length; i += 4) {
+    parts.push(digits.substring(i, i + 4));
+  }
+  return parts.join("-");
+};
+
 export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [errors, setErrors] = useState<{ name?: string; address?: string; city?: string }>({});
 
   // Form states
   const [name, setName] = useState(initialVenue?.name || "");
   const [address, setAddress] = useState(initialVenue?.address || "");
   const [city, setCity] = useState(initialVenue?.city || "");
   const [description, setDescription] = useState(initialVenue?.description || "");
-  const [capacity, setCapacity] = useState(initialVenue?.capacity || 100);
-  const [contactWa, setContactWa] = useState(initialVenue?.contact_wa || "");
+  const [capacity, setCapacity] = useState(initialVenue?.capacity?.toString() || "0");
+  const [contactWa, setContactWa] = useState(initialVenue?.contact_wa ? formatPhone(initialVenue.contact_wa) : "");
   const [contactName, setContactName] = useState(initialVenue?.contact_name || "");
-  const [mapsUrl, setMapsUrl] = useState(initialVenue?.maps_url || "");
-  const [notes, setNotes] = useState(initialVenue?.internal_notes || "");
-  const [isRecommended, setIsRecommended] = useState(initialVenue?.is_recommended || false);
-
-  // Array states (Amenities, Pros, Cons)
-  const [amenityInput, setAmenityInput] = useState("");
-  const [amenities, setAmenities] = useState<string[]>(initialVenue?.amenities || []);
-
-  const [proInput, setProInput] = useState("");
-  const [pros, setPros] = useState<string[]>(initialVenue?.pros || []);
-
-  const [conInput, setConInput] = useState("");
-  const [cons, setCons] = useState<string[]>(initialVenue?.cons || []);
 
   // Photos upload
   const [newPhotos, setNewPhotos] = useState<File[]>([]);
   const [existingPhotos, setExistingPhotos] = useState<string[]>(initialVenue?.photo_urls || []);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleAddAmenity = () => {
-    if (!amenityInput.trim()) return;
-    setAmenities([...amenities, amenityInput.trim()]);
-    setAmenityInput("");
-  };
-
-  const handleRemoveAmenity = (index: number) => {
-    setAmenities(amenities.filter((_, i) => i !== index));
-  };
-
-  const handleAddPro = () => {
-    if (!proInput.trim()) return;
-    setPros([...pros, proInput.trim()]);
-    setProInput("");
-  };
-
-  const handleRemovePro = (index: number) => {
-    setPros(pros.filter((_, i) => i !== index));
-  };
-
-  const handleAddCon = () => {
-    if (!conInput.trim()) return;
-    setCons([...cons, conInput.trim()]);
-    setConInput("");
-  };
-
-  const handleRemoveCon = (index: number) => {
-    setCons(cons.filter((_, i) => i !== index));
-  };
+  useEffect(() => {
+    return () => {
+      photoPreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [photoPreviews]);
 
   const handleRemoveExistingPhoto = (index: number) => {
     setExistingPhotos(existingPhotos.filter((_, i) => i !== index));
   };
 
   const handleRemoveNewPhoto = (index: number) => {
+    if (photoPreviews[index]) {
+      URL.revokeObjectURL(photoPreviews[index]);
+    }
     setNewPhotos(newPhotos.filter((_, i) => i !== index));
+    setPhotoPreviews(photoPreviews.filter((_, i) => i !== index));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files);
-      setNewPhotos([...newPhotos, ...filesArray]);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+
+      // Revoke any existing object URLs to avoid memory leaks
+      photoPreviews.forEach((url) => URL.revokeObjectURL(url));
+
+      setNewPhotos([file]);
+      setPhotoPreviews([URL.createObjectURL(file)]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith("image/")) {
+        // Revoke any existing object URLs to avoid memory leaks
+        photoPreviews.forEach((url) => URL.revokeObjectURL(url));
+
+        setNewPhotos([file]);
+        setPhotoPreviews([URL.createObjectURL(file)]);
+      } else {
+        toast.error("File yang diunggah harus berupa gambar.");
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
+    setErrors({});
 
-    if (!name.trim() || !address.trim() || !city.trim()) {
-      setFormError("Nama venue, Alamat, dan Kota wajib diisi.");
+    const newErrors: { name?: string; address?: string; city?: string } = {};
+    if (!name.trim()) newErrors.name = "Nama venue wajib diisi.";
+    if (!address.trim()) newErrors.address = "Alamat venue wajib diisi.";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -189,18 +210,11 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
           .update({
             name: name.trim(),
             address: address.trim(),
-            city: city.trim(),
             description: description.trim(),
             capacity: Number(capacity),
             contact_wa: contactWa.trim(),
             contact_name: contactName.trim(),
-            maps_url: mapsUrl.trim(),
             photo_urls: finalPhotoUrls,
-            amenities: amenities,
-            pros: pros,
-            cons: cons,
-            internal_notes: notes.trim(),
-            is_recommended: isRecommended,
             updated_at: new Date().toISOString()
           })
           .eq("id", initialVenue.id);
@@ -217,18 +231,11 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
           .insert({
             name: name.trim(),
             address: address.trim(),
-            city: city.trim(),
             description: description.trim(),
             capacity: Number(capacity),
             contact_wa: contactWa.trim(),
             contact_name: contactName.trim(),
-            maps_url: mapsUrl.trim(),
             photo_urls: finalPhotoUrls,
-            amenities: amenities,
-            pros: pros,
-            cons: cons,
-            internal_notes: notes.trim(),
-            is_recommended: isRecommended,
             order_index: (count || 0) + 1
           });
 
@@ -253,8 +260,8 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-750 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8">
+    <div className="min-h-screen bg-card dark:bg-zinc-750 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto bg-card dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-6">
@@ -291,9 +298,76 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="space-y-6 text-zinc-800 dark:text-zinc-200">
 
+          {/* Photos upload & management */}
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Foto Venue</label>
+
+            {/* Existing photos preview with delete */}
+            {existingPhotos.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold text-zinc-400">Foto Terunggah:</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {existingPhotos.map((url, idx) => (
+                    <div key={idx} className="relative group rounded-xl overflow-hidden border border-zinc-100 dark:border-zinc-800 aspect-video">
+                      <img src={url} alt="Venue" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExistingPhoto(idx)}
+                        className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors cursor-pointer"
+                        title="Hapus foto ini"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload new photo input */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border border-dashed rounded-2xl p-6 flex flex-col items-center justify-center space-y-4 transition-colors ${isDragging
+                ? "border-zinc-950 dark:border-amber-400 bg-zinc-100/70 dark:bg-zinc-800/40"
+                : "border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30"
+                }`}
+            >
+              {photoPreviews.length > 0 ? (
+                <div className="relative group rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 max-w-sm w-full aspect-video shadow-md bg-white dark:bg-zinc-900">
+                  <img src={photoPreviews[0]} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveNewPhoto(0)}
+                    className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors cursor-pointer"
+                    title="Hapus foto"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-550 py-4">
+                  <ImageIcon className="w-12 h-12 text-zinc-400 dark:text-zinc-600 mb-2" />
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 text-center">
+                    {isDragging ? "Lepaskan gambar di sini" : "Belum ada foto terpilih"}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col items-center justify-center w-full">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="text-xs font-semibold text-text-primary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-[#e0f2fe] file:text-[#0369a1] file:cursor-pointer hover:file:opacity-90 cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Section 1: Detail Utama */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-black tracking-widest text-zinc-400 uppercase">1. Detail Utama</h2>
+          <div className="space-y-4 mt-12">
 
             {/* Nama Venue */}
             <div className="space-y-1.5">
@@ -302,67 +376,92 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
                 type="text"
                 required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                }}
                 placeholder="Contoh: Coworking Space Panggung Kreatif"
-                className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all font-bold"
+                className={`flex h-12 w-full rounded-xl border bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 transition-all ${errors.name
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-zinc-200 dark:border-zinc-800 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+                  }`}
               />
+              {errors.name && (
+                <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.name}</span>
+                </p>
+              )}
             </div>
 
             {/* Alamat & Kota */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="sm:col-span-2 space-y-1.5">
+            <div className="space-y-1.5 mt-6">
+              {/* Alamat Lengkap */}
+              <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Alamat Lengkap *</label>
                 <input
                   type="text"
                   required
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    if (errors.address) setErrors((prev) => ({ ...prev, address: undefined }));
+                  }}
                   placeholder="Jl. Raya Kebon Jeruk No. 12"
-                  className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all font-semibold"
+                  className={`flex h-12 w-full rounded-xl border bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 transition-all ${errors.address
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-zinc-200 dark:border-zinc-800 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+                    }`}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Kota *</label>
-                <input
-                  type="text"
-                  required
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Jakarta Barat"
-                  className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all font-bold"
-                />
+                {errors.address && (
+                  <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{errors.address}</span>
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Deskripsi */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 mt-6">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Deskripsi Singkat</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Fasilitas utama, nuansa tempat, atau kecocokan acara..."
                 rows={3}
-                className="flex w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all font-medium"
+                className="flex w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all"
               />
             </div>
           </div>
 
-          <hr className="border-zinc-100 dark:border-zinc-800" />
-
           {/* Section 2: Kapasitas & Kontak */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-black tracking-widest text-zinc-400 uppercase">2. Kapasitas & Kontak</h2>
+          <div className="space-y-4 mt-8">
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
               {/* Kapasitas */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Kapasitas (Orang)</label>
                 <input
-                  type="number"
-                  min={1}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={capacity}
-                  onChange={(e) => setCapacity(Number(e.target.value))}
-                  className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all font-bold"
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (/^\d*$/.test(val)) {
+                      if (val.length > 1 && val.startsWith("0")) {
+                        val = val.replace(/^0+/, "");
+                      }
+                      setCapacity(val);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!capacity.trim()) {
+                      setCapacity("0");
+                    }
+                  }}
+                  className="flex h-12 w-full rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all"
                 />
               </div>
               {/* Nama Kontak */}
@@ -373,7 +472,7 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   placeholder="Budi Setiawan"
-                  className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all font-semibold"
+                  className="flex h-12 w-full rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all"
                 />
               </div>
               {/* WA Kontak */}
@@ -382,222 +481,15 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
                 <input
                   type="text"
                   value={contactWa}
-                  onChange={(e) => setContactWa(e.target.value)}
-                  placeholder="08123456789"
-                  className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all font-semibold"
+                  onChange={(e) => setContactWa(formatPhone(e.target.value))}
+                  placeholder="0812-3456-7890"
+                  className="flex h-12 w-full rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all font-mono"
                 />
               </div>
             </div>
 
-            {/* Google Maps Link */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Google Maps URL</label>
-              <input
-                type="url"
-                value={mapsUrl}
-                onChange={(e) => setMapsUrl(e.target.value)}
-                placeholder="https://goo.gl/maps/..."
-                className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all font-semibold"
-              />
-            </div>
           </div>
 
-          <hr className="border-zinc-100 dark:border-zinc-800" />
-
-          {/* Section 3: Fitur & Fasilitas */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-black tracking-widest text-zinc-400 uppercase">3. Fitur & Tagging</h2>
-
-            {/* Amenities (Fasilitas) */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Fasilitas (Amenities)</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={amenityInput}
-                  onChange={(e) => setAmenityInput(e.target.value)}
-                  placeholder="AC, WiFi, Proyektor, Parkir Luas..."
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddAmenity())}
-                  className="flex-grow h-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 text-xs text-text-primary focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddAmenity}
-                  className="px-4 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-xs font-bold rounded-xl hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Tambah
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {amenities.map((item, idx) => (
-                  <span key={idx} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-zinc-50 border border-zinc-200 text-zinc-700 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300">
-                    {item}
-                    <button type="button" onClick={() => handleRemoveAmenity(idx)} className="text-red-500 hover:text-red-750">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Pros & Cons (Grid) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
-              {/* Pros */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block text-emerald-600">Kelebihan (Pros)</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={proInput}
-                    onChange={(e) => setProInput(e.target.value)}
-                    placeholder="Estetis, Murah, Dekat Stasiun..."
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddPro())}
-                    className="flex-grow h-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 text-xs text-text-primary focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddPro}
-                    className="px-3 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-colors cursor-pointer flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {pros.map((item, idx) => (
-                    <span key={idx} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50/50 border border-emerald-200/20 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400">
-                      {item}
-                      <button type="button" onClick={() => handleRemovePro(idx)} className="text-red-500">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Cons */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block text-rose-600">Kekurangan (Cons)</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={conInput}
-                    onChange={(e) => setConInput(e.target.value)}
-                    placeholder="Susah Parkir, Agak Bising..."
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCon())}
-                    className="flex-grow h-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 text-xs text-text-primary focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddCon}
-                    className="px-3 bg-rose-600 text-white text-xs font-bold rounded-xl hover:bg-rose-700 transition-colors cursor-pointer flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {cons.map((item, idx) => (
-                    <span key={idx} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50/50 border border-rose-200/20 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400">
-                      {item}
-                      <button type="button" onClick={() => handleRemoveCon(idx)} className="text-red-500">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <hr className="border-zinc-100 dark:border-zinc-800" />
-
-          {/* Section 4: Foto & Rekomendasi */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-black tracking-widest text-zinc-400 uppercase">4. Media & Rekomendasi</h2>
-
-            {/* Recommended Flag */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="recommend"
-                checked={isRecommended}
-                onChange={(e) => setIsRecommended(e.target.checked)}
-                className="w-4 h-4 text-zinc-900 border-zinc-300 rounded focus:ring-0 cursor-pointer"
-              />
-              <label htmlFor="recommend" className="text-xs font-bold text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                Rekomendasikan Venue Ini (Akan mendapat lencana Rekomendasi di member portal)
-              </label>
-            </div>
-
-            {/* Internal Notes */}
-            <div className="space-y-1.5 mt-3">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Catatan Internal Admin</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Hanya dapat dilihat oleh admin (catatan khusus sewa, kontak darurat tambahan, dll)..."
-                rows={2}
-                className="flex w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all font-semibold"
-              />
-            </div>
-
-            {/* Photos upload & management */}
-            <div className="space-y-3">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Foto Venue</label>
-
-              {/* Existing photos preview with delete */}
-              {existingPhotos.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-semibold text-zinc-400">Foto Terunggah:</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {existingPhotos.map((url, idx) => (
-                      <div key={idx} className="relative group rounded-xl overflow-hidden border border-zinc-100 dark:border-zinc-800 aspect-video">
-                        <img src={url} alt="Venue" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExistingPhoto(idx)}
-                          className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors cursor-pointer"
-                          title="Hapus foto ini"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Upload new photo input */}
-              <div className="border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl p-6 flex flex-col items-center justify-center space-y-3">
-                <Upload className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
-                <div className="text-center">
-                  <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Unggah Foto Tambahan</p>
-                  <p className="text-[10px] text-zinc-450 dark:text-zinc-500 font-medium mt-1">Dukungan format JPG, PNG, WEBP (Maks. 5MB per file)</p>
-                </div>
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileChange}
-                  className="text-xs font-semibold text-text-primary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-[#e0f2fe] file:text-[#0369a1] file:cursor-pointer hover:file:opacity-90 cursor-pointer"
-                />
-
-                {newPhotos.length > 0 && (
-                  <div className="space-y-1.5 w-full max-w-md">
-                    <p className="text-[10px] font-bold text-zinc-400 text-center">Foto baru siap diunggah ({newPhotos.length}):</p>
-                    <div className="flex flex-col gap-1">
-                      {newPhotos.map((file, idx) => (
-                        <div key={idx} className="flex items-center justify-between bg-zinc-100 dark:bg-zinc-900 px-3 py-1.5 rounded-lg text-[10px] font-bold">
-                          <span className="truncate max-w-[250px]">{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-                          <button type="button" onClick={() => handleRemoveNewPhoto(idx)} className="text-red-500 hover:text-red-700">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
           {/* Error Message */}
           {formError && (
@@ -608,23 +500,33 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
           )}
 
           {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-text-primary text-bg-card border border-text-primary hover:opacity-90 rounded-full py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader className="w-4.5 h-4.5 animate-spin" />
-                <span>Menyimpan & Mengunggah...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-4.5 h-4.5" />
-                <span>Simpan Venue</span>
-              </>
-            )}
-          </button>
+          <div className="flex gap-4 pt-6 border-t border-zinc-400 dark:border-zinc-800">
+            <Link href="/admin/venue" className="flex-1">
+              <Button
+                type="button"
+                disabled={isSubmitting}
+                className="w-full py-4 text-xs font-bold rounded-full border border-zinc-400 dark:border-zinc-800 bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-650 dark:text-zinc-300 transition-colors uppercase tracking-widest cursor-pointer disabled:opacity-50 h-auto"
+              >
+                Batal
+              </Button>
+            </Link>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 py-4 text-xs font-bold text-white bg-zinc-900 hover:bg-gray-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-full transition-all shadow-sm flex items-center justify-center gap-1.5 uppercase tracking-widest cursor-pointer disabled:opacity-50 h-auto"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Menyimpan...</span>
+                </>
+              ) : (
+                <>
+                  <span>Simpan</span>
+                </>
+              )}
+            </Button>
+          </div>
 
         </form>
 

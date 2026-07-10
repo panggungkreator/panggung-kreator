@@ -37,14 +37,9 @@ interface Venue {
   capacity: number;
   contact_wa: string;
   contact_name: string;
-  maps_url: string;
+  latitude: number;
+  longitude: number;
   photo_urls: string[];
-  amenities: string[];
-  pros: string[];
-  cons: string[];
-  last_used_at: string | null;
-  internal_notes: string;
-  is_recommended: boolean;
   order_index: number;
   created_at: string;
 }
@@ -68,14 +63,9 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
         capacity: 150,
         contact_name: "Budi Santoso",
         contact_wa: "081234567890",
-        maps_url: "https://maps.google.com",
+        latitude: -6.200000,
+        longitude: 106.816666,
         photo_urls: [],
-        amenities: ["AC", "Sound System", "Stage", "High-speed Wifi", "Projector"],
-        pros: ["Lokasi strategis", "Fasilitas audio sangat lengkap"],
-        cons: ["Parkir terbatas pada jam kerja"],
-        last_used_at: null,
-        internal_notes: "Hubungi H-7 sebelum acara.",
-        is_recommended: true,
         order_index: 1,
         created_at: new Date().toISOString()
       },
@@ -88,14 +78,9 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
         capacity: 300,
         contact_name: "Ani Wijaya",
         contact_wa: "089876543210",
-        maps_url: "https://maps.google.com",
+        latitude: -6.917464,
+        longitude: 107.619122,
         photo_urls: [],
-        amenities: ["AC", "Premium Acoustics", "Backstage Room", "Widescreen Projector"],
-        pros: ["Kapasitas besar", "Akustik kelas dunia"],
-        cons: ["Biaya sewa relatif tinggi"],
-        last_used_at: null,
-        internal_notes: "Ada diskon khusus untuk komunitas non-profit.",
-        is_recommended: true,
         order_index: 2,
         created_at: new Date().toISOString()
       },
@@ -108,14 +93,9 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
         capacity: 50,
         contact_name: "Joko Susilo",
         contact_wa: "085678901234",
-        maps_url: "https://maps.google.com",
+        latitude: -7.257472,
+        longitude: 112.752088,
         photo_urls: [],
-        amenities: ["AC", "Studio Lighting", "Podcast Equipment", "Coffee Bar"],
-        pros: ["Desain sangat estetik", "Peralatan podcast lengkap"],
-        cons: ["Kapasitas terbatas"],
-        last_used_at: null,
-        internal_notes: "Sangat cocok untuk acara kolaborasi intim.",
-        is_recommended: false,
         order_index: 3,
         created_at: new Date().toISOString()
       }
@@ -126,7 +106,6 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
   // Filtering states
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState("all");
-  const [recommendFilter, setRecommendFilter] = useState("all");
 
   // Helper to re-fetch venues
   const refreshVenues = async () => {
@@ -148,14 +127,9 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
           capacity: v.capacity || 0,
           contact_wa: v.contact_wa || "",
           contact_name: v.contact_name || "",
-          maps_url: v.maps_url || "",
+          latitude: v.latitude || 0,
+          longitude: v.longitude || 0,
           photo_urls: Array.isArray(v.photo_urls) ? v.photo_urls : [],
-          amenities: Array.isArray(v.amenities) ? v.amenities : [],
-          pros: Array.isArray(v.pros) ? v.pros : [],
-          cons: Array.isArray(v.cons) ? v.cons : [],
-          last_used_at: v.last_used_at,
-          internal_notes: v.internal_notes || "",
-          is_recommended: v.is_recommended ?? false,
           order_index: v.order_index || 0,
           created_at: v.created_at,
         }));
@@ -209,30 +183,6 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
     }
   };
 
-  // Toggle Is Recommended Inline
-  const handleToggleRecommend = async (venueId: string, currentStatus: boolean, name: string) => {
-    const nextStatus = !currentStatus;
-    try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("venues")
-        .update({ is_recommended: nextStatus })
-        .eq("id", venueId);
-
-      if (error) {
-        toast.error("Gagal mengubah rekomendasi: " + error.message);
-      } else {
-        toast.success(`Rekomendasi "${name}" berhasil diperbarui!`);
-        setVenues(prev =>
-          prev.map(v => (v.id === venueId ? { ...v, is_recommended: nextStatus } : v))
-        );
-      }
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Terjadi kesalahan: " + (err.message || err));
-    }
-  };
-
   // Unique Cities list for filter dropdown
   const cities = useMemo(() => {
     const set = new Set(venues.map(v => v.city));
@@ -249,14 +199,9 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
       const matchesCity =
         cityFilter === "all" || v.city === cityFilter;
 
-      const matchesRecommend =
-        recommendFilter === "all" ||
-        (recommendFilter === "recommended" && v.is_recommended) ||
-        (recommendFilter === "regular" && !v.is_recommended);
-
-      return matchesSearch && matchesCity && matchesRecommend;
+      return matchesSearch && matchesCity;
     });
-  }, [venues, search, cityFilter, recommendFilter]);
+  }, [venues, search, cityFilter]);
 
   return (
     <div className="space-y-6">
@@ -317,20 +262,6 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
             </Select>
           </div>
 
-          {/* Recommend Filter */}
-          <div className="relative">
-            <Select value={recommendFilter} onValueChange={setRecommendFilter}>
-              <SelectTrigger className="h-[50px] border-gray-400">
-                <SelectValue placeholder="Semua Rekomendasi" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Rekomendasi</SelectItem>
-                <SelectItem value="recommended">Hanya Direkomendasikan</SelectItem>
-                <SelectItem value="regular">Regular</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
         </div>
       </div>
 
@@ -357,13 +288,6 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
                   ) : (
                     <Compass className="w-10 h-10 text-text-muted/60" />
                   )}
-
-                  {/* Recommendation Badge Overlay */}
-                  {venue.is_recommended && (
-                    <span className="absolute top-3 left-3 text-[9px] font-bold text-[#2D5A00] bg-accent-green px-2.5 py-1 rounded-full uppercase tracking-wider border border-emerald-500/10 shadow-sm">
-                      Recommended
-                    </span>
-                  )}
                 </div>
 
                 {/* Info Content Area */}
@@ -384,28 +308,13 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
                     )}
                   </div>
 
-                  {/* Amenities tags */}
-                  {venue.amenities.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {venue.amenities.slice(0, 3).map((am, idx) => (
-                        <span key={idx} className="text-[9px] font-bold px-2 py-0.5 bg-bg-well border border-border-default rounded-full text-text-secondary uppercase">
-                          {am}
-                        </span>
-                      ))}
-                      {venue.amenities.length > 3 && (
-                        <span className="text-[9px] font-bold px-2 py-0.5 bg-bg-well border border-border-default rounded-full text-text-muted">
-                          +{venue.amenities.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Card Actions Footer */}
                 <div className="px-5 pb-5 pt-3 border-t border-border-default/50 flex gap-2">
-                  {venue.maps_url && (
+                  {venue.latitude && venue.longitude ? (
                     <a
-                      href={venue.maps_url}
+                      href={`https://www.google.com/maps/search/?api=1&query=${venue.latitude},${venue.longitude}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="border border-border-default hover:bg-bg-well rounded-full p-2 text-text-secondary hover:text-text-primary transition-colors flex items-center justify-center shrink-0"
@@ -413,22 +322,14 @@ export default function VenueClient({ initialVenues }: VenueClientProps) {
                     >
                       <ExternalLink size={14} />
                     </a>
-                  )}
-                  <button
-                    onClick={() => handleToggleRecommend(venue.id, venue.is_recommended, venue.name)}
-                    className={`flex-1 border text-[10px] font-bold uppercase tracking-wider rounded-full py-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${venue.is_recommended
-                      ? "bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20"
-                      : "border-border-default text-text-secondary hover:bg-bg-well hover:text-text-primary"
-                      }`}
-                  >
-                    Recommend
-                  </button>
+                  ) : null}
                   <Link
                     href={`/admin/venue/addVenue?id=${venue.id}`}
-                    className="border border-border-default hover:bg-bg-well rounded-full p-2 text-text-secondary hover:text-text-primary transition-colors flex items-center justify-center shrink-0 cursor-pointer"
+                    className="flex-1 border text-[10px] font-bold uppercase tracking-wider rounded-full py-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 border-border-default text-text-secondary hover:bg-bg-well hover:text-text-primary"
                     title="Edit Venue"
                   >
-                    <Edit size={14} />
+                    <Edit size={12} />
+                    <span>Edit</span>
                   </Link>
                   <button
                     onClick={() => handleDeleteVenue(venue)}

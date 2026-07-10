@@ -20,7 +20,8 @@ import {
   CheckCircle,
   ArrowUp,
   ArrowDown,
-  Star
+  Star,
+  Eye
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,7 +32,6 @@ interface Partner {
   id: string;
   name: string;
   type: string;
-  logo_url: string;
   website_url: string;
   instagram_url: string;
   contact_person: string;
@@ -51,6 +51,7 @@ interface PartnerClientProps {
 export default function PartnerClient({ initialPartners }: PartnerClientProps) {
   const [partners, setPartners] = useState<Partner[]>(initialPartners);
   const [partnerToDelete, setPartnerToDelete] = useState<Partner | null>(null);
+  const [partnerDetail, setPartnerDetail] = useState<Partner | null>(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -80,7 +81,6 @@ export default function PartnerClient({ initialPartners }: PartnerClientProps) {
           id: p.id,
           name: p.name,
           type: p.type || "kafe",
-          logo_url: p.logo_url || "",
           website_url: p.website_url || "",
           instagram_url: p.instagram_url || "",
           contact_person: p.contact_person || "",
@@ -192,13 +192,7 @@ export default function PartnerClient({ initialPartners }: PartnerClientProps) {
     try {
       const supabase = createClient();
 
-      // Remove logo from storage
-      if (partner.logo_url) {
-        const parts = partner.logo_url.split("/partners/");
-        if (parts.length > 1) {
-          await supabase.storage.from("partners").remove([parts[1]]);
-        }
-      }
+
 
       // Delete DB record
       const { error } = await supabase
@@ -289,6 +283,8 @@ export default function PartnerClient({ initialPartners }: PartnerClientProps) {
                 <SelectItem value="kampus">Kampus / Sekolah</SelectItem>
                 <SelectItem value="brand">Brand / Bisnis</SelectItem>
                 <SelectItem value="media">Media Partner</SelectItem>
+                <SelectItem value="sponsor">Sponsor</SelectItem>
+                <SelectItem value="lainnya">Lainnya</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -318,11 +314,10 @@ export default function PartnerClient({ initialPartners }: PartnerClientProps) {
             <thead>
               <tr className="text-zinc-650 dark:text-zinc-400 font-semibold">
                 <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50 text-center">Urutan</th>
-                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Logo & Nama</th>
+                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Nama</th>
                 <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Tipe</th>
                 <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Kontak Person</th>
                 <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">WhatsApp</th>
-                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Kemitraan Sejak</th>
                 <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Sosmed & Web</th>
                 <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Featured</th>
                 <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Status Aktif</th>
@@ -367,18 +362,16 @@ export default function PartnerClient({ initialPartners }: PartnerClientProps) {
                         </div>
                       </td>
 
-                      {/* Name and Logo */}
+                      {/* Name */}
                       <td className={cellBorderClass}>
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-border-default flex items-center justify-center overflow-hidden shrink-0">
-                            {p.logo_url ? (
-                              <img src={p.logo_url} alt={p.name} className="w-full h-full object-contain" />
-                            ) : (
-                              <Briefcase size={16} className="text-text-muted" />
-                            )}
-                          </div>
                           <div>
-                            <span className="font-bold text-text-primary block text-sm leading-tight">{p.name}</span>
+                            <button
+                              onClick={() => setPartnerDetail(p)}
+                              className="font-bold text-text-primary hover:underline block text-sm leading-tight text-left cursor-pointer"
+                            >
+                              {p.name}
+                            </button>
                             {p.description && (
                               <span className="block text-[10px] text-text-secondary font-medium mt-0.5 max-w-[160px] truncate" title={p.description}>
                                 {p.description}
@@ -405,11 +398,6 @@ export default function PartnerClient({ initialPartners }: PartnerClientProps) {
                         {p.contact_wa || "-"}
                       </td>
 
-                      {/* Partnership date */}
-                      <td className={`${cellBorderClass} text-text-secondary`}>
-                        {p.partnership_since ? formatDate(p.partnership_since) : "-"}
-                      </td>
-
                       {/* Web links */}
                       <td className={cellBorderClass}>
                         <div className="flex gap-2">
@@ -419,7 +407,7 @@ export default function PartnerClient({ initialPartners }: PartnerClientProps) {
                             </a>
                           )}
                           {p.instagram_url && (
-                            <a href={p.instagram_url} target="_blank" rel="noopener noreferrer" className="p-1.5 border border-border-default hover:bg-bg-well rounded text-text-secondary hover:text-text-primary">
+                            <a href={`https://instagram.com/${p.instagram_url}`} target="_blank" rel="noopener noreferrer" className="p-1.5 border border-border-default hover:bg-bg-well rounded text-text-secondary hover:text-text-primary">
                               <Link2 size={13} />
                             </a>
                           )}
@@ -456,6 +444,13 @@ export default function PartnerClient({ initialPartners }: PartnerClientProps) {
 
                       <td className={cellBorderClass}>
                         <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => setPartnerDetail(p)}
+                            className="p-1.5 text-text-secondary hover:text-text-primary bg-bg-well hover:bg-border-default/50 border border-border-default rounded-lg cursor-pointer flex items-center justify-center"
+                            title="Detail Partner"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                           <Link
                             href={`/admin/partner/addPartner?id=${p.id}`}
                             className="p-1.5 text-text-secondary hover:text-text-primary bg-bg-well hover:bg-border-default/50 border border-border-default rounded-lg cursor-pointer flex items-center justify-center"
@@ -495,6 +490,122 @@ export default function PartnerClient({ initialPartners }: PartnerClientProps) {
         }
         onConfirm={handleConfirmDelete}
       />
+
+      {/* Partner Detail Dialog */}
+      <Dialog open={!!partnerDetail} onOpenChange={(open) => !open && setPartnerDetail(null)}>
+        <DialogContent className="max-w-md sm:max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 text-zinc-800 dark:text-zinc-200 shadow-2xl">
+          <DialogHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest bg-zinc-100 dark:bg-zinc-900 px-3 h-6 flex items-center rounded-full text-zinc-500 dark:text-zinc-400 font-mono">
+                Detail Partner
+              </span>
+              {partnerDetail?.is_featured && (
+                <span className="px-2.5 h-6 flex items-center rounded bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[9px] font-black uppercase tracking-widest gap-1">
+                  <Star size={10} className="fill-current" />
+                  Featured
+                </span>
+              )}
+              <span className={`px-2.5 h-6 flex items-center rounded-full text-[9px] font-black uppercase tracking-widest border ${partnerDetail?.is_active
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                : "bg-zinc-500/10 border-zinc-500/30 text-zinc-500"
+                }`}>
+                {partnerDetail?.is_active ? "Aktif" : "Nonaktif"}
+              </span>
+            </div>
+            <DialogTitle className="text-xl font-black text-zinc-900 dark:text-white mt-3 uppercase tracking-wider font-title leading-tight">
+              {partnerDetail?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {partnerDetail && (
+            <div className="space-y-5">
+
+              {/* Deskripsi */}
+              {partnerDetail.description ? (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Deskripsi</span>
+                  <p className="text-[12px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium">
+                    {partnerDetail.description}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-400 italic">Tidak ada deskripsi untuk partner ini.</p>
+              )}
+              {/* Kategori Badge */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-zinc-900 dark:bg-yellow-100 text-white dark:text-zinc-900 uppercase tracking-widest">
+                  {partnerDetail.type.replace("_", " ")}
+                </span>
+              </div>
+              {/* Kontak Person Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Kontak Person</span>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                    <User className="w-4 h-4 text-zinc-400" />
+                    <span>{partnerDetail.contact_person || "-"}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">WhatsApp</span>
+                  <div className="flex items-center gap-2 text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                    <Phone className="w-4 h-4 text-zinc-400" />
+                    <span>{partnerDetail.contact_wa || "-"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sosial Media & Tautan Section */}
+              <div className="space-y-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Tautan & Sosial Media</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Website */}
+                  {partnerDetail.website_url ? (
+                    <a
+                      href={partnerDetail.website_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors text-xs font-semibold text-zinc-700 dark:text-zinc-350"
+                    >
+                      <Globe className="w-4 h-4 text-zinc-400 shrink-0" />
+                      <span className="truncate">{partnerDetail.website_url.replace(/^https?:\/\//, "")}</span>
+                    </a>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-950/20 text-xs font-semibold text-zinc-400 italic">
+                      <Globe className="w-4 h-4 text-zinc-300 shrink-0" />
+                      <span>Website tidak ada</span>
+                    </div>
+                  )}
+
+                  {/* Instagram */}
+                  {partnerDetail.instagram_url ? (
+                    <a
+                      href={`https://instagram.com/${partnerDetail.instagram_url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors text-xs font-semibold text-zinc-700 dark:text-zinc-350 font-mono"
+                    >
+                      <Link2 className="w-4 h-4 text-zinc-400 shrink-0" />
+                      <span>@{partnerDetail.instagram_url}</span>
+                    </a>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-950/20 text-xs font-semibold text-zinc-400 italic">
+                      <Link2 className="w-4 h-4 text-zinc-300 shrink-0" />
+                      <span>Instagram tidak ada</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Meta */}
+              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center text-[10px] text-zinc-400 font-semibold font-mono">
+                <span>Dibuat: {formatDate(partnerDetail.created_at)}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

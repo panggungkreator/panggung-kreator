@@ -60,55 +60,88 @@ export default function GaleriCMSClient({ initialAlbums }: GaleriCMSClientProps)
     title: string;
     imageUrl: string | null;
   } | null>(null);
-  const [albums, setAlbums] = useState<Album[]>(() => {
-    if (initialAlbums && initialAlbums.length > 0) {
-      return initialAlbums;
-    }
-    return [
-      {
-        id: "dummy-album-1",
-        title: "PANGGUNG OPEN MIC #12 - EDISI KEMERDEKAAN",
-        slug: "panggung-open-mic-12-edisi-kemerdekaan",
-        category: "open-mic",
-        event_date: "2026-08-17",
-        hero_image_url: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=60",
-        album_link: "https://drive.google.com",
-        description: "Dokumentasi keseruan panggung Open Mic edisi spesial Hari Kemerdekaan dengan 15 performer luar biasa.",
-        is_published: true,
-        display_order: 1
-      },
-      {
-        id: "dummy-album-2",
-        title: "PUBLIC SPEAKING BOOTCAMP BERSAMA MENTOR",
-        slug: "public-speaking-bootcamp-bersama-mentor",
-        category: "public-speaking",
-        event_date: "2026-07-25",
-        hero_image_url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format&fit=crop&q=60",
-        album_link: "https://drive.google.com",
-        description: "Sesi intensif praktek public speaking, olah vokal, gestur tubuh, dan teknik mengatasi demam panggung.",
-        is_published: true,
-        display_order: 2
-      },
-      {
-        id: "dummy-album-3",
-        title: "NETWORKING & SHARING SESSION KAFE KREATIF",
-        slug: "networking-sharing-session-kafe-kreatif",
-        category: "networking",
-        event_date: "2026-06-10",
-        hero_image_url: null,
-        album_link: "https://drive.google.com",
-        description: "Tempat berkumpulnya para kreator konten di Bandung untuk berbagi ide, kolaborasi, dan memperluas relasi.",
-        is_published: false,
-        display_order: 3
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showMultiDeleteDialog, setShowMultiDeleteDialog] = useState(false);
+  const [albums, setAlbums] = useState<Album[]>(initialAlbums || []);
+
+  const refreshAlbums = async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("gallery_albums")
+        .select("*")
+        .order("display_order", { ascending: true })
+        .order("event_date", { ascending: false });
+
+      if (error) throw error;
+      if (data) {
+        setAlbums(data as Album[]);
       }
-    ];
-  });
-  // Sync state with initialAlbums when it changes
+    } catch (err: any) {
+      console.error("Error fetching gallery albums:", err);
+      toast.error("Gagal mengambil data album dari database.");
+    }
+  };
+
+  // Sync state with initialAlbums when it changes, or fetch from DB if empty
   useEffect(() => {
     if (initialAlbums && initialAlbums.length > 0) {
       setAlbums(initialAlbums);
+    } else {
+      refreshAlbums();
     }
   }, [initialAlbums]);
+
+  // Handle Selection and Multi Check
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(albums.map(a => a.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleConfirmMultiDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const idsToDelete = [...selectedIds];
+
+    setShowMultiDeleteDialog(false);
+
+    const albumsToDelete = albums.filter(a => idsToDelete.includes(a.id));
+    const imagePathsToClean = albumsToDelete
+      .map(a => a.hero_image_url)
+      .filter((url): url is string => !!url && url.includes("storage/v1/object/public/gallery/"))
+      .map(url => url.split("/").pop())
+      .filter((name): name is string => !!name);
+
+    try {
+      const supabase = createClient();
+
+      const { error } = await supabase
+        .from("gallery_albums")
+        .delete()
+        .in("id", idsToDelete);
+
+      if (error) throw error;
+
+      setAlbums(prev => prev.filter(item => !idsToDelete.includes(item.id)));
+      setSelectedIds([]);
+      toast.success(`${idsToDelete.length} album galeri berhasil dihapus secara permanen!`);
+
+      if (imagePathsToClean.length > 0) {
+        await supabase.storage.from("gallery").remove(imagePathsToClean);
+      }
+    } catch (error: any) {
+      console.error("Multi-delete error:", error);
+      toast.error("Gagal menghapus data terpilih: " + (error.message || error));
+    }
+  };
 
   // Handle Delete Album Trigger
   const handleDeleteClick = (id: string, albumTitle: string, imageUrl: string | null) => {
@@ -201,18 +234,37 @@ export default function GaleriCMSClient({ initialAlbums }: GaleriCMSClientProps)
             Daftar album kegiatan komunitas. Album ini akan ditampilkan di halaman Galeri Publik.
           </p>
         </div>
-        <Link href="/admin/galeri/addGallery" className="flex items-center gap-1.5 px-6 py-4 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 rounded-full transition-all shadow-sm cursor-pointer tracking-wider">
-          <Plus className="w-4 h-4" />
-          <span>Tambah Album</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          {selectedIds.length > 0 && (
+            <button
+              onClick={() => setShowMultiDeleteDialog(true)}
+              className="flex items-center gap-1.5 px-6 py-4 text-xs font-bold text-white bg-red-650 hover:bg-red-700 rounded-full transition-all shadow-sm cursor-pointer tracking-wider"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Hapus Terpilih ({selectedIds.length})</span>
+            </button>
+          )}
+          <Link href="/admin/galeri/addGallery" className="flex items-center gap-1.5 px-6 py-4 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 rounded-full transition-all shadow-sm cursor-pointer tracking-wider">
+            <Plus className="w-4 h-4" />
+            <span>Tambah Album</span>
+          </Link>
+        </div>
       </div>
 
       {/* Table Area (always full width) */}
       <div className="w-full bg-bg-card rounded-2xl border border-border-default overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full text-left border-1 border-collapse text-xs">
             <thead>
               <tr className="text-zinc-650 dark:text-zinc-400 font-semibold bg-bg-well/50">
+                <th className="py-4 px-6 border-b border-border-default/70 w-12 text-center">
+                  <input
+                    type="checkbox"
+                    checked={albums.length > 0 && selectedIds.length === albums.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-zinc-900 border-zinc-450 dark:border-zinc-800 rounded focus:ring-0 cursor-pointer"
+                  />
+                </th>
                 <th className="py-4 px-6 border-b border-border-default/70">Album / Judul</th>
                 <th className="py-4 px-6 border-b border-border-default/70 w-36">Kategori</th>
                 <th className="py-4 px-6 border-b border-border-default/70 w-48">Tanggal</th>
@@ -223,7 +275,7 @@ export default function GaleriCMSClient({ initialAlbums }: GaleriCMSClientProps)
             <tbody>
               {albums.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500 font-bold ">
+                  <td colSpan={7} className="px-6 py-12 text-center text-zinc-500 font-bold ">
                     Belum ada data album dokumentasi.
                   </td>
                 </tr>
@@ -237,6 +289,15 @@ export default function GaleriCMSClient({ initialAlbums }: GaleriCMSClientProps)
                       key={album.id}
                       className="hover:bg-bg-well/30 transition-colors group"
                     >
+                      {/* Checkbox */}
+                      <td className={`${cellBorderClass} text-center`}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(album.id)}
+                          onChange={() => handleSelectRow(album.id)}
+                          className="w-4 h-4 text-zinc-900 border-zinc-450 dark:border-zinc-800 rounded focus:ring-0 cursor-pointer"
+                        />
+                      </td>
 
                       {/* Title & Slug */}
                       <td className={cellBorderClass}>
@@ -433,6 +494,39 @@ export default function GaleriCMSClient({ initialAlbums }: GaleriCMSClientProps)
             </Button>
             <Button
               onClick={handleConfirmDelete}
+              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 rounded-full cursor-pointer h-auto border-0 shadow-sm"
+            >
+              Hapus
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Multi-Delete Confirmation Dialog */}
+      <Dialog open={showMultiDeleteDialog} onOpenChange={setShowMultiDeleteDialog}>
+        <DialogContent className="max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 rounded-[24px]">
+          <DialogHeader className="pb-2 mb-0 border-b-0">
+            <DialogTitle className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-wider">
+              Hapus Album Terpilih
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="text-sm text-zinc-650 dark:text-zinc-400 font-medium leading-relaxed px-1">
+            Apakah Anda yakin ingin menghapus <span className="font-black text-zinc-950 dark:text-white">{selectedIds.length} album</span> secara permanen?
+            <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500 font-bold">
+              File foto utama di storage untuk album-album ini juga akan dibersihkan secara otomatis.
+            </p>
+          </div>
+
+          <div className="flex flex-row justify-end gap-3 pt-4 px-1">
+            <Button
+              onClick={() => setShowMultiDeleteDialog(false)}
+              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-full cursor-pointer h-auto shadow-none"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleConfirmMultiDelete}
               className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 rounded-full cursor-pointer h-auto border-0 shadow-sm"
             >
               Hapus
