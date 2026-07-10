@@ -9,7 +9,6 @@ import {
   Calendar,
   X,
   Upload,
-  Globe,
   ArrowLeft
 } from "lucide-react";
 import Link from "next/link";
@@ -80,8 +79,7 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
     return `${yyyy}-${mm}-${dd}`;
   });
 
-  const isUploadedImage = initialAlbum?.hero_image_url?.includes("storage/v1/object/public/gallery") || false;
-  const [heroImageMode, setHeroImageMode] = useState<"upload" | "url">(isUploadedImage ? "upload" : "url");
+  const [initialHeroImageUrl] = useState(initialAlbum?.hero_image_url || "");
   const [heroImageUrl, setHeroImageUrl] = useState(initialAlbum?.hero_image_url || "");
   const [albumLink, setAlbumLink] = useState(initialAlbum?.album_link || "");
   const [description, setDescription] = useState(initialAlbum?.description || "");
@@ -109,7 +107,14 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
     setIsUploading(true);
     try {
       const file = files[0];
-      const compressedFile = await compressImage(file);
+      
+      // Perform initial compression (max 1600x1600, quality 0.7)
+      let compressedFile = await compressImage(file, 1600, 1600, 0.7);
+      
+      // If it is still over 1MB, compress further (max 1200x1200, quality 0.6)
+      if (compressedFile.size > 1024 * 1024) {
+        compressedFile = await compressImage(compressedFile, 1200, 1200, 0.6);
+      }
 
       const fileExt = compressedFile.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
@@ -133,8 +138,9 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
         .from("gallery")
         .getPublicUrl(filePath);
 
-      // Delete old file if present
-      if (heroImageUrl) {
+      // Delete old file if present, but only if it is NOT the initial image
+      // (so if the user cancels the edit form, the original live image is preserved)
+      if (heroImageUrl && heroImageUrl !== initialHeroImageUrl) {
         const oldPath = getStoragePathFromUrl(heroImageUrl, "gallery");
         if (oldPath) {
           await supabase.storage.from("gallery").remove([oldPath]);
@@ -184,6 +190,14 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
           .eq("id", initialAlbum.id);
 
         if (error) throw error;
+
+        // Clean up initial image from storage if it was replaced or removed
+        if (initialHeroImageUrl && initialHeroImageUrl !== heroImageUrl) {
+          const oldPath = getStoragePathFromUrl(initialHeroImageUrl, "gallery");
+          if (oldPath) {
+            await supabase.storage.from("gallery").remove([oldPath]);
+          }
+        }
       } else {
         // INSERT
         const { error } = await supabase
@@ -330,73 +344,35 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
               Hero Image (Foto Bersama / Sampul)
             </Label>
 
-            {/* Tabs */}
-            <div className="flex gap-2 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
-              <Button
-                type="button"
-                onClick={() => setHeroImageMode("upload")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer h-auto ${heroImageMode === "upload"
-                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs hover:bg-white dark:hover:bg-zinc-700"
-                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 bg-transparent shadow-none hover:bg-transparent"
-                  }`}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Upload</span>
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setHeroImageMode("url")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer h-auto ${heroImageMode === "url"
-                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs hover:bg-white dark:hover:bg-zinc-700"
-                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 bg-transparent shadow-none hover:bg-transparent"
-                  }`}
-              >
-                <Globe className="w-3.5 h-3.5" />
-                <span>External URL</span>
-              </Button>
-            </div>
-
-            {heroImageMode === "upload" ? (
-              <div className="space-y-3">
-                <div className="relative border-2 border-dashed border-zinc-200 dark:border-zinc-805 rounded-xl p-6 text-center hover:bg-zinc-50/10 dark:hover:bg-zinc-850/10 transition-colors">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    disabled={isUploading}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer animate-none p-0 border-none bg-transparent"
-                  />
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
-                        <span className="text-xs font-bold text-zinc-500">Mengunggah file...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-6 h-6 text-zinc-405" />
-                        <span className="text-xs font-bold text-zinc-500 dark:text-zinc-450">
-                          Klik / Tarik foto untuk upload
-                        </span>
-                        <span className="text-[9px] font-semibold text-zinc-400">
-                          PNG, JPG, JPEG (Max. 5MB)
-                        </span>
-                      </>
-                    )}
-                  </div>
+            <div className="space-y-3">
+              <div className="relative border-2 border-dashed border-zinc-200 dark:border-zinc-805 rounded-xl p-6 text-center hover:bg-zinc-50/10 dark:hover:bg-zinc-850/10 transition-colors">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer animate-none p-0 border-none bg-transparent"
+                />
+                <div className="flex flex-col items-center justify-center gap-2">
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+                      <span className="text-xs font-bold text-zinc-500">Mengunggah file...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-6 h-6 text-zinc-405" />
+                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-450">
+                        Klik / Tarik foto untuk upload
+                      </span>
+                      <span className="text-[9px] font-semibold text-zinc-400">
+                        PNG, JPG, JPEG (Max. 5MB)
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div>
-                <Input
-                  type="text"
-                  value={heroImageUrl}
-                  onChange={(e) => setHeroImageUrl(e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                  className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition-all font-semibold"
-                />
-              </div>
-            )}
+            </div>
 
             {/* URL Mirror & Image Preview */}
             {heroImageUrl && (
