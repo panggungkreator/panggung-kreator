@@ -32,6 +32,7 @@ export default function GaleriFilterSection({ initialAlbums }: GaleriFilterSecti
   const gridRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<(HTMLDivElement | HTMLAnchorElement | null)[]>([]);
   const imgRefs = useRef<(HTMLDivElement | HTMLImageElement | null)[]>([]);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (filterRef.current) {
@@ -69,6 +70,32 @@ export default function GaleriFilterSection({ initialAlbums }: GaleriFilterSecti
       setIsLoadingMore(false);
     }, 800);
   };
+
+  // Set up intersection observer for infinite scroll auto-load
+  useEffect(() => {
+    if (!hasMore || isLoadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first.isIntersecting) {
+          handleLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [hasMore, isLoadingMore]);
 
   // Date formatter helper
   const formatDate = (dateStr: string) => {
@@ -174,23 +201,15 @@ export default function GaleriFilterSection({ initialAlbums }: GaleriFilterSecti
             })}
           </div>
 
-          {/* Load More Button */}
+          {/* Infinite Scroll Trigger */}
           {hasMore && (
-            <div className="flex justify-center py-12 bg-white dark:bg-[#2c2c2c] border-t border-[#2c2c2c]/10 dark:border-white/10">
-              <button
-                onClick={handleLoadMore}
-                disabled={isLoadingMore}
-                className="relative px-8 py-4 border-2 border-[#2c2c2c] dark:border-white text-xs md:text-sm font-black uppercase tracking-[0.2em] transition-all duration-300 hover:bg-[#2c2c2c] hover:text-white dark:hover:bg-white dark:hover:text-[#2c2c2c] cursor-pointer disabled:opacity-50 flex items-center gap-2.5 rounded-none"
-              >
-                {isLoadingMore ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>MEMUAT...</span>
-                  </>
-                ) : (
-                  <span>MUAT LEBIH BANYAK +</span>
-                )}
-              </button>
+            <div ref={loadMoreRef} className="w-full flex justify-center py-12 bg-white dark:bg-[#2c2c2c]">
+              {isLoadingMore && (
+                <div className="flex items-center gap-2.5 text-[#2c2c2c] dark:text-white font-black uppercase text-xs tracking-[0.25em]">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>MEMUAT...</span>
+                </div>
+              )}
             </div>
           )}
         </>
