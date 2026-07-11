@@ -133,7 +133,7 @@ export default function AdminsClient({ initialAdmins }: AdminsClientProps) {
           {/* Search Box */}
           <div className="relative">
             <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
-              <Search className="w-4 h-4" />
+              <Search className="w-4 h-4 " />
             </span>
             <input
               type="text"
@@ -230,15 +230,15 @@ export default function AdminsClient({ initialAdmins }: AdminsClientProps) {
                             )}
                           </button>
                         </div>
-                       </td>
-                     </tr>
-                   );
-                 })
-               )}
-             </tbody>
-           </table>
-         </div>
-       </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <DeleteConfirmDialog
         isOpen={!!adminToDelete}

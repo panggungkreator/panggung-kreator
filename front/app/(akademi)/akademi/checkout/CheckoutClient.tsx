@@ -72,55 +72,65 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
           .maybeSingle();
 
         if (member) {
-          const createdAt = new Date(member.created_at || session.user.created_at);
-          const now = new Date();
-          const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-
-          if (member.payment_status === 'pending' && hoursElapsed > 3) {
-            // Sesi kedaluwarsa setelah 3 jam
-            await supabase.auth.signOut();
+          if (member.role === 'admin') {
+            // Jika admin, biarkan form kosong dan jangan ambil data admin ke form
             setCurrentUser(null);
             setDbMember(null);
             setQrisGenerated(false);
           } else {
-            // Fetch pending transaction to get unique_code
-            const { data: transaction } = await supabase
-              .from("transactions")
-              .select("unique_code")
-              .eq("member_id", session.user.id)
-              .eq("status", "pending")
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+            const createdAt = new Date(member.created_at || session.user.created_at);
+            const now = new Date();
+            const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
 
-            setDbMember({
-              ...member,
-              unique_code: transaction?.unique_code || 0
-            });
-            // Set values to form
-            setFormData({
-              fullName: member.full_name || '',
-              stageName: member.stage_name || '',
-              instagram: member.instagram_username || '',
-              tiktok: member.tiktok_username || '',
-              whatsapp: member.whatsapp_number || '',
-              email: member.email || session.user.email || '',
-              profession: member.occupation || ''
-            });
-            // Set applied voucher if exists
-            if (member.used_voucher_code && member.final_price) {
-              // Determine base price based on member's package or fallback to selectedPackage
-              const parsedPrice = selectedPackage?.price ? parseInt(selectedPackage.price.replace(/\D/g, ""), 10) : 49000;
-              const activeBasePrice = isNaN(parsedPrice) ? 49000 : parsedPrice;
+            if (member.payment_status === 'pending' && hoursElapsed > 3) {
+              // Sesi kedaluwarsa setelah 3 jam
+              await supabase.auth.signOut();
+              setCurrentUser(null);
+              setDbMember(null);
+              setQrisGenerated(false);
+            } else if (member.payment_status === 'paid') {
+              // Redirect member yang sudah lunas ke dashboard akademi
+              router.push('/dashboard');
+            } else {
+              // Fetch pending transaction to get unique_code
+              const { data: transaction } = await supabase
+                .from("transactions")
+                .select("unique_code")
+                .eq("member_id", session.user.id)
+                .eq("status", "pending")
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-              const discount = activeBasePrice - (member.final_price - (transaction?.unique_code || 0));
-              setAppliedVoucher({
-                code: member.used_voucher_code,
-                discountNominal: discount > 0 ? discount : 0
+              setDbMember({
+                ...member,
+                unique_code: transaction?.unique_code || 0
               });
-            }
-            if (member.payment_status === 'pending') {
-              setQrisGenerated(true);
+              // Set values to form
+              setFormData({
+                fullName: member.full_name || '',
+                stageName: member.stage_name || '',
+                instagram: member.instagram_username || '',
+                tiktok: member.tiktok_username || '',
+                whatsapp: member.whatsapp_number || '',
+                email: member.email || session.user.email || '',
+                profession: member.occupation || ''
+              });
+              // Set applied voucher if exists
+              if (member.used_voucher_code && member.final_price) {
+                // Determine base price based on member's package or fallback to selectedPackage
+                const parsedPrice = selectedPackage?.price ? parseInt(selectedPackage.price.replace(/\D/g, ""), 10) : 49000;
+                const activeBasePrice = isNaN(parsedPrice) ? 49000 : parsedPrice;
+
+                const discount = activeBasePrice - (member.final_price - (transaction?.unique_code || 0));
+                setAppliedVoucher({
+                  code: member.used_voucher_code,
+                  discountNominal: discount > 0 ? discount : 0
+                });
+              }
+              if (member.payment_status === 'pending') {
+                setQrisGenerated(true);
+              }
             }
           }
         } else {
