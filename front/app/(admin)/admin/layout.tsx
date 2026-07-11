@@ -371,11 +371,11 @@ export default function AdminLayout({
     if (!mounted) return href;
     const hostname = window.location.hostname;
     const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
-    
+
     if (isLocalhost) {
       return href;
     }
-    
+
     // On production (admin subdomain), strip the "/admin" prefix
     return href.replace(/^\/admin/, "") || "/";
   };
@@ -437,7 +437,7 @@ export default function AdminLayout({
         <div className="flex items-center gap-4">
 
           {/* Notification Indicator badge */}
-          {pendingCount > 0 && (
+          {/* {pendingCount > 0 && (
             <Link
               href="/admin/akademi/payment"
               className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold tracking-wider uppercase bg-red-500 text-white rounded-full animate-pulse shrink-0"
@@ -445,7 +445,7 @@ export default function AdminLayout({
               <Bell size={10} />
               <span>{pendingCount} BUTUH KONFIRMASI</span>
             </Link>
-          )}
+          )} */}
 
           {/* Theme Toggle */}
           {mounted && (
