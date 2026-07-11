@@ -112,6 +112,13 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                     expiry: cached.expiry
                   }));
                 }
+              } else {
+                // If member record doesn't exist in database (e.g. deleted by admin), clear session and cache
+                await supabase.auth.signOut();
+                localStorage.removeItem("pangkreas_checkout_state");
+                setCurrentUser(null);
+                setDbMember(null);
+                setQrisGenerated(false);
               }
             }
             return;
@@ -206,7 +213,21 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
             }
           }
         } else {
-          setFormData(prev => ({ ...prev, email: session.user.email || '' }));
+          // If logged in via Auth but no record in members table (deleted by admin), clear session and cache
+          await supabase.auth.signOut();
+          localStorage.removeItem("pangkreas_checkout_state");
+          setCurrentUser(null);
+          setDbMember(null);
+          setQrisGenerated(false);
+          setFormData({
+            fullName: '',
+            stageName: '',
+            instagram: '',
+            tiktok: '',
+            whatsapp: '',
+            email: '',
+            profession: ''
+          });
         }
       }
       setLoadingSession(false);
