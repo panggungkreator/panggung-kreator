@@ -87,6 +87,11 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
   const [isDeleting, setIsDeleting] = useState(false);
   const [detailMember, setDetailMember] = useState<Member | null>(null);
 
+  // Sync initialMembers props to local state when Server Component re-fetches
+  useEffect(() => {
+    setMembers(initialMembers);
+  }, [initialMembers]);
+
   // Real-time Supabase subscription for admin dashboard updates
   useEffect(() => {
     const supabase = createClient();
@@ -105,15 +110,18 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                 if (prev.some((m) => m.id === newMember.id)) return prev;
                 return [newMember, ...prev];
               });
+              router.refresh();
             }
           } else if (payload.eventType === "UPDATE") {
             const updatedMember = payload.new as Member;
             setMembers((prev) =>
               prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
             );
+            router.refresh();
           } else if (payload.eventType === "DELETE") {
             const deletedId = payload.old.id;
             setMembers((prev) => prev.filter((m) => m.id !== deletedId));
+            router.refresh();
           }
         }
       )
@@ -122,7 +130,7 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [router]);
 
   const [modal, setModal] = useState<{
     isOpen: boolean;
