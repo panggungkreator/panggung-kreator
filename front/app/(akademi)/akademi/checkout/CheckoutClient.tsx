@@ -60,6 +60,69 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
   useEffect(() => {
     const checkSession = async () => {
       const supabase = createClient();
+
+      // Check localStorage for cached checkout state first to load payment section instantly
+      const cachedStateStr = typeof window !== 'undefined' ? localStorage.getItem("pangkreas_checkout_state") : null;
+      if (cachedStateStr) {
+        try {
+          const cached = JSON.parse(cachedStateStr);
+          if (cached && cached.expiry && Date.now() < cached.expiry) {
+            setGeneratedAccount(cached.accountData);
+            setDbMember(cached.memberData);
+            setQrisGenerated(true);
+            setLoadingSession(false);
+
+            // Fetch session in the background to verify/redirect if paid
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              setCurrentUser(session.user);
+              const { data: member } = await supabase
+                .from("members")
+                .select("*")
+                .eq("id", session.user.id)
+                .maybeSingle();
+
+              if (member) {
+                if (member.role === 'admin') {
+                  localStorage.removeItem("pangkreas_checkout_state");
+                  setCurrentUser(null);
+                  setDbMember(null);
+                  setQrisGenerated(false);
+                } else if (member.payment_status === 'paid') {
+                  localStorage.removeItem("pangkreas_checkout_state");
+                  router.push('/dashboard');
+                } else {
+                  const { data: transaction } = await supabase
+                    .from("transactions")
+                    .select("unique_code")
+                    .eq("member_id", session.user.id)
+                    .eq("status", "pending")
+                    .order("created_at", { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                  const updatedMemberData = {
+                    ...member,
+                    unique_code: transaction?.unique_code || 0
+                  };
+                  setDbMember(updatedMemberData);
+                  localStorage.setItem("pangkreas_checkout_state", JSON.stringify({
+                    accountData: cached.accountData,
+                    memberData: updatedMemberData,
+                    expiry: cached.expiry
+                  }));
+                }
+              }
+            }
+            return;
+          } else {
+            localStorage.removeItem("pangkreas_checkout_state");
+          }
+        } catch (e) {
+          console.error("Error parsing cached checkout state:", e);
+        }
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setCurrentUser(session.user);
@@ -88,8 +151,10 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
               setCurrentUser(null);
               setDbMember(null);
               setQrisGenerated(false);
+              localStorage.removeItem("pangkreas_checkout_state");
             } else if (member.payment_status === 'paid') {
               // Redirect member yang sudah lunas ke dashboard akademi
+              localStorage.removeItem("pangkreas_checkout_state");
               router.push('/dashboard');
             } else {
               // Fetch pending transaction to get unique_code
@@ -102,10 +167,11 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                 .limit(1)
                 .maybeSingle();
 
-              setDbMember({
+              const memberData = {
                 ...member,
                 unique_code: transaction?.unique_code || 0
-              });
+              };
+              setDbMember(memberData);
               // Set values to form
               setFormData({
                 fullName: member.full_name || '',
@@ -130,6 +196,12 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
               }
               if (member.payment_status === 'pending') {
                 setQrisGenerated(true);
+                // Cache this state
+                localStorage.setItem("pangkreas_checkout_state", JSON.stringify({
+                  accountData: null,
+                  memberData,
+                  expiry: Date.now() + 3 * 60 * 60 * 1000 // 3 hours
+                }));
               }
             }
           }
@@ -275,17 +347,28 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
       const result = await registerMemberAction(payloadData);
 
       if (result.success) {
-        setGeneratedAccount({
+        const accountData = {
           username: result.username!,
           password: result.password!
-        });
-        setDbMember({
+        };
+        const memberData = {
           username: result.username!,
           final_price: result.finalPrice!,
           unique_code: result.uniqueCode!,
           used_voucher_code: appliedVoucher?.code || null
-        });
+        };
+
+        setGeneratedAccount(accountData);
+        setDbMember(memberData);
         setQrisGenerated(true);
+
+        // Save to localStorage to persist across reloads (expires in 3 hours)
+        localStorage.setItem("pangkreas_checkout_state", JSON.stringify({
+          accountData,
+          memberData,
+          expiry: Date.now() + 3 * 60 * 60 * 1000 // 3 hours
+        }));
+
         // Refresh session state local
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
@@ -309,6 +392,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
       setCurrentUser(null);
       setDbMember(null);
       setQrisGenerated(false);
+      localStorage.removeItem("pangkreas_checkout_state");
       setFormData({
         fullName: '',
         stageName: '',
