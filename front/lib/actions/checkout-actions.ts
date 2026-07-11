@@ -370,6 +370,93 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       console.error("Sign in after registration failed:", signInError);
     }
 
+    // Send Registration & Payment Instruction Email via Nodemailer
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || "smtp.gmail.com",
+          port: parseInt(process.env.SMTP_PORT || "465"),
+          secure: process.env.SMTP_SECURE === "false" ? false : true,
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
+
+        await transporter.sendMail({
+          from: `"Panggung Kreator" <${process.env.SMTP_USER}>`,
+          to: payload.email.trim(),
+          subject: "Instruksi Pembayaran & Kredensial Akun - Panggung Kreator Akademi",
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+              <div style="background-color: #bc151b; color: white; padding: 25px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h1 style="margin: 0; font-size: 22px;">Pendaftaran Berhasil Diproses! 🎉</h1>
+                <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Satu langkah lagi untuk bergabung di Akademi</p>
+              </div>
+              <div style="padding: 25px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
+                <p>Halo <strong>${payload.fullName}</strong>,</p>
+                <p>Terima kasih telah mendaftar di <strong>Panggung Kreator Akademi</strong>. Akun Anda telah berhasil dibuat dengan status <strong>Menunggu Pembayaran</strong>.</p>
+                
+                <!-- KREDENSIAL AKUN -->
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin: 25px 0;">
+                  <h3 style="margin-top: 0; color: #0f172a; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">🔑 KREDENSIAL LOGIN ANDA</h3>
+                  <p style="margin: 8px 0; font-size: 13px;">Kredensial di bawah ini dapat digunakan untuk login setelah akun Anda diaktifkan oleh Admin:</p>
+                  <table style="width: 100%; font-size: 13px; font-family: monospace;">
+                    <tr>
+                      <td style="width: 90px; font-weight: bold; color: #64748b; padding: 4px 0;">Username:</td>
+                      <td style="font-weight: bold; color: #0f172a; padding: 4px 0;">${generatedUsername}</td>
+                    </tr>
+                    <tr>
+                      <td style="font-weight: bold; color: #64748b; padding: 4px 0;">Password:</td>
+                      <td style="font-weight: bold; color: #0f172a; padding: 4px 0;">${generatedPassword}</td>
+                    </tr>
+                  </table>
+                  <p style="margin: 12px 0 0 0; font-size: 11px; color: #b91c1c; font-style: italic;">* Jangan lupa untuk mengganti password Anda setelah berhasil login pertama kali demi keamanan akun.</p>
+                </div>
+
+                <!-- INSTRUKSI PEMBAYARAN -->
+                <div style="border: 2px dashed #e2e8f0; padding: 20px; border-radius: 12px; margin: 25px 0; background-color: #fffdf5;">
+                  <h3 style="margin-top: 0; color: #bc151b; font-size: 15px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px; text-transform: uppercase; tracking-wider: 1px;">💰 Rincian Transfer Manual (QRIS)</h3>
+                  
+                  <p style="font-size: 13px; margin: 10px 0;">Silakan lakukan transfer dengan nominal presisi berikut:</p>
+                  
+                  <div style="background-color: #fff; border: 1px solid #fef08a; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 15px;">
+                    <span style="font-size: 12px; color: #713f12; font-weight: bold; display: block; margin-bottom: 5px;">TOTAL PEMBAYARAN</span>
+                    <strong style="font-size: 24px; color: #bc151b; display: block; letter-spacing: 0.5px;">Rp ${finalPriceWithUniqueCode.toLocaleString('id-ID')}</strong>
+                    ${uniqueCode > 0 ? `<span style="font-size: 11px; color: #16a34a; font-weight: bold; display: block; margin-top: 5px;">* Termasuk kode unik: Rp ${uniqueCode} (Wajib sama persis)</span>` : ''}
+                  </div>
+
+                  <h4 style="margin: 15px 0 8px 0; font-size: 13px; color: #334155;">Langkah Pembayaran & Verifikasi:</h4>
+                  <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #475569; line-height: 1.8;">
+                    <li>Pindai QRIS Panggung Kreator pada layar checkout atau lakukan pembayaran ke QRIS resmi Panggung Kreator.</li>
+                    <li>Transfer sebesar nominal di atas (harus sama persis hingga 3 digit terakhir).</li>
+                    <li>Ambil tangkapan layar (screenshot) bukti pembayaran Anda.</li>
+                    <li>Kirimkan bukti pembayaran ke WhatsApp Admin untuk verifikasi & aktivasi instan.</li>
+                  </ol>
+                </div>
+
+                <!-- TOMBOL KONFIRMASI WA -->
+                <div style="margin: 30px 0; text-align: center;">
+                  <a href="https://wa.me/6281111156736?text=Halo%20Admin%20Panggung%20Kreator%2C%20saya%20sudah%20melakukan%20pembayaran%20pendaftaran%20Akademi.%20Berikut%20bukti%20transfernya.%0A%0AUsername%20Login%20Saya%3A%20${generatedUsername}" style="background-color: #25d366; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px;">Kirim Bukti Pembayaran ke WhatsApp</a>
+                </div>
+
+                <p style="font-size: 13px; color: #64748b; margin-top: 30px; border-top: 1px solid #f1f5f9; padding-top: 15px;">Jika Anda memiliki kendala atau pertanyaan, silakan balas email ini untuk menghubungi tim support kami.</p>
+                
+                <p style="margin-top: 20px; font-size: 13px; color: #334155;">
+                  Salam hangat,<br/>
+                  <strong>Tim Panggung Kreator</strong>
+                </p>
+              </div>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        console.error("Gagal mengirim email pendaftaran & instruksi pembayaran:", emailError);
+      }
+    } else {
+      console.warn("SMTP_USER atau SMTP_PASS tidak diatur, email pendaftaran tidak terkirim.");
+    }
+
     return {
       success: true,
       username: generatedUsername,
