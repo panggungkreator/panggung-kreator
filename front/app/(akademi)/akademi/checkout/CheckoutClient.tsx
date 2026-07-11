@@ -148,18 +148,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
             setDbMember(null);
             setQrisGenerated(false);
           } else {
-            const createdAt = new Date(member.created_at || session.user.created_at);
-            const now = new Date();
-            const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-
-            if (member.payment_status === 'pending' && hoursElapsed > 3) {
-              // Sesi kedaluwarsa setelah 3 jam
-              await supabase.auth.signOut();
-              setCurrentUser(null);
-              setDbMember(null);
-              setQrisGenerated(false);
-              localStorage.removeItem("pangkreas_checkout_state");
-            } else if (member.payment_status === 'paid') {
+            if (member.payment_status === 'paid') {
               // Redirect member yang sudah lunas ke dashboard akademi
               localStorage.removeItem("pangkreas_checkout_state");
               router.push('/dashboard');
