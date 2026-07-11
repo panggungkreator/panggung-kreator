@@ -83,7 +83,20 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
             setDbMember(null);
             setQrisGenerated(false);
           } else {
-            setDbMember(member);
+            // Fetch pending transaction to get unique_code
+            const { data: transaction } = await supabase
+              .from("transactions")
+              .select("unique_code")
+              .eq("member_id", session.user.id)
+              .eq("status", "pending")
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            setDbMember({
+              ...member,
+              unique_code: transaction?.unique_code || 0
+            });
             // Set values to form
             setFormData({
               fullName: member.full_name || '',
@@ -100,7 +113,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
               const parsedPrice = selectedPackage?.price ? parseInt(selectedPackage.price.replace(/\D/g, ""), 10) : 49000;
               const activeBasePrice = isNaN(parsedPrice) ? 49000 : parsedPrice;
 
-              const discount = activeBasePrice - (member.final_price - (member.unique_code || 0));
+              const discount = activeBasePrice - (member.final_price - (transaction?.unique_code || 0));
               setAppliedVoucher({
                 code: member.used_voucher_code,
                 discountNominal: discount > 0 ? discount : 0

@@ -297,6 +297,9 @@ export async function registerMemberAction(payload: CheckoutPayload) {
     const uniqueCode = validFinalPrice > 0 ? Math.floor(100 + Math.random() * 900) : 0;
     const finalPriceWithUniqueCode = validFinalPrice > 0 ? validFinalPrice + uniqueCode : 0;
 
+    // Generate order ID
+    const orderId = `PK-AKAD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
     // 4. Save Member Details to Database (using admin client to bypass RLS)
     const { error: dbError } = await supabaseAdmin
       .from("members")
@@ -310,18 +313,51 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         tiktok_username: payload.tiktok,
         occupation: payload.profession,
         username: generatedUsername,
-        temporary_password: generatedPassword,
         payment_status: 'pending',
         role: 'member',
         used_voucher_code: payload.usedVoucherCode || null,
         package_id: payload.packageId || null,
         final_price: finalPriceWithUniqueCode,
-        unique_code: uniqueCode
+        payment_order_id: orderId
       });
 
     if (dbError) {
       console.error("Database insert error:", dbError);
       return { success: false, error: dbError.message };
+    }
+
+    // Get voucher ID if applicable
+    let voucherId = null;
+    if (payload.usedVoucherCode) {
+      const { data: voucher } = await supabaseAdmin
+        .from("vouchers")
+        .select("id")
+        .eq("code", payload.usedVoucherCode)
+        .maybeSingle();
+      if (voucher) {
+        voucherId = voucher.id;
+      }
+    }
+
+    // Save Transaction Details to Database
+    const { error: txError } = await supabaseAdmin
+      .from("transactions")
+      .insert({
+        member_id: user.id,
+        package_id: payload.packageId || null,
+        voucher_id: voucherId,
+        order_id: orderId,
+        status: 'pending',
+        gross_amount: validBasePrice,
+        final_amount: finalPriceWithUniqueCode,
+        discount_amount: validBasePrice - validFinalPrice,
+        unique_code: uniqueCode,
+        payment_method: 'Transfer Bank'
+      });
+
+    if (txError) {
+      console.error("Transaction insert error:", txError);
+      return { success: false, error: txError.message };
     }
 
     // 5. Sign in the user on the cookie-based client so their session is persisted on the client browser
@@ -388,7 +424,7 @@ export async function verifyMemberPaymentAction(memberId: string) {
     // Fetch member details before updating
     const { data: memberToVerify, error: fetchError } = await supabase
       .from("members")
-      .select("email, username, temporary_password, full_name")
+      .select("email, username, full_name")
       .eq("id", memberId)
       .single();
 
