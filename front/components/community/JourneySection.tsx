@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { useScrollAnimations } from "./useScrollAnimations";
+import Image from "next/image";
 
 export default function JourneySection() {
   const { fadeUp, staggerIn } = useScrollAnimations();
@@ -21,25 +22,27 @@ export default function JourneySection() {
       num: "01",
       title: "DATANG & BERGABUNG",
       desc: "Masuk komunitas, rasakan atmosfer suportif, dan mulailah dengan menjadi penonton Open Mic pertama.",
-      placeholder: "Langkah 1: Member duduk di barisan audiens mengamati panggung.",
+      image: "/assets/landing-page/journey-section/01-datng-duduk.jpg",
     },
     {
       num: "02",
       title: "BERANI TAMPIL",
       desc: "Pertama kali naik panggung mini untuk melatih keberanian dasar berbicara langsung di depan orang.",
-      placeholder: "Langkah 2: Tangan memegang mikrofon di bawah pancaran sorot lampu panggung.",
+      image: "/assets/landing-page/journey-section/02-berani-tampil.jpg",
+      position: "50% 38%",
     },
     {
       num: "03",
       title: "EVALUASI & BERTUMBUH",
       desc: "Menerima feedback terstruktur, mengikuti kelas intensif mingguan, dan membangun kemampuan teknis.",
-      placeholder: "Langkah 3: Lembar catatan evaluasi terstruktur untuk perbaikan.",
+      image: "/assets/landing-page/journey-section/03-evaluasi.jpg",
+      position: "50% 28%",
     },
     {
       num: "04",
       title: "MENJADI PERFORMER",
       desc: "Percaya diri tampil di berbagai sesi, membangun portofolio bicara, dan merintis karier kreatif.",
-      placeholder: "Langkah 4: Siluet member tampil penuh percaya diri di panggung utama.",
+      image: "/assets/landing-page/journey-section/04-tampilaja.jpg",
     },
   ];
 
@@ -85,11 +88,18 @@ export default function JourneySection() {
                 </span>
               </div>
 
-              {/* Landscape Visual Placeholder Box */}
-              <div className="w-full aspect-[16/10] border border-[#2c2c2c]/10 dark:border-white/10 rounded-none bg-neutral-100/50 dark:bg-neutral-900/50 mb-6 flex items-center justify-center p-4 text-center group-hover:border-[#2c2c2c] dark:group-hover:border-white transition-colors duration-300">
-                <span className="font-sans text-[10px] text-[#2c2c2c]/40 dark:text-white/40 uppercase tracking-wide leading-relaxed">
-                  {step.placeholder}
-                </span>
+              {/* Landscape Visual Box */}
+              <div className="w-full aspect-[16/10] relative overflow-hidden border border-[#2c2c2c]/10 dark:border-white/10 rounded-none bg-neutral-100/50 dark:bg-neutral-900/50 mb-6 group-hover:border-[#2c2c2c] dark:group-hover:border-white transition-colors duration-300">
+                <Image
+                  src={step.image}
+                  alt={step.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover opacity-80 dark:opacity-70 group-hover:opacity-100 transition-all duration-500 group-hover:scale-105 grayscale group-hover:grayscale-0"
+                  style={{ objectPosition: step.position || "center" }}
+                />
+                {/* Dark overlay to make the image fit the stark aesthetic */}
+                <div className="absolute inset-0 bg-[#2c2c2c]/5 dark:bg-black/35 group-hover:bg-transparent transition-colors duration-500 pointer-events-none"></div>
               </div>
 
               {/* Step Title & Description */}
@@ -107,7 +117,7 @@ export default function JourneySection() {
       {/* Filosofi Tagline Block */}
       <div className="border-t border-[#2c2c2c] dark:border-white p-8 md:p-16 text-center bg-neutral-50 dark:bg-neutral-950/40">
         <p className="font-serif italic text-lg md:text-2xl text-[#2c2c2c]/80 dark:text-white/80 max-w-3xl mx-auto leading-relaxed">
-          "S  etiap panggung yang kita pijak - sekecil apapun - adalah <span className="highlight-stabilo">satu langkah nyata menuju versi terbaik dari diri sendiri.</span>"
+          "Setiap panggung yang kita pijak - sekecil apapun - adalah <span className="highlight-stabilo">satu langkah nyata menuju versi terbaik dari diri sendiri.</span>"
         </p>
       </div>
     </section>

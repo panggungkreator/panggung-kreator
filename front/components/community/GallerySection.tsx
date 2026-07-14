@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { useScrollAnimations } from "./useScrollAnimations";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function GallerySection() {
   const { fadeUp, parallax, staggerIn } = useScrollAnimations();
@@ -28,27 +29,28 @@ export default function GallerySection() {
   const activities = [
     {
       title: "Open Mic Night",
-      category: "PUBLIC SPEAKING",
+      category: "PUBLICSPEAKING",
       desc: "Dokumentasi keseruan panggung Open Mic mingguan.",
-      placeholder: "Foto suasana Open Mic Night — peserta di panggung mini dengan mikrofon, audiens tertawa gembira.",
+      image: "/assets/landing-page/gallery-section/openmicnight.jpg",
     },
     {
       title: "Public Speaking Practice",
-      category: "PUBLIC SPEAKING",
+      category: "PUBLICSPEAKING",
       desc: "Suasana kelas yang fokus dan interaktif.",
-      placeholder: "Foto kelas Public Speaking — peserta berdiskusi kelompok, saling memberikan feedback.",
+      image: "/assets/landing-page/gallery-section/public-speaking-practice.jpg",
+      position: "50% 80%",
     },
     {
       title: "Networking Session",
       category: "RELASI & GATHERING",
       desc: "Interaksi hangat antar-anggota dalam gathering.",
-      placeholder: "Foto kumpul santai di cafe, keceriaan anggota saling bertukar cerita.",
+      image: "/assets/landing-page/gallery-section/networking-session.jpg",
     },
     {
       title: "Content Creator Class",
       category: "CONTENT CREATION",
       desc: "Aksi kreatif belajar membuat konten.",
-      placeholder: "Foto belajar ngedit video, member memegang kamera mirrorless sambil tersenyum.",
+      image: "/assets/landing-page/gallery-section/content-creator-class.jpg",
     },
   ];
 
@@ -88,22 +90,19 @@ export default function GallerySection() {
             ref={(el) => { itemsRef.current[idx] = el; }}
             className="relative aspect-[4/3] md:aspect-video overflow-hidden group flex flex-col justify-end bg-white dark:bg-[#2c2c2c] border-b border-[#2c2c2c] dark:border-white md:border-b-0 md:border-r-0"
           >
-            {/* Parallax Image Placeholder Container */}
+            {/* Parallax Image Container */}
             <div
               ref={(el) => { imgRefs.current[idx] = el; }}
-              className="absolute inset-0 w-full h-[120%] -top-[10%] bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center p-8 text-center transition-transform duration-700 ease-out group-hover:scale-105 select-none"
+              className="absolute inset-0 w-full h-[120%] -top-[10%] bg-neutral-100 dark:bg-neutral-900 transition-transform duration-700 ease-out group-hover:scale-105 select-none"
             >
-              {/* Subtle grid pattern background */}
-              <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.01] bg-[linear-gradient(to_right,#000_1px,transparent_1px),linear-gradient(to_bottom,#000_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-
-              <div className="max-w-md px-6 pointer-events-none">
-                <span className="text-[10px] font-black tracking-[0.25em] text-[#2c2c2c]/30 dark:text-white/30 block mb-2">
-                  [ RENCANA VISUAL ]
-                </span>
-                <p className="font-sans text-xs text-[#2c2c2c]/40 dark:text-white/30 uppercase tracking-wider leading-relaxed">
-                  {act.placeholder}
-                </p>
-              </div>
+              <Image
+                src={act.image}
+                alt={act.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ objectPosition: (act as any).position || "center" }}
+              />
             </div>
 
             {/* Stark Monochromatic Overlay - Fade on Hover */}

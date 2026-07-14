@@ -14,7 +14,7 @@ export default function KolaborasiPartnerTypeSection() {
   useEffect(() => {
     if (labelRef.current) fadeUp(labelRef.current, 0.1, 20);
     if (headlineRef.current) fadeUp(headlineRef.current, 0.2, 30);
-    
+
     const validCards = cardsRef.current.filter((c) => c !== null) as HTMLElement[];
     if (validCards.length > 0) {
       staggerIn(validCards, 0.08, 40);
@@ -62,13 +62,13 @@ export default function KolaborasiPartnerTypeSection() {
     <section className="relative bg-white dark:bg-[#2c2c2c] border-b border-[#2c2c2c] dark:border-white z-10">
       {/* Section Header */}
       <div className="p-8 md:p-16 lg:px-24">
-        <span 
+        <span
           ref={labelRef}
           className="text-xs uppercase tracking-[0.3em] font-black text-[#2c2c2c]/40 dark:text-white/40 mb-6 block"
         >
           [ BENTUK KOLABORASI ]
         </span>
-        <h2 
+        <h2
           ref={headlineRef}
           className="text-[clamp(2rem,4vw,3.5rem)] font-black uppercase tracking-tighter leading-[0.9] max-w-2xl text-[#2c2c2c] dark:text-white"
         >
@@ -90,16 +90,15 @@ export default function KolaborasiPartnerTypeSection() {
             className="bg-white dark:bg-[#2c2c2c] p-8 flex flex-col justify-between group"
           >
             {/* Aspect 3/2 Image Placeholder with Parallax */}
-            <div className="relative aspect-[3/2] overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-[#2c2c2c]/10 dark:border-white/10 mb-8 rounded-none">
-              <div 
+            {/* <div className="relative aspect-[3/2] overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-[#2c2c2c]/10 dark:border-white/10 mb-8 rounded-none">
+              <div
                 ref={(el) => {
                   imgRefs.current[idx] = el;
                 }}
                 className="absolute inset-0 w-full h-[120%] -top-[10%] p-6 flex flex-col justify-center items-center text-center transition-transform duration-700 ease-out group-hover:scale-105 select-none"
               >
-                {/* Subtle grid pattern background */}
                 <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.01] bg-[linear-gradient(to_right,#000_1px,transparent_1px),linear-gradient(to_bottom,#000_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-                
+
                 <span className="text-[10px] font-black tracking-[0.25em] text-[#2c2c2c]/30 dark:text-white/30 block mb-2">
                   [ VISUAL KEMITRAAN ]
                 </span>
@@ -108,11 +107,10 @@ export default function KolaborasiPartnerTypeSection() {
                 </p>
               </div>
 
-              {/* Giant number overlay */}
               <div className="absolute top-4 left-4 text-5xl font-black text-[#2c2c2c]/10 dark:text-white/10 select-none">
                 {item.no}
               </div>
-            </div>
+            </div> */}
 
             {/* Content info */}
             <div>

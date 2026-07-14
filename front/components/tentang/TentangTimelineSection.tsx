@@ -82,11 +82,10 @@ export default function TentangTimelineSection() {
             ref={(el) => {
               cardsRef.current[idx] = el;
             }}
-            className={`p-8 md:p-10 flex flex-col justify-between group transition-all duration-300 ${
-              idx < 4
+            className={`p-8 md:p-10 flex flex-col justify-between group transition-all duration-300 ${idx < 4
                 ? "border-b md:border-b-0 md:border-r border-[#2c2c2c] dark:border-white"
                 : "border-b md:border-b-0 border-[#2c2c2c] dark:border-white"
-            } hover:bg-neutral-50 dark:hover:bg-neutral-950/40`}
+              } hover:bg-neutral-50 dark:hover:bg-neutral-950/40`}
           >
             <div>
               {/* Giant Number and Phase Badge */}
@@ -99,12 +98,6 @@ export default function TentangTimelineSection() {
                 </span>
               </div>
 
-              {/* Landscape Visual Placeholder Box */}
-              <div className="w-full aspect-[16/10] border border-[#2c2c2c]/10 dark:border-white/10 rounded-none bg-neutral-100/50 dark:bg-neutral-900/50 mb-6 flex items-center justify-center p-4 text-center group-hover:border-[#2c2c2c] dark:group-hover:border-white transition-colors duration-300">
-                <span className="font-sans text-[10px] text-[#2c2c2c]/40 dark:text-white/40 uppercase tracking-wide leading-relaxed">
-                  {phase.placeholder}
-                </span>
-              </div>
 
               {/* Phase Title */}
               <h3 className="text-base font-black uppercase tracking-wider text-[#2c2c2c] dark:text-white mb-3">

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { useScrollAnimations } from "./useScrollAnimations";
+import Image from "next/image";
 
 export default function ProgramsSection() {
   const { fadeUp, staggerIn } = useScrollAnimations();
@@ -22,63 +23,63 @@ export default function ProgramsSection() {
       category: "🎤 PUBLIC SPEAKING",
       desc: "Panggung mingguan untuk berbicara bebas — melatih mental, ritme tampil, dan manajemen demam panggung.",
       linkText: "IKUT OPEN MIC",
-      placeholder: "Foto suasana Open Mic — peserta di panggung dengan mikrofon, audiens memperhatikan, pencahayaan dramatis.",
+      image: "/assets/landing-page/open-mic.jpg",
     },
     {
       title: "PUBLIC SPEAKING PRACTICE",
       category: "🎤 PUBLIC SPEAKING",
       desc: "Kelas intensif teknik komunikasi: olah vokal, artikulasi, body language, dan penyusunan presentasi efektif.",
       linkText: "IKUT KELAS",
-      placeholder: "Foto kelas Public Speaking — peserta sedang presentasi di depan teman-teman, gestur tangan aktif.",
+      image: "/assets/landing-page/public-speaking.jpg",
     },
     {
       title: "MC PRACTICE",
       category: "🎤 PUBLIC SPEAKING",
       desc: "Pelatihan menjadi Master of Ceremony: memandu acara formal/informal, crowd control, dan mencairkan suasana.",
       linkText: "IKUT MC PRACTICE",
-      placeholder: "Foto MC Practice — peserta memegang mic memandu sesi, penonton duduk di depannya.",
+      image: "/assets/landing-page/mc-practice.jpg",
     },
     {
       title: "VOICE OVER CHALLENGE",
       category: "🎙️ OLAH SUARA",
       desc: "Tantangan mengisi suara naskah iklan/dokumenter — melatih intonasi, ekspresi, dan karakter vokal.",
       linkText: "IKUT CHALLENGE",
-      placeholder: "Foto peserta di depan mikrofon kondenser, membaca naskah dengan ekspresi penuh.",
+      image: "/assets/landing-page/voice-over.jpg",
     },
     {
-      title: "RADIO ANNOUNCER CHALLENGE",
+      title: "NEWS PRESENTER CHALLENGE",
       category: "🎙️ OLAH SUARA",
-      desc: "Simulasi penyiar radio: improvisasi cepat, teknik siaran, dan kecakapan menghibur pendengar.",
+      desc: "Simulasi penyiar TV: teknik presenting, cara delivery berita, intonasi, dan ekspresi wajah yang profesional.",
       linkText: "IKUT CHALLENGE",
-      placeholder: "Foto suasana simulasi siaran radio — peserta di depan mic dengan headphone, santai tapi fokus.",
+      image: "/assets/landing-page/news-presenter.JPG",
     },
     {
       title: "CONTENT CREATOR CLASS",
       category: "🎬 CONTENT CREATION",
       desc: "Ide kreatif, strategi algoritma media sosial, hingga proses editing konten digital.",
       linkText: "IKUT KELAS",
-      placeholder: "Foto kelas konten — laptop terbuka, kamera di tripod, peserta berdiskusi tentang konten.",
+      image: "/assets/landing-page/content-creator.JPG",
     },
     {
       title: "PERSONAL BRANDING CLASS",
       category: "🌟 PERSONAL BRANDING",
       desc: "Memetakan keunikan diri, membangun portofolio digital, dan menata citra diri profesional.",
       linkText: "IKUT KELAS",
-      placeholder: "Foto sesi personal branding — peserta menuliskan value proposition mereka di papan, antusias.",
+      image: "/assets/landing-page/personal-branding.jpg",
     },
     {
       title: "SHARING SESSION",
       category: "💡 MINDSET & GROWTH",
       desc: "Diskusi interaktif berbasis pengalaman nyata: kesehatan mental, personal growth, dan motivasi kehidupan.",
       linkText: "IKUT SESI",
-      placeholder: "Foto Sharing Session — suasana lingkaran duduk, anggota berbagi cerita, ekspresi hangat.",
+      image: "/assets/landing-page/sharing-session.jpg",
     },
     {
       title: "NETWORKING SESSION",
       category: "💡 RELASI",
       desc: "Kegiatan eksklusif bertukar peluang karier, memperluas relasi bisnis, dan menjalin kolaborasi antar-anggota.",
       linkText: "IKUT NETWORKING",
-      placeholder: "Foto Networking Session — anggota berdiri dan saling berkenalan, suasana profesional tapi akrab.",
+      image: "/assets/landing-page/networking.jpg",
     },
   ];
 
@@ -121,19 +122,18 @@ export default function ProgramsSection() {
             className="flex flex-col group transition-all duration-300 bg-white dark:bg-[#2c2c2c] hover:bg-neutral-50 dark:hover:bg-neutral-950/40"
           >
             {/* Card Header: Visual Placeholder */}
-            <div className="w-full aspect-[16/10] border-b border-[#2c2c2c] dark:border-white/20 overflow-hidden bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center p-6 text-center select-none relative">
+            <div className="w-full aspect-[16/10] border-b border-[#2c2c2c] dark:border-white/20 overflow-hidden bg-neutral-100 dark:bg-neutral-900 select-none relative">
               {/* Corner brackets */}
-              <div className="absolute top-4 left-4 w-2 h-2 border-t border-l border-[#2c2c2c]/10 dark:border-white/10 group-hover:border-[#2c2c2c] dark:group-hover:border-white transition-colors duration-300"></div>
-              <div className="absolute bottom-4 right-4 w-2 h-2 border-b border-r border-[#2c2c2c]/10 dark:border-white/10 group-hover:border-[#2c2c2c] dark:group-hover:border-white transition-colors duration-300"></div>
+              <div className="absolute top-4 left-4 w-2 h-2 border-t border-l border-[#2c2c2c]/10 dark:border-white/10 group-hover:border-[#2c2c2c] dark:group-hover:border-white transition-colors duration-300 z-10"></div>
+              <div className="absolute bottom-4 right-4 w-2 h-2 border-b border-r border-[#2c2c2c]/10 dark:border-white/10 group-hover:border-[#2c2c2c] dark:group-hover:border-white transition-colors duration-300 z-10"></div>
 
-              <div className="max-w-[280px] pointer-events-none">
-                <span className="text-[9px] font-black tracking-[0.25em] text-[#2c2c2c]/30 dark:text-white/30 block mb-2">
-                  [ RENCANA VISUAL ]
-                </span>
-                <p className="font-sans text-[10px] text-[#2c2c2c]/45 dark:text-white/40 uppercase tracking-wider leading-relaxed">
-                  {prog.placeholder}
-                </p>
-              </div>
+              <Image
+                src={prog.image}
+                alt={prog.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                className="object-cover opacity-85 group-hover:opacity-100 transition-all duration-500 group-hover:scale-105"
+              />
             </div>
 
             {/* Card Body */}
