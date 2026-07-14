@@ -30,8 +30,22 @@ export default function LoginPage() {
         const port = window.location.port ? `:${window.location.port}` : "";
 
         const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
-        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "panggungkreator.web.id";
-        const rootHost = `${rootDomain}${port}`;
+        
+        let rootDomain = "panggungkreator.web.id";
+        if (!isLocalhost) {
+          const parts = hostname.split(".");
+          if (parts.length >= 2) {
+            if (hostname.endsWith(".web.id") && parts.length >= 3) {
+              rootDomain = parts.slice(-3).join(".");
+            } else {
+              rootDomain = parts.slice(-2).join(".");
+            }
+          }
+        } else {
+          rootDomain = "localhost";
+        }
+
+        const rootHost = rootDomain === "localhost" ? `localhost${port}` : `${rootDomain}${port}`;
 
         let adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
         let akademiRedirectUrl = process.env.NEXT_PUBLIC_AKADEMI_URL;

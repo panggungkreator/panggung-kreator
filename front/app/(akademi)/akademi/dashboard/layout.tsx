@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import React from "react";
 
@@ -25,7 +25,22 @@ export default async function DashboardLayout({
     data: { session },
   } = await supabase.auth.getSession();
 
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "panggungkreator.web.id";
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const cleanHost = host.split(":")[0];
+  const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
+
+  let rootDomain = "panggungkreator.web.id";
+  if (!isLocalhost) {
+    const parts = cleanHost.split(".");
+    if (parts.length >= 2) {
+      if (cleanHost.endsWith(".web.id") && parts.length >= 3) {
+        rootDomain = parts.slice(-3).join(".");
+      } else {
+        rootDomain = parts.slice(-2).join(".");
+      }
+    }
+  }
 
   if (!session?.user) {
     // Redirect to login center (Web Komunitas /login)

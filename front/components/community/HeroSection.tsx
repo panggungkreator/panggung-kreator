@@ -92,7 +92,7 @@ export default function HeroSection() {
               >
                 {/* Real Image with grayscale hover transition */}
                 <img
-                  src="/assets/hero.JPG"
+                  src="/assets/hero.jpg"
                   alt="Open Mic Panggung Kreator"
                   className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 ease-out"
                 />

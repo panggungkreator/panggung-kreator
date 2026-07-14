@@ -18,9 +18,21 @@ export function createClient() {
 
   // Reuse browser client singleton instance
   if (!supabaseBrowserInstance) {
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "panggungkreator.web.id";
-    const cookieDomain = `.${rootDomain}`;
-    const isProd = rootDomain.endsWith("web.id");
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
+    const isProd = !isLocalhost && (hostname.endsWith("web.id") || hostname.endsWith(".com"));
+
+    let cookieDomain = undefined;
+    if (!isLocalhost) {
+      const parts = hostname.split(".");
+      if (parts.length >= 2) {
+        if (hostname.endsWith(".web.id") && parts.length >= 3) {
+          cookieDomain = `.${parts.slice(-3).join(".")}`;
+        } else {
+          cookieDomain = `.${parts.slice(-2).join(".")}`;
+        }
+      }
+    }
 
     supabaseBrowserInstance = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

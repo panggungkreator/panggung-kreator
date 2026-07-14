@@ -9,8 +9,17 @@ export async function createClient() {
   const cleanHost = host.split(":")[0];
   const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
   
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "panggungkreator.web.id";
-  const cookieDomain = isLocalhost ? undefined : `.${rootDomain}`;
+  let cookieDomain = undefined;
+  if (!isLocalhost) {
+    const parts = cleanHost.split(".");
+    if (parts.length >= 2) {
+      if (cleanHost.endsWith(".web.id") && parts.length >= 3) {
+        cookieDomain = `.${parts.slice(-3).join(".")}`;
+      } else {
+        cookieDomain = `.${parts.slice(-2).join(".")}`;
+      }
+    }
+  }
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

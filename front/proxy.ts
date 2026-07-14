@@ -17,14 +17,27 @@ export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
   const cleanHost = host.split(":")[0];
   const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
+  const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
+
+  let rootDomain = "panggungkreator.web.id";
+  if (!isLocalhost) {
+    const parts = cleanHost.split(".");
+    if (parts.length >= 2) {
+      if (cleanHost.endsWith(".web.id") && parts.length >= 3) {
+        rootDomain = parts.slice(-3).join(".");
+      } else {
+        rootDomain = parts.slice(-2).join(".");
+      }
+    }
+  } else {
+    rootDomain = "localhost";
+  }
   
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "panggungkreator.web.id";
   const protocol = request.nextUrl.protocol; // "http:" or "https:"
-  const rootHost = `${rootDomain}${port}`;
+  const rootHost = rootDomain === "localhost" ? `localhost${port}` : `${rootDomain}${port}`;
 
   const sub = cleanHost.replace(`.${rootDomain}`, "").replace(rootDomain, "");
   const isRootDomain = sub === "" || sub === "www" || sub === "localhost";
-  const isLocalhost = cleanHost === "localhost" || cleanHost.endsWith(".localhost");
 
   // 3. Centralized login/register redirect
   // If accessing auth routes on a subdomain (admin or akademi), redirect to root domain login center
