@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MemberProfile, PortfolioItem, Pillar } from "@/lib/types/member";
-import { Instagram, Youtube, Linkedin, Globe, MapPin, Film, Award, ExternalLink, ArrowLeft, User } from "lucide-react";
+import { Globe, MapPin, Film, Award, ExternalLink, ArrowLeft, User, Video } from "lucide-react";
 import Link from "next/link";
 
 interface TalentDetailPageProps {
@@ -161,13 +161,17 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
               <div className="flex flex-wrap gap-2">
                 {member.instagram_username && (
                   <a
-                    href={`https://instagram.com/${member.instagram_username}`}
+                    href={
+                      member.instagram_username.startsWith("http")
+                        ? member.instagram_username
+                        : `https://instagram.com/${member.instagram_username.replace("@", "")}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 border border-zinc-200 dark:border-zinc-800 hover:border-black dark:hover:border-white transition-colors text-zinc-500 dark:text-zinc-400"
+                    className="p-2 border border-zinc-200 dark:border-zinc-800 hover:border-black dark:hover:border-white transition-colors text-zinc-500 dark:text-zinc-450"
                     title="Instagram"
                   >
-                    <Instagram size={14} />
+                    <span className="text-[10px] font-bold font-mono">IG</span>
                   </a>
                 )}
                 {member.tiktok_username && (
@@ -189,7 +193,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                     className="p-2 border border-zinc-200 dark:border-zinc-800 hover:border-black dark:hover:border-white transition-colors text-zinc-500 dark:text-zinc-400"
                     title="YouTube"
                   >
-                    <Youtube size={14} />
+                    <Video size={14} />
                   </a>
                 )}
                 {member.linkedin_url && (
@@ -200,7 +204,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                     className="p-2 border border-zinc-200 dark:border-zinc-800 hover:border-black dark:hover:border-white transition-colors text-zinc-500 dark:text-zinc-400"
                     title="LinkedIn"
                   >
-                    <Linkedin size={14} />
+                    <span className="text-[10px] font-bold font-mono">IN</span>
                   </a>
                 )}
                 {member.portfolio_url && (

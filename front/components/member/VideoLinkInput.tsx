@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { extractYouTubeId, getYouTubeThumbnail, detectMediaSource } from "@/lib/utils/media";
 import { MediaSource } from "@/lib/types/member";
-import { Youtube, Link as LinkIcon, AlertCircle } from "lucide-react";
+import { Video, Link as LinkIcon, AlertCircle } from "lucide-react";
 
 interface VideoLinkInputProps {
   value: string;
@@ -79,7 +79,7 @@ export default function VideoLinkInput({ value, onUrlChange, initialThumbnailUrl
           <div className="relative h-32 w-48 border border-zinc-200 dark:border-zinc-800 bg-black">
             <img src={thumb} alt="YouTube Preview" className="h-full w-full object-cover opacity-80" />
             <div className="absolute top-2 left-2 bg-black/80 p-1 text-white border border-white/10">
-              <Youtube size={14} className="text-[#bc151b]" />
+              <Video size={14} className="text-[#bc151b]" />
             </div>
           </div>
         </div>
