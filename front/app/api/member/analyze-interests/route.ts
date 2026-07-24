@@ -1,11 +1,3 @@
-import { createServiceRoleClient } from '@/front/lib/supabase/service-role' // Wait! Wait! The import path:
-// Let's verify the path. The file is at front/app/api/member/analyze-interests/route.ts.
-// The service-role.ts is at front/lib/supabase/service-role.ts.
-// So relative import: '../../../../../lib/supabase/service-role' or using absolute imports if configured.
-// NextJS TSConfig usually has aliases: `@/lib/supabase/service-role`.
-// Let's verify if `@/lib/supabase/...` or `@/...` is used.
-// Yes, in other files we see `import { createClient } from "@/lib/supabase/client"`.
-// So `@/lib/supabase/service-role` is correct!
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { NextRequest, NextResponse } from 'next/server'
 
