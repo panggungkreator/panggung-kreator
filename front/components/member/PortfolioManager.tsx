@@ -6,6 +6,7 @@ import ImageUploader from "./ImageUploader";
 import { PortfolioItem, Pillar, ItemType, MediaSource } from "@/lib/types/member";
 import { toast } from "sonner";
 import { Plus, Trash2, Globe, Lock, Star, ExternalLink, Video, Image as ImageIcon, FileText } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 interface PortfolioManagerProps {
   memberId: string;
@@ -156,11 +157,10 @@ export default function PortfolioManager({ memberId }: PortfolioManagerProps) {
           <button
             key={p.value}
             onClick={() => setActivePillar(p.value)}
-            className={`px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all border border-b-0 rounded-none cursor-pointer ${
-              activePillar === p.value
-                ? "bg-neutral-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 text-black dark:text-white font-bold"
-                : "border-transparent text-zinc-500 hover:text-black dark:hover:text-white"
-            }`}
+            className={`px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all border border-b-0 rounded-none cursor-pointer ${activePillar === p.value
+              ? "bg-neutral-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 text-black dark:text-white font-bold"
+              : "border-transparent text-zinc-500 hover:text-black dark:hover:text-white"
+              }`}
           >
             {p.label}
           </button>
@@ -207,7 +207,7 @@ export default function PortfolioManager({ memberId }: PortfolioManagerProps) {
                     <span className="text-[9px] uppercase font-mono tracking-wider">{item.item_type}</span>
                   </div>
                 )}
-                
+
                 {/* Feature & Visibility badges */}
                 <div className="absolute top-2 left-2 flex gap-1">
                   {item.is_featured && (
@@ -280,7 +280,7 @@ export default function PortfolioManager({ memberId }: PortfolioManagerProps) {
                   <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
                     PILAR
                   </label>
-                  <Select value={pillar} onValueChange={(val: Pillar) => setPillar(val)}>
+                  <Select value={pillar} onValueChange={(val) => setPillar(val as Pillar)}>
                     <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1 px-0 h-auto text-xs rounded-none focus:outline-none focus:ring-0">
                       <SelectValue placeholder="Pilih Pilar" />
                     </SelectTrigger>
@@ -299,7 +299,7 @@ export default function PortfolioManager({ memberId }: PortfolioManagerProps) {
                   <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
                     TIPE KARYA
                   </label>
-                  <Select value={itemType} onValueChange={(val: ItemType) => setItemType(val)}>
+                  <Select value={itemType} onValueChange={(val) => setItemType(val as ItemType)}>
                     <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1 px-0 h-auto text-xs rounded-none focus:outline-none focus:ring-0">
                       <SelectValue placeholder="Pilih Tipe" />
                     </SelectTrigger>
