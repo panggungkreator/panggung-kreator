@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MemberProfile, PortfolioItem, Pillar } from "@/lib/types/member";
@@ -8,9 +8,9 @@ import { Globe, MapPin, Film, Award, ExternalLink, ArrowLeft, User, Video } from
 import Link from "next/link";
 
 interface TalentDetailPageProps {
-  params: {
+  params: Promise<{
     username: string;
-  };
+  }> | { username: string };
 }
 
 const PILLARS: { value: Pillar; label: string }[] = [
@@ -20,6 +20,9 @@ const PILLARS: { value: Pillar; label: string }[] = [
 ];
 
 export default function TalentDetailPage({ params }: TalentDetailPageProps) {
+  const resolvedParams = use(Promise.resolve(params));
+  const username = resolvedParams.username;
+
   const router = useRouter();
   const [member, setMember] = useState<MemberProfile | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
@@ -36,7 +39,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
       const { data: profile, error: profileError } = await supabase
         .from("members")
         .select("*, interests:member_interests(*)")
-        .eq("username", params.username)
+        .eq("username", username)
         .maybeSingle();
 
       if (profileError || !profile) {
@@ -66,7 +69,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
 
   useEffect(() => {
     fetchTalentDetails();
-  }, [params.username]);
+  }, [username]);
 
   if (isLoading) {
     return (

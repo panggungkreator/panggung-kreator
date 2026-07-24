@@ -16,8 +16,9 @@ const portfolioUpdateSchema = z.object({
 })
 
 // PATCH: update item
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -34,7 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const { data: existingItem, error: checkError } = await supabase
       .from('portfolio_items')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('member_id', user.id)
       .single()
 
@@ -54,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const { data, error } = await supabase
       .from('portfolio_items')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('member_id', user.id)
       .select()
       .single()
@@ -67,8 +68,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // DELETE: hapus item + cleanup storage jika menggunakan storage
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -77,7 +79,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const { data: item, error: fetchError } = await supabase
       .from('portfolio_items')
       .select('media_url, thumbnail_url, media_source')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('member_id', user.id)
       .single()
 
@@ -105,7 +107,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const { error: deleteError } = await supabase
       .from('portfolio_items')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('member_id', user.id)
 
     if (deleteError) {

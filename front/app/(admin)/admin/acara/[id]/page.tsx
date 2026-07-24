@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function AcaraDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }> | { id: string };
 }) {
   const { id: eventId } = await params;
   if (!eventId) return notFound();
