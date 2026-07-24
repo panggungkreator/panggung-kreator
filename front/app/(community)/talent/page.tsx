@@ -59,7 +59,7 @@ export default function TalentShowcasePage() {
     const matchesInterest =
       !selectedInterest ||
       (t.interests?.primary_interests &&
-        t.interests.primary_interests.includes(selectedInterest));
+        (t.interests.primary_interests as string[]).includes(selectedInterest));
 
     return matchesSearch && matchesInterest;
   });
