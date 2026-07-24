@@ -33,6 +33,12 @@ type Member = {
   created_at: string;
   tier_note?: string;
   role?: string;
+  interests?: {
+    primary_interests: string[];
+    experience_level: string;
+    goals: string[];
+    ai_analysis?: string;
+  };
 };
 
 interface MembersClientProps {
@@ -493,7 +499,7 @@ export default function MembersClient({ initialMembers }: MembersClientProps) {
       {/* Detail Member Modal */}
       {detailMember && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-bg-card border border-border-default rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
+          <div className="bg-bg-card border border-border-default rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
             <button
               onClick={() => setDetailMember(null)}
               className="absolute right-4 top-4 text-text-secondary hover:text-text-primary font-bold text-sm cursor-pointer"
@@ -573,6 +579,36 @@ export default function MembersClient({ initialMembers }: MembersClientProps) {
                 <div>
                   <div className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">TikTok</div>
                   <div className="font-semibold text-text-primary mt-0.5">@{detailMember.tiktok_username}</div>
+                </div>
+              )}
+
+              {/* Segmentasi Minat & AI Analysis */}
+              {detailMember.interests && (
+                <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 space-y-2">
+                  <div>
+                    <div className="text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-1">Minat Utama</div>
+                    <div className="flex flex-wrap gap-1">
+                      {(detailMember.interests as any).primary_interests?.map((interest: string) => (
+                        <span
+                          key={interest}
+                          className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-[9px] font-mono text-zinc-500 uppercase tracking-wider"
+                        >
+                          {interest.replace("_", " ")}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {(detailMember.interests as any).ai_analysis && (
+                    <div className="p-3 bg-neutral-50 dark:bg-neutral-900 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-1">
+                      <div className="text-[9px] font-bold text-[#bc151b] uppercase tracking-wider">
+                        ✨ AI Mentoring Insights (Gemini)
+                      </div>
+                      <div className="text-[10px] text-text-secondary leading-relaxed font-sans max-h-36 overflow-y-auto pr-1 whitespace-pre-line">
+                        {(detailMember.interests as any).ai_analysis}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

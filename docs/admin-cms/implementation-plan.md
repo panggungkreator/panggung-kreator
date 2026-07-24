@@ -243,7 +243,7 @@ members: id, full_name, stage_name, whatsapp_number
 
 #### [NEW] `PaymentClient.tsx`
 
-**Tabel `transactions` — Schema (sudah ada):**
+**Tabel `transactions` — Schema (sudah ada + affiliate):**
 
 **Fitur khusus:**
 - Tab utama: Pending (butuh perhatian), Semua Transaksi

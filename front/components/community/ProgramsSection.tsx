@@ -119,7 +119,7 @@ export default function ProgramsSection() {
           <div
             key={prog.title}
             ref={(el) => { cardsRef.current[idx] = el; }}
-            className="flex flex-col group transition-all duration-300 bg-white dark:bg-[#2c2c2c] hover:bg-neutral-50 dark:hover:bg-neutral-950/40"
+            className="flex flex-col group transition-all duration-300 bg-white dark:bg-[#2c2c2c] hover:bg-neutral-50 dark:hover:bg-neutral-950/40 border-b border-[#2c2c2c] dark:border-white"
           >
             {/* Card Header: Visual Placeholder */}
             <div className="w-full aspect-[16/10] border-b border-[#2c2c2c] dark:border-white/20 overflow-hidden bg-neutral-100 dark:bg-neutral-900 select-none relative">

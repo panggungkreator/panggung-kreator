@@ -39,7 +39,7 @@ export default async function MembersPage() {
   // Tarik data seluruh member untuk tabel admin (kecuali admin & pending/active admin)
   let membersQuery = supabase
     .from("members")
-    .select("*")
+    .select("*, interests:member_interests(*)")
     .neq("role", "admin");
 
   if (adminMemberIds.length > 0) {

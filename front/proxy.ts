@@ -219,6 +219,13 @@ export async function proxy(request: NextRequest) {
 
   // C. Web Komunitas (panggungkreator.web.id)
   if (isRootDomain) {
+    // Redirect /akademi to akademi subdomain in production
+    if (!isLocalhost && (pathname === "/akademi" || pathname.startsWith("/akademi/"))) {
+      const targetPath = pathname.replace(/^\/akademi/, "") || "/";
+      const targetUrl = `${protocol}//akademi.${rootHost}${targetPath}${search}`;
+      return NextResponse.redirect(new URL(targetUrl, request.url));
+    }
+
     if (pathname === "/myprofile") {
       if (!session) {
         return NextResponse.redirect(new URL("/login", request.url));

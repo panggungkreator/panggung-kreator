@@ -133,3 +133,45 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
 
     return { success: true, isAdmin };
 }
+
+export async function signUpWithPasswordAction(email: string, password: string, username: string) {
+    if (!email || !password || !username) {
+        return { success: false, error: "Semua field wajib diisi" };
+    }
+
+    const supabase = await createClient();
+
+    // Pastikan username unik
+    const { data: existingUser, error: checkError } = await supabase
+        .from("members")
+        .select("id")
+        .eq("username", username.trim().toLowerCase())
+        .maybeSingle();
+
+    if (checkError) {
+        console.error("Username check error:", checkError);
+    }
+
+    if (existingUser) {
+        return { success: false, error: `Username "${username}" sudah digunakan.` };
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password: password,
+        options: {
+            data: {
+                username: username.trim().toLowerCase(),
+                full_name: username.trim(),
+            }
+        }
+    });
+
+    if (error) {
+        console.error("SignUp error:", error);
+        return { success: false, error: `Supabase Auth Error: ${formatSupabaseError(error)}` };
+    }
+
+    return { success: true, user: data.user, session: data.session };
+}
+
