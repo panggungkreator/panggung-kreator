@@ -12,7 +12,7 @@ import ClosingCTA from "@/components/community/ClosingCTA";
 
 export default function Page() {
   return (
-    <div className="overflow-x-hidden">
+    <div className="overflow-x-clip">
       {/* 1. Hero Section (Giant headline + visual stage) */}
       <HeroSection />
 
@@ -41,7 +41,7 @@ export default function Page() {
       <ValuesSection />
 
       {/* 10. Closing CTA Section (Full-bleed contrast call-to-action block) */}
-      <ClosingCTA />
+      {/* <ClosingCTA /> */}
     </div>
   );
 }

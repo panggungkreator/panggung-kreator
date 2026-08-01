@@ -272,11 +272,11 @@ export default function Header() {
                   Masuk
                 </Link>
                 <a
-                  href="#gabung"
-                  onClick={(e) => handleSmoothScroll(e, "#gabung")}
+                  href="#membership"
+                  onClick={(e) => handleSmoothScroll(e, "#membership")}
                   className="w-full text-center py-3 bg-[#2c2c2c] text-white dark:bg-white dark:text-[#2c2c2c] text-xs uppercase tracking-[0.2em] font-bold rounded-none border border-[#2c2c2c] dark:border-white cursor-pointer"
                 >
-                  GABUNG — GRATIS
+                  GABUNG — MEMBERSHIP
                 </a>
               </>
             )}

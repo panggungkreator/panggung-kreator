@@ -67,7 +67,7 @@ export default function HeroSection() {
                   href="#gabung"
                   className="bg-[#2c2c2c] text-white dark:bg-white dark:text-[#2c2c2c] text-xs font-bold uppercase tracking-[0.2em] px-8 py-4 border border-[#2c2c2c] dark:border-white text-center hover:bg-transparent hover:text-[#2c2c2c] dark:hover:bg-transparent dark:hover:text-white transition-all duration-350 rounded-none"
                 >
-                  GABUNG — MULAI GRATIS
+                  GABUNG — MEMBERSHIP
                 </a>
                 <a
                   href="#program"

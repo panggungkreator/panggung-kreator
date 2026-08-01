@@ -164,6 +164,18 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Hide native browser scrollbar globally — Lenis provides its own virtual scrollbar */
+html,
+body {
+  -ms-overflow-style: none;   /* IE / Edge */
+  scrollbar-width: none;      /* Firefox */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;              /* Chrome / Safari / Opera */
+}
+
 /* Lenis smooth scroll helper classes */
 html.lenis,
 html.lenis body {
