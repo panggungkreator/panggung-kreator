@@ -64,42 +64,29 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options });
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set({ name, value, ...options })
+          );
           response = NextResponse.next({
             request: {
               headers: request.headers,
             },
           });
-          const cookieOptions: any = {
-            name,
-            value,
-            ...options,
-          };
-          if (cookieDomain) {
-            cookieOptions.domain = cookieDomain;
-          }
-          response.cookies.set(cookieOptions);
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: "", ...options });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+          cookiesToSet.forEach(({ name, value, options }) => {
+            const cookieOptions: any = {
+              name,
+              value,
+              ...options,
+            };
+            if (cookieDomain) {
+              cookieOptions.domain = cookieDomain;
+            }
+            response.cookies.set(cookieOptions);
           });
-          const cookieOptions: any = {
-            name,
-            value: "",
-            ...options,
-          };
-          if (cookieDomain) {
-            cookieOptions.domain = cookieDomain;
-          }
-          response.cookies.set(cookieOptions);
         },
       },
     }
@@ -107,13 +94,13 @@ export async function proxy(request: NextRequest) {
 
   // 5. Check Session
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // DEBUG: Log session state for diagnosis
   const allCookieNames = request.cookies.getAll().map(c => c.name);
   console.log(`[PROXY DEBUG] host=${host} sub="${sub}" isRootDomain=${isRootDomain} pathname=${pathname}`);
-  console.log(`[PROXY DEBUG] cookieDomain=${cookieDomain ?? "undefined (localhost)"} session=${session ? session.user.email : "NULL"}`);
+  console.log(`[PROXY DEBUG] cookieDomain=${cookieDomain ?? "undefined (localhost)"} user=${user ? user.email : "NULL"}`);
   console.log(`[PROXY DEBUG] cookies present: ${allCookieNames.join(", ") || "(none)"}`);
 
 
@@ -122,14 +109,14 @@ export async function proxy(request: NextRequest) {
   const isDirectAkademiDashboardPath = pathname === "/akademi/dashboard" || pathname.startsWith("/akademi/dashboard/");
 
   if (isDirectAdminPath) {
-    if (!session) {
+    if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
     const { data: member } = await supabase
       .from("members")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (!member || member.role !== "admin") {
@@ -138,14 +125,14 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isDirectAkademiDashboardPath) {
-    if (!session) {
+    if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
     const { data: member } = await supabase
       .from("members")
       .select("role, membership_tier, payment_status")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     const isPaid =
@@ -169,14 +156,14 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(`${protocol}//${host}${strippedPath}${search}`));
     }
 
-    if (!session) {
+    if (!user) {
       return NextResponse.redirect(new URL(`${protocol}//${rootHost}/login`, request.url));
     }
 
     const { data: member } = await supabase
       .from("members")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (!member || member.role !== "admin") {
@@ -191,14 +178,14 @@ export async function proxy(request: NextRequest) {
   // B. Web Akademi Subdomain (akademi.panggungkreator.web.id)
   if (sub === "akademi") {
     if (pathname.startsWith("/dashboard")) {
-      if (!session) {
+      if (!user) {
         return NextResponse.redirect(new URL(`${protocol}//${rootHost}/login`, request.url));
       }
 
       const { data: member } = await supabase
         .from("members")
         .select("role, membership_tier, payment_status")
-        .eq("id", session.user.id)
+        .eq("id", user.id)
         .single();
 
       const isPaid =
@@ -227,17 +214,17 @@ export async function proxy(request: NextRequest) {
     }
 
     if (pathname === "/myprofile") {
-      if (!session) {
+      if (!user) {
         return NextResponse.redirect(new URL("/login", request.url));
       }
     }
 
     // If logged in and goes to login page via GET (page load), redirect based on role/tier
-    if (pathname === "/login" && session && request.method === "GET") {
+    if (pathname === "/login" && user && request.method === "GET") {
       const { data: member } = await supabase
         .from("members")
         .select("role, membership_tier")
-        .eq("id", session.user.id)
+        .eq("id", user.id)
         .single();
 
       if (member) {
