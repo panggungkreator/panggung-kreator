@@ -13,16 +13,16 @@ export default async function DashboardPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
       },
     }
   );
 
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  if (authError || !session?.user) {
+  if (authError || !user) {
     redirect("/login");
   }
 
@@ -30,7 +30,7 @@ export default async function DashboardPage() {
   const { data: member } = await supabase
     .from("members")
     .select("*")
-    .eq("id", session.user.id)
+    .eq("id", user!.id)
     .single();
 
   if (!member) {
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
   }
 
   // Fallback to UI avatar if Google photo is not available
-  const avatarUrl = session.user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.stage_name || member.full_name)}&background=df7a42&color=fff`;
+  const avatarUrl = user!.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.stage_name || member.full_name)}&background=df7a42&color=fff`;
 
   // Split name for stacked layout
   const nameParts = (member.stage_name || member.full_name).toUpperCase().split(" ");

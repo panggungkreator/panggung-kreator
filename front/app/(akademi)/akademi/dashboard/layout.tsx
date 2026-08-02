@@ -14,16 +14,16 @@ export default async function DashboardLayout({
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
       },
     }
   );
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const headersList = await headers();
   const host = headersList.get("host") || "";
@@ -42,7 +42,7 @@ export default async function DashboardLayout({
     }
   }
 
-  if (!session?.user) {
+  if (!user) {
     // Redirect to login center (Web Komunitas /login)
     redirect(`https://${rootDomain}/login`);
   }
@@ -51,7 +51,7 @@ export default async function DashboardLayout({
   const { data: member } = await supabase
     .from("members")
     .select("membership_tier, role, payment_status")
-    .eq("id", session.user.id)
+    .eq("id", user!.id)
     .single();
 
   // If not paid and not admin, redirect to checkout

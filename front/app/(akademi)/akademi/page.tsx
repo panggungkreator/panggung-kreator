@@ -36,8 +36,8 @@ export default async function LandingPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
       },
     }
@@ -45,14 +45,14 @@ export default async function LandingPage() {
 
   let isAdmin = false;
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (session) {
+  if (user) {
     const { data: adminMember } = await supabase
       .from("members")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (adminMember && adminMember.role === "admin") {

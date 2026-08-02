@@ -1,4 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 let supabaseBrowserInstance: ReturnType<typeof createBrowserClient> | null = null;
 
@@ -46,6 +47,29 @@ export function createClient() {
         },
       }
     );
+
+    // Auto-cleanup: jika refresh token gagal (expired / tidak ditemukan),
+    // sign out secara otomatis untuk membersihkan sesi korup di browser.
+    supabaseBrowserInstance.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !session)) {
+        // Bersihkan instance agar klien baru dibuat di navigasi berikutnya
+        supabaseBrowserInstance = null;
+      }
+    });
+
+    // Tangani error refresh token yang tidak bisa di-catch melalui onAuthStateChange
+    // dengan mendengarkan auth state dari client secara periodik (failsafe)
+    supabaseBrowserInstance.auth.getSession().then(({ error }: { error: Error | null }) => {
+      if (
+        error &&
+        (error.message?.includes("Refresh Token Not Found") ||
+          error.message?.includes("Invalid Refresh Token"))
+      ) {
+        supabaseBrowserInstance?.auth.signOut().finally(() => {
+          supabaseBrowserInstance = null;
+        });
+      }
+    });
   }
 
   return supabaseBrowserInstance;
