@@ -92,15 +92,26 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // 5. Check Session
+  // 5. Check Session — also capture auth error to detect stale/corrupted tokens
   const {
     data: { user },
+    error: getUserError,
   } = await supabase.auth.getUser();
+
+  // Jika token di cookie tidak valid / sudah expired, sign out server-side agar
+  // browser menerima header Set-Cookie yang menghapus cookie korup secara otomatis.
+  // Ini menghentikan loop "Invalid Refresh Token" tanpa perlu clear manual dari browser.
+  if (getUserError) {
+    console.log(`[PROXY] Auth error detected (${getUserError.message}), clearing session cookies...`);
+    await supabase.auth.signOut();
+    // Setelah sign out, cookie sudah di-clear via setAll handler di atas.
+    // Lanjutkan request sebagai guest (user = null) dengan response yang sudah berisi Set-Cookie clearing.
+  }
 
   // DEBUG: Log session state for diagnosis
   const allCookieNames = request.cookies.getAll().map(c => c.name);
   console.log(`[PROXY DEBUG] host=${host} sub="${sub}" isRootDomain=${isRootDomain} pathname=${pathname}`);
-  console.log(`[PROXY DEBUG] cookieDomain=${cookieDomain ?? "undefined (localhost)"} user=${user ? user.email : "NULL"}`);
+  console.log(`[PROXY DEBUG] cookieDomain=${cookieDomain ?? "undefined (localhost)"} user=${user ? user.email : "NULL"} authError=${getUserError?.message ?? "none"}`);
   console.log(`[PROXY DEBUG] cookies present: ${allCookieNames.join(", ") || "(none)"}`);
 
 
