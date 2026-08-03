@@ -197,8 +197,25 @@ export async function registerMemberAction(payload: CheckoutPayload) {
     const generatedUsername = `${baseName}${randomSuffix}`;
     const generatedPassword = `Panggung${Math.floor(1000 + Math.random() * 9000)}!`;
 
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const key = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || "";
+
+    // Extract project ref & role from JWT key for server log diagnosis
+    let keyRefInfo = "INVALID_JWT";
+    try {
+      if (key.includes(".")) {
+        const payloadBase64 = key.split(".")[1];
+        const decoded = JSON.parse(Buffer.from(payloadBase64, "base64").toString("utf-8"));
+        keyRefInfo = `project_ref="${decoded.ref}" role="${decoded.role}"`;
+      }
+    } catch (e) {
+      keyRefInfo = "PARSE_ERROR";
+    }
+
+    console.log(`[REGISTER DEBUG] Target URL: "${url}" | Key Info: ${keyRefInfo}`);
+
     // Validasi environment variables sebelum memanggil Admin API
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY) {
+    if (!url || !key) {
       console.error("[registerMemberAction] Missing env vars: NEXT_PUBLIC_SUPABASE_URL atau NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY tidak diset di production!");
       return { success: false, error: "Konfigurasi server tidak lengkap. Hubungi Admin." };
     }
@@ -214,15 +231,21 @@ export async function registerMemberAction(payload: CheckoutPayload) {
     });
 
     if (authError) {
-      console.error("Auth signUp error:", authError);
+      const errorProps: Record<string, any> = {};
+      Object.getOwnPropertyNames(authError).forEach((k) => {
+        errorProps[k] = (authError as any)[k];
+      });
+      console.error("[REGISTER AUTH ERROR DETAILS]:", JSON.stringify(errorProps));
+
       let friendlyError = authError.message;
-      if (authError.message.includes("rate limit exceeded")) {
+      const lowerMsg = (authError.message || "").toLowerCase();
+
+      if (lowerMsg.includes("rate limit")) {
         friendlyError = "Batas pendaftaran email terlampaui (rate limit Supabase). Silakan coba lagi nanti atau hubungi Admin.";
-      } else if (authError.message.toLowerCase().includes("already registered") || authError.message.toLowerCase().includes("already exists")) {
+      } else if (lowerMsg.includes("already registered") || lowerMsg.includes("already exists")) {
         friendlyError = "Email sudah terdaftar. Jika sebelumnya Anda belum menyelesaikan pembayaran dan sesi telah habis, silakan hubungi Admin untuk bantuan.";
-      } else if (authError.message === "{}" || authError.message === "") {
-        // AuthRetryableFetchError — server tidak bisa terhubung ke Supabase (network/env issue)
-        friendlyError = "Server tidak dapat terhubung ke layanan autentikasi. Pastikan environment variables sudah diset di server production, lalu coba lagi.";
+      } else if (authError.name === "AuthRetryableFetchError" || authError.status === 500 || !friendlyError || friendlyError === "{}") {
+        friendlyError = `Server tidak dapat terhubung ke Supabase Auth (Status ${authError.status || 500}). Periksa log server untuk detail JWT Key Info.`;
       }
       return { success: false, error: friendlyError };
     }
