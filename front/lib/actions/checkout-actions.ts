@@ -228,6 +228,12 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       email: payload.email.trim(),
       password: generatedPassword,
       email_confirm: true, // auto-confirm the email
+      user_metadata: {
+        full_name: payload.fullName,
+        stage_name: payload.stageName || payload.fullName,
+        whatsapp_number: payload.whatsapp,
+        username: generatedUsername,
+      },
     });
 
     if (authError) {
@@ -306,10 +312,10 @@ export async function registerMemberAction(payload: CheckoutPayload) {
     // Generate order ID
     const orderId = `PK-AKAD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // 4. Save Member Details to Database (using admin client to bypass RLS)
+    // 4. Save/Update Member Details in Database (using upsert to support DB triggers and bypass RLS)
     const { error: dbError } = await supabaseAdmin
       .from("members")
-      .insert({
+      .upsert({
         id: user.id,
         full_name: payload.fullName,
         stage_name: payload.stageName,
