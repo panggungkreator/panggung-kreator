@@ -100,12 +100,18 @@ export async function proxy(request: NextRequest) {
 
   // Jika token di cookie tidak valid / sudah expired, sign out server-side agar
   // browser menerima header Set-Cookie yang menghapus cookie korup secara otomatis.
-  // Ini menghentikan loop "Invalid Refresh Token" tanpa perlu clear manual dari browser.
-  if (getUserError) {
-    console.log(`[PROXY] Auth error detected (${getUserError.message}), clearing session cookies...`);
+  // CATATAN: "Auth session missing!" adalah kondisi normal (belum login), bukan error korup.
+  // Hanya hapus cookie jika error spesifik tentang token yang tidak valid / expired.
+  const isStaleTokenError =
+    getUserError &&
+    (getUserError.message?.includes("Invalid Refresh Token") ||
+      getUserError.message?.includes("Refresh Token Not Found") ||
+      getUserError.message?.includes("Token expired") ||
+      getUserError.message?.includes("token is expired"));
+
+  if (isStaleTokenError) {
+    console.log(`[PROXY] Stale token detected (${getUserError!.message}), clearing session cookies...`);
     await supabase.auth.signOut();
-    // Setelah sign out, cookie sudah di-clear via setAll handler di atas.
-    // Lanjutkan request sebagai guest (user = null) dengan response yang sudah berisi Set-Cookie clearing.
   }
 
   // DEBUG: Log session state for diagnosis

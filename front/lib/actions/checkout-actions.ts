@@ -196,10 +196,16 @@ export async function registerMemberAction(payload: CheckoutPayload) {
     const generatedUsername = `${baseName}${randomSuffix}`;
     const generatedPassword = `Panggung${Math.floor(1000 + Math.random() * 9000)}!`;
 
+    // Validasi environment variables sebelum memanggil Admin API
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("[registerMemberAction] Missing env vars: NEXT_PUBLIC_SUPABASE_URL atau NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY tidak diset di production!");
+      return { success: false, error: "Konfigurasi server tidak lengkap. Hubungi Admin." };
+    }
+
     // Initialize Supabase Admin client with Service Role Key to bypass rate limits
     const supabaseAdmin = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY,
       {
         cookies: {
           get(name: string) { return ""; },
@@ -223,6 +229,9 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         friendlyError = "Batas pendaftaran email terlampaui (rate limit Supabase). Silakan coba lagi nanti atau hubungi Admin.";
       } else if (authError.message.toLowerCase().includes("already registered") || authError.message.toLowerCase().includes("already exists")) {
         friendlyError = "Email sudah terdaftar. Jika sebelumnya Anda belum menyelesaikan pembayaran dan sesi telah habis, silakan hubungi Admin untuk bantuan.";
+      } else if (authError.message === "{}" || authError.message === "") {
+        // AuthRetryableFetchError — server tidak bisa terhubung ke Supabase (network/env issue)
+        friendlyError = "Server tidak dapat terhubung ke layanan autentikasi. Pastikan environment variables sudah diset di server production, lalu coba lagi.";
       }
       return { success: false, error: friendlyError };
     }
