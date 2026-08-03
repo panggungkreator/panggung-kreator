@@ -828,6 +828,23 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                         <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
                       )}
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400 font-medium">Email:</span>
+                      {detailMember.email &&
+                        detailMember.email.trim() !== "" &&
+                        detailMember.email.trim() !== "-" ? (
+                        <a
+                          href="#"
+                          target="_self"
+                          rel="noopener noreferrer"
+                          className="font-bold text-[#bc151b] hover:underline"
+                        >
+                          {detailMember.email}
+                        </a>
+                      ) : (
+                        <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
