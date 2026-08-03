@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import Groq from "groq-sdk";
 import nodemailer from "nodemailer";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 type OnboardingPayload = {
   full_name: string;
@@ -202,18 +203,8 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       return { success: false, error: "Konfigurasi server tidak lengkap. Hubungi Admin." };
     }
 
-    // Initialize Supabase Admin client with Service Role Key to bypass rate limits
-    const supabaseAdmin = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY,
-      {
-        cookies: {
-          get(name: string) { return ""; },
-          set(name: string, value: string, options: any) {},
-          remove(name: string, options: any) {},
-        },
-      }
-    );
+    // Initialize Supabase Admin client using official service-role client
+    const supabaseAdmin = createServiceRoleClient();
 
     // 2. Sign Up User using Supabase Auth Admin API (bypasses rate limit and email verification SMTP)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -581,17 +572,7 @@ export async function deleteMembersAction(memberIds: string[]) {
       return { success: false, error: "Hanya admin yang diperbolehkan menghapus data." };
     }
 
-    const supabaseAdmin = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          get(name: string) { return ""; },
-          set(name: string, value: string, options: any) {},
-          remove(name: string, options: any) {},
-        },
-      }
-    );
+    const supabaseAdmin = createServiceRoleClient();
 
     // Loop through each member id to delete auth account and member record
     // Note: If members table has ON DELETE CASCADE from auth.users, deleting auth user is enough.

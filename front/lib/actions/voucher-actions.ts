@@ -3,6 +3,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { checkPermission } from "@/lib/check-permission";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 export async function getVouchersAction() {
   const cookieStore = await cookies();
@@ -60,11 +61,7 @@ export async function createVoucherAction(data: {
     return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk membuat voucher." };
   }
 
-  const supabaseAdmin = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { get(name: string) { return ""; }, set() {}, remove() {} } }
-  );
+  const supabaseAdmin = createServiceRoleClient();
 
   const { error } = await supabaseAdmin.from("vouchers").insert({
     code: data.code.toUpperCase(),
@@ -95,11 +92,7 @@ export async function deleteVoucherAction(id: string) {
     return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk menghapus voucher." };
   }
 
-  const supabaseAdmin = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { get(name: string) { return ""; }, set() {}, remove() {} } }
-  );
+  const supabaseAdmin = createServiceRoleClient();
 
   const { error } = await supabaseAdmin.from("vouchers").delete().eq("id", id);
   if (error) return { success: false, error: error.message };
@@ -120,11 +113,7 @@ export async function toggleVoucherAction(id: string, currentStatus: boolean) {
     return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk mengedit voucher." };
   }
 
-  const supabaseAdmin = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { get(name: string) { return ""; }, set() {}, remove() {} } }
-  );
+  const supabaseAdmin = createServiceRoleClient();
 
   const { error } = await supabaseAdmin.from("vouchers").update({ is_active: !currentStatus }).eq("id", id);
   if (error) return { success: false, error: error.message };
@@ -157,11 +146,7 @@ export async function updateVoucherAction(id: string, data: {
     return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk mengedit voucher." };
   }
 
-  const supabaseAdmin = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { get(name: string) { return ""; }, set() {}, remove() {} } }
-  );
+  const supabaseAdmin = createServiceRoleClient();
 
   const { error } = await supabaseAdmin.from("vouchers").update({
     code: data.code.toUpperCase(),
