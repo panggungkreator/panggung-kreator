@@ -36,6 +36,7 @@ import {
   Loader2
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { isSuperAdmin as checkIsSuperAdmin } from "@/lib/security";
 interface Permission {
   can_view: boolean;
 }
@@ -258,17 +259,25 @@ export default function AdminLayout({
           setIsAdmin(member.role === "admin");
         }
 
-        // Fetch admin_roles to check status and get color (slate = super admin)
+        // Fetch admin_roles to check status and get color/is_super_admin
         const { data: adminRole } = await supabase
           .from("admin_roles")
-          .select("id, color, status")
+          .select("id, color, status, is_super_admin")
           .eq("member_id", user.id)
           .maybeSingle();
 
+        const isSuper = checkIsSuperAdmin({
+          email: user.email,
+          memberRole: member?.role,
+          adminRoleColor: adminRole?.color,
+          adminRoleStatus: adminRole?.status,
+          isSuperAdminFlag: adminRole?.is_super_admin,
+        });
+
+        setIsSuperAdmin(isSuper);
+
         if (adminRole && adminRole.status === "active") {
           setIsAdmin(true);
-          const isSuper = adminRole.color === "slate";
-          setIsSuperAdmin(isSuper);
 
           // Fetch permissions (pages where admin has 'view' privilege)
           const { data: permData, error } = await supabase

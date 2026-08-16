@@ -21,3 +21,6 @@ export function colorRangerStyle(slug: ColorRangerSlug) {
     border: `1px solid ${hex}35`,
   };
 }
+
+export const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "panggungkreator.idn@gmail.com";
+export const SUPER_ADMIN_COLOR = "slate";

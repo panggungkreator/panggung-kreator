@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { isSuperAdmin } from "@/lib/security";
 
 type PermissionMode = "page" | "button";
 
 /**
  * Cek apakah admin punya izin untuk aksi tertentu di halaman tertentu.
  * 
- * @param pageSlug  - Slug halaman (misal: "members", "packages")
+ * @param pageSlug  - Slug halaman (misal: "members", "packages", "acara")
  * @param action    - Slug aksi (misal: "view", "create", "edit", "delete")
  * @param mode      - "page" (redirect ke /admin/denied jika tidak berwenang) atau "button" (return boolean)
  */
@@ -28,46 +29,65 @@ export async function checkPermission(
     return false;
   }
 
-  // 1. Dapatkan admin_role_id, status & color (Super Admin = color 'slate')
+  // 1. Cek role global di tabel members
+  const { data: member } = await supabase
+    .from("members")
+    .select("role")
+    .eq("id", session.user.id)
+    .maybeSingle();
+
+  const isGlobalAdmin = member?.role === "admin";
+
+  // 2. Dapatkan detail admin_role (jika terdaftar di admin_roles)
   const { data: adminRole } = await supabase
     .from("admin_roles")
-    .select("id, status, color")
+    .select("id, status, color, is_super_admin")
     .eq("member_id", session.user.id)
     .maybeSingle();
 
-  if (!adminRole || adminRole.status !== "active") {
-    if (mode === "page") {
-      redirect("/admin/denied");
-    }
-    return false;
-  }
-
-  // Super Admin (color 'slate') memiliki akses penuh secara langsung
-  if (adminRole.color === "slate") {
+  // Multi-layered Bulletproof Super Admin Check (Full Unconstrained Access)
+  if (
+    isSuperAdmin({
+      email: session.user.email,
+      memberRole: member?.role,
+      adminRoleColor: adminRole?.color,
+      adminRoleStatus: adminRole?.status,
+      isSuperAdminFlag: adminRole?.is_super_admin,
+    })
+  ) {
     return true;
   }
 
-  // 2. Query apakah ada baris permission (relasi via action_id)
-  const { data: perm } = await supabase
-    .from("admin_role_permissions")
-    .select(`
-      id,
-      privilege_items!inner(slug),
-      privilege_actions:action_id!inner(slug)
-    `)
-    .eq("admin_role_id", adminRole.id)
-    .eq("privilege_items.slug", pageSlug)
-    .eq("privilege_actions.slug", action)
-    .limit(1)
-    .maybeSingle();
+  // 3. Cek spesifik di tabel admin_role_permissions (relasi via action_id)
+  if (adminRole && adminRole.status === "active") {
+    const { data: perm } = await supabase
+      .from("admin_role_permissions")
+      .select(`
+        id,
+        privilege_items!inner(slug),
+        privilege_actions:action_id!inner(slug)
+      `)
+      .eq("admin_role_id", adminRole.id)
+      .eq("privilege_items.slug", pageSlug)
+      .eq("privilege_actions.slug", action)
+      .limit(1)
+      .maybeSingle();
 
-  const hasPerm = !!perm;
+    if (perm) {
+      return true;
+    }
+  }
 
-  if (!hasPerm && mode === "page") {
+  // 4. Fallback: Jika pengguna memiliki role = 'admin' di tabel members
+  if (isGlobalAdmin) {
+    return true;
+  }
+
+  if (mode === "page") {
     redirect("/admin/denied");
   }
 
-  return hasPerm;
+  return false;
 }
 
 /**
@@ -103,5 +123,3 @@ export async function getPermissionMap(
 
   return permMap;
 }
-
-
