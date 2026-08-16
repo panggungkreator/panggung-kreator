@@ -23,7 +23,7 @@ export default async function AdminDashboardPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   return (

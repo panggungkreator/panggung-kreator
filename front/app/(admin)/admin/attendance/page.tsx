@@ -24,7 +24,7 @@ export default async function AttendancePage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch events, members, and attendances in parallel

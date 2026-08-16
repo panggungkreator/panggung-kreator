@@ -3,13 +3,16 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithPasswordAction } from "@/lib/actions/auth-actions";
 import Logo from "@/components/ui/Logo";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectToParam = searchParams.get("redirectTo");
+
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +33,7 @@ export default function LoginPage() {
         const port = window.location.port ? `:${window.location.port}` : "";
 
         const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
-        
+
         let rootDomain = "panggungkreator.web.id";
         if (!isLocalhost) {
           const parts = hostname.split(".");
@@ -48,7 +51,6 @@ export default function LoginPage() {
         const rootHost = rootDomain === "localhost" ? `localhost${port}` : `${rootDomain}${port}`;
 
         let adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
-        let akademiRedirectUrl = process.env.NEXT_PUBLIC_AKADEMI_URL;
 
         if (!adminRedirectUrl) {
           adminRedirectUrl = isLocalhost
@@ -56,13 +58,13 @@ export default function LoginPage() {
             : `${protocol}//admin.${rootHost}/`;
         }
 
-        if (!akademiRedirectUrl) {
-          akademiRedirectUrl = isLocalhost
-            ? "/dashboard"
-            : `${protocol}//akademi.${rootHost}/dashboard`;
-        }
+        const userRedirectUrl = isLocalhost
+          ? "/myprofile"
+          : `${protocol}//${rootHost}/myprofile`;
 
-        window.location.href = result.isAdmin ? adminRedirectUrl : akademiRedirectUrl;
+        const targetUrl = redirectToParam ? redirectToParam : userRedirectUrl;
+
+        window.location.href = result.isAdmin ? adminRedirectUrl : targetUrl;
       } else {
         setError(result.error || "Terjadi kesalahan saat masuk.");
         setIsLoading(false);
@@ -82,7 +84,7 @@ export default function LoginPage() {
           src="/wallpaper.png"
           alt="Teman Sepanggung"
           fill
-          className="object-cover grayscale contrast-115 brightness-90 transition-all duration-700 hover:grayscale-0"
+          className="object-cover contrast-115 brightness-90 transition-all duration-700 "
           priority
         />
       </div>

@@ -31,7 +31,7 @@ export default async function AddVenuePage({ searchParams }: PageProps) {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   let initialVenue = null;

@@ -25,7 +25,7 @@ export default async function MembersPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Ambil daftar member_id yang terdaftar sebagai admin (active/pending) untuk diexclude
@@ -36,20 +36,44 @@ export default async function MembersPage() {
 
   const adminMemberIds = (adminRoles || []).map((r) => r.member_id).filter(Boolean);
 
-  // Tarik data seluruh member untuk tabel admin (kecuali admin & pending/active admin)
+  // Tarik data seluruh member untuk tabel admin (kecuali admin & pending/active admin, hanya yang konfirmasi pembayaran lunas atau member priority)
   let membersQuery = supabase
     .from("members")
-    .select("*, interests:member_interests(*)")
-    .neq("role", "admin");
+    .select("*, interests:member_interests(*), package:packages(id, name)")
+    .neq("role", "admin")
+    .or("payment_status.eq.paid,membership_tier.eq.priority");
 
   if (adminMemberIds.length > 0) {
     membersQuery = membersQuery.not("id", "in", `(${adminMemberIds.join(",")})`);
   }
 
-  const { data: members, error } = await membersQuery.order("created_at", { ascending: false });
+  let { data: members, error } = await membersQuery.order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching members for admin:", error);
+    console.warn("Error fetching members with join interests for admin:", error.message);
+
+    // Fallback: Query members tanpa relational join, lalu ambil member_interests secara terpisah bila ada
+    let fallbackQuery = supabase
+      .from("members")
+      .select("*")
+      .neq("role", "admin")
+      .or("payment_status.eq.paid,membership_tier.eq.priority");
+
+    if (adminMemberIds.length > 0) {
+      fallbackQuery = fallbackQuery.not("id", "in", `(${adminMemberIds.join(",")})`);
+    }
+
+    const { data: rawMembers } = await fallbackQuery.order("created_at", { ascending: false });
+
+    if (rawMembers) {
+      const { data: interestsData } = await supabase.from("member_interests").select("*");
+      const interestsMap = new Map((interestsData || []).map((item: any) => [item.member_id, item]));
+
+      members = rawMembers.map((m: any) => ({
+        ...m,
+        interests: interestsMap.get(m.id) || null,
+      }));
+    }
   }
 
   // Tarik data seluruh paket untuk pemetaan paket di tabel admin

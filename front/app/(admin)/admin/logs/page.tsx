@@ -24,7 +24,7 @@ export default async function LogsPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch admin logs and list of admins in parallel

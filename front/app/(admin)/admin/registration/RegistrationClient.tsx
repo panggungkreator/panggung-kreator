@@ -17,7 +17,8 @@ import {
   Eye
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Modal, ModalSection } from "@/components/ui/Modal";
+import { ModalConfirmation } from "@/components/ui/Modal-Confirmation";
 import { toast } from "sonner";
 
 type Member = {
@@ -38,6 +39,7 @@ type Member = {
   unique_code?: number;
   role?: string;
   package_id?: string | null;
+  membership_tier?: string;
 };
 
 interface AdminClientProps {
@@ -103,8 +105,8 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
         (payload: any) => {
           if (payload.eventType === "INSERT") {
             const newMember = payload.new as Member;
-            // Only display non-admin members
-            if (newMember.role !== "admin") {
+            // Only display non-admin and non-priority members
+            if (newMember.role !== "admin" && newMember.membership_tier !== "priority") {
               setMembers((prev) => {
                 // Prevent duplicate inserts
                 if (prev.some((m) => m.id === newMember.id)) return prev;
@@ -114,9 +116,13 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
             }
           } else if (payload.eventType === "UPDATE") {
             const updatedMember = payload.new as Member;
-            setMembers((prev) =>
-              prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
-            );
+            if (updatedMember.role === "admin" || updatedMember.membership_tier === "priority") {
+              setMembers((prev) => prev.filter((m) => m.id !== updatedMember.id));
+            } else {
+              setMembers((prev) =>
+                prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
+              );
+            }
             router.refresh();
           } else if (payload.eventType === "DELETE") {
             const deletedId = payload.old.id;
@@ -696,217 +702,171 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
         </div>
       </div>
 
-      {/* Confirmation Modal - Styled with Soft Accents */}
-      {modal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" onClick={() => !modal.isLoading && setModal(prev => ({ ...prev, isOpen: false }))}></div>
-          <div className="relative bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-150 dark:border-white/5 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in p-8 text-center">
-
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${modal.type === 'delete'
-              ? 'bg-[#fee2e2] text-[#b91c1c]'
-              : 'bg-[#fef9c3] text-[#713f12]'
-              }`}>
-              {modal.type === 'delete' ? (
-                <Trash2 className="w-8 h-8" />
-              ) : (
-                <Clock className="w-8 h-8" />
-              )}
-            </div>
-
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-2 font-title">{modal.title}</h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 px-4 leading-relaxed">{modal.description}</p>
-
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => setModal(prev => ({ ...prev, isOpen: false }))}
-                disabled={modal.isLoading}
-                className="px-6 py-3 text-sm font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-all w-full cursor-pointer"
-              >
-                Batal
-              </button>
-
-              <button
-                onClick={modal.onConfirm}
-                disabled={modal.isLoading}
-                className={`px-6 py-3 text-sm font-bold text-white rounded-full transition-all flex justify-center items-center gap-2 w-full cursor-pointer ${modal.type === "delete"
-                  ? "bg-[#b91c1c] hover:bg-[#991b1b]"
-                  : "bg-[#15803d] hover:bg-[#166534]"
-                  }`}
-              >
-                {modal.isLoading ? "Memproses..." : (modal.type === "delete" ? "Hapus" : "Konfirmasi")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirmation Modal - Reusable Component */}
+      <ModalConfirmation
+        isOpen={modal.isOpen}
+        onClose={() => setModal(prev => ({ ...prev, isOpen: false }))}
+        title={modal.title}
+        description={modal.description}
+        onConfirm={modal.onConfirm}
+        isLoading={modal.isLoading}
+        type={modal.type}
+      />
 
       {/* Detail Member Modal */}
-      <Dialog open={!!detailMember} onOpenChange={(open) => !open && setDetailMember(null)}>
-        <DialogContent className="max-w-2xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-white/5 rounded-[2rem] shadow-2xl p-8 text-zinc-800 dark:text-zinc-200">
-          {detailMember && (
-            <>
-              {/* Header */}
-              <DialogHeader className="flex flex-row items-center gap-4 mb-6 pb-4 border-b border-zinc-100 dark:border-zinc-800/60 shrink-0">
-                <div className="w-12 h-12 rounded-2xl bg-[#e0f2fe] text-[#0369a1] dark:bg-sky-950/30 dark:text-sky-400 flex items-center justify-center font-bold text-lg shrink-0">
-                  {(detailMember.full_name || "M")[0].toUpperCase()}
+      <Modal
+        isOpen={!!detailMember}
+        onClose={() => setDetailMember(null)}
+        maxWidth="max-w-2xl"
+        icon={(detailMember?.full_name || "M")[0].toUpperCase()}
+        title={detailMember?.full_name}
+        subtitle={`@${detailMember?.username || "username"}`}
+        footer={
+          <div className="flex gap-3">
+            <button
+              onClick={() => setDetailMember(null)}
+              className="px-6 py-3 text-sm font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-all w-full cursor-pointer text-center"
+            >
+              Tutup
+            </button>
+            {detailMember?.whatsapp_number && (
+              <a
+                href={formatWhatsappLink(detailMember.whatsapp_number, detailMember.stage_name, detailMember.full_name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-3 text-sm font-bold text-white bg-[#15803d] hover:bg-[#166534] rounded-full transition-all w-full flex justify-center items-center gap-2 cursor-pointer shadow-md text-center"
+              >
+                <span>WhatsApp</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        }
+      >
+        {detailMember && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+            {/* Personal Section */}
+            <ModalSection title="Informasi Personal" titleColor="text-[#15803d] dark:text-emerald-400">
+              <div className="space-y-2.5">
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Nama Panggung:</span>
+                  <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.stage_name || "-"}</span>
                 </div>
-                <div>
-                  <DialogTitle className="text-xl font-bold text-zinc-900 dark:text-zinc-100 font-title">{detailMember.full_name}</DialogTitle>
-                  <p className="text-xs text-zinc-500 mt-0.5">@{detailMember.username || "username"}</p>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Username:</span>
+                  <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.username}</span>
                 </div>
-              </DialogHeader>
-
-              {/* Information Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-xs">
-
-                {/* Personal Section */}
-                <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5">
-                  <h4 className="font-bold text-[#15803d] dark:text-emerald-400 mb-3 uppercase tracking-wider text-[10px]">Informasi Personal</h4>
-                  <div className="space-y-2.5">
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">Nama Panggung:</span>
-                      <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.stage_name || "-"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">Username:</span>
-                      <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.username}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">Pekerjaan:</span>
-                      <span className="font-semibold text-zinc-750 dark:text-zinc-200">{formatOccupation(detailMember.occupation)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">Tgl Terdaftar:</span>
-                      <span className="font-semibold text-zinc-750 dark:text-zinc-200">
-                        {new Date(detailMember.created_at).toLocaleDateString("id-ID", {
-                          day: "numeric", month: "long", year: "numeric"
-                        })}
-                      </span>
-                    </div>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Pekerjaan:</span>
+                  <span className="font-semibold text-zinc-750 dark:text-zinc-200">{formatOccupation(detailMember.occupation)}</span>
                 </div>
-
-                {/* Contact & Social Section */}
-                <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5">
-                  <h4 className="font-bold text-[#b91c1c] dark:text-red-400 mb-3 uppercase tracking-wider text-[10px]">Kontak & Sosial Media</h4>
-                  <div className="space-y-2.5">
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">No. WhatsApp:</span>
-                      <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.whatsapp_number || "-"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">Instagram:</span>
-                      {detailMember.instagram_username &&
-                        detailMember.instagram_username.trim() !== "" &&
-                        detailMember.instagram_username.trim() !== "-" ? (
-                        <a
-                          href={`https://instagram.com/${detailMember.instagram_username.replace("@", "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-bold text-[#bc151b] hover:underline"
-                        >
-                          @{detailMember.instagram_username.replace("@", "")}
-                        </a>
-                      ) : (
-                        <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
-                      )}
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">TikTok:</span>
-                      {detailMember.tiktok_username &&
-                        detailMember.tiktok_username.trim() !== "" &&
-                        detailMember.tiktok_username.trim() !== "-" ? (
-                        <a
-                          href={`https://tiktok.com/@${detailMember.tiktok_username.replace("@", "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-bold text-[#bc151b] hover:underline"
-                        >
-                          @{detailMember.tiktok_username.replace("@", "")}
-                        </a>
-                      ) : (
-                        <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
-                      )}
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">Email:</span>
-                      {detailMember.email &&
-                        detailMember.email.trim() !== "" &&
-                        detailMember.email.trim() !== "-" ? (
-                        <a
-                          href="#"
-                          target="_self"
-                          rel="noopener noreferrer"
-                          className="font-bold text-[#bc151b] hover:underline"
-                        >
-                          {detailMember.email}
-                        </a>
-                      ) : (
-                        <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Payment Section */}
-                <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-100 dark:border-white/5 md:col-span-2">
-                  <h4 className="font-bold text-[#713f12] dark:text-amber-400 mb-3 uppercase tracking-wider text-[10px]">Informasi Paket & Pembayaran</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5">
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">Paket Pilihan:</span>
-                      <span className="font-bold text-zinc-750 dark:text-zinc-200">
-                        {packageMap.get(detailMember.package_id || "") || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-zinc-400 font-medium">Status Pembayaran:</span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${detailMember.payment_status === "paid"
-                        ? "bg-[#dcfce7] text-[#15803d] border-emerald-200/20"
-                        : "bg-[#fef9c3] text-[#713f12] border-yellow-200/20"
-                        }`}>
-                        {detailMember.payment_status === "paid" ? "Lunas" : "Pending"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">Voucher Terpakai:</span>
-                      <span className="font-bold text-[#bc151b] dark:text-[#ef4444]">{detailMember.used_voucher_code || "Tidak ada"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-medium">Kode Unik:</span>
-                      <span className="font-bold text-zinc-750 dark:text-zinc-200">{detailMember.unique_code ?? "-"}</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between pt-3 mt-3 border-t border-zinc-200/40 dark:border-white/5">
-                    <span className="text-zinc-400 font-bold">Total Pembayaran:</span>
-                    <span className="font-extrabold text-zinc-900 dark:text-white text-sm">
-                      Rp {(detailMember.final_price ?? (49000 + (detailMember.unique_code ?? 0))).toLocaleString('id-ID')}
-                    </span>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Tgl Terdaftar:</span>
+                  <span className="font-semibold text-zinc-750 dark:text-zinc-200">
+                    {new Date(detailMember.created_at).toLocaleDateString("id-ID", {
+                      day: "numeric", month: "long", year: "numeric"
+                    })}
+                  </span>
                 </div>
               </div>
+            </ModalSection>
 
-              {/* Footer Actions */}
-              <div className="flex gap-3 pt-2 shrink-0">
-                <button
-                  onClick={() => setDetailMember(null)}
-                  className="px-6 py-3 text-sm font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-all w-full cursor-pointer text-center"
-                >
-                  Tutup
-                </button>
-                <a
-                  href={formatWhatsappLink(detailMember.whatsapp_number, detailMember.stage_name, detailMember.full_name)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-6 py-3 text-sm font-bold text-white bg-[#15803d] hover:bg-[#166534] rounded-full transition-all w-full flex justify-center items-center gap-2 cursor-pointer shadow-md text-center"
-                >
-                  <span>WhatsApp</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+            {/* Contact & Social Section */}
+            <ModalSection title="Kontak & Sosial Media" titleColor="text-[#b91c1c] dark:text-red-400">
+              <div className="space-y-2.5">
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">No. WhatsApp:</span>
+                  <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.whatsapp_number || "-"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Instagram:</span>
+                  {detailMember.instagram_username &&
+                  detailMember.instagram_username.trim() !== "" &&
+                  detailMember.instagram_username.trim() !== "-" ? (
+                    <a
+                      href={`https://instagram.com/${detailMember.instagram_username.replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-[#bc151b] hover:underline"
+                    >
+                      @{detailMember.instagram_username.replace("@", "")}
+                    </a>
+                  ) : (
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">TikTok:</span>
+                  {detailMember.tiktok_username &&
+                  detailMember.tiktok_username.trim() !== "" &&
+                  detailMember.tiktok_username.trim() !== "-" ? (
+                    <a
+                      href={`https://tiktok.com/@${detailMember.tiktok_username.replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-[#bc151b] hover:underline"
+                    >
+                      @{detailMember.tiktok_username.replace("@", "")}
+                    </a>
+                  ) : (
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Email:</span>
+                  {detailMember.email &&
+                  detailMember.email.trim() !== "" &&
+                  detailMember.email.trim() !== "-" ? (
+                    <a
+                      href={`mailto:${detailMember.email}`}
+                      className="font-bold text-[#bc151b] hover:underline"
+                    >
+                      {detailMember.email}
+                    </a>
+                  ) : (
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
+                  )}
+                </div>
               </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+            </ModalSection>
+
+            {/* Payment Section */}
+            <ModalSection title="Informasi Paket & Pembayaran" titleColor="text-[#713f12] dark:text-amber-400" className="md:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5">
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Paket Pilihan:</span>
+                  <span className="font-bold text-zinc-750 dark:text-zinc-200">
+                    {packageMap.get(detailMember.package_id || "") || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400 font-medium">Status Pembayaran:</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${detailMember.payment_status === "paid"
+                    ? "bg-[#dcfce7] text-[#15803d] border-emerald-200/20"
+                    : "bg-[#fef9c3] text-[#713f12] border-yellow-200/20"
+                    }`}>
+                    {detailMember.payment_status === "paid" ? "Lunas" : "Pending"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Voucher Terpakai:</span>
+                  <span className="font-bold text-[#bc151b] dark:text-[#ef4444]">{detailMember.used_voucher_code || "Tidak ada"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Kode Unik:</span>
+                  <span className="font-bold text-zinc-750 dark:text-zinc-200">{detailMember.unique_code ?? "-"}</span>
+                </div>
+              </div>
+              <div className="flex justify-between pt-3 mt-3 border-t border-zinc-200/40 dark:border-white/5">
+                <span className="text-zinc-400 font-bold">Total Pembayaran:</span>
+                <span className="font-extrabold text-zinc-900 dark:text-white text-sm">
+                  Rp {(detailMember.final_price ?? (49000 + (detailMember.unique_code ?? 0))).toLocaleString('id-ID')}
+                </span>
+              </div>
+            </ModalSection>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

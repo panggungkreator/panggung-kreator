@@ -24,7 +24,7 @@ export default async function VenuePage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch all venues ordered by order_index and name

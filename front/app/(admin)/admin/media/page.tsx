@@ -24,7 +24,7 @@ export default async function MediaLibraryPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   return <MediaLibraryClient />;

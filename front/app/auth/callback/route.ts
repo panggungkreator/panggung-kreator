@@ -42,6 +42,6 @@ export async function GET(request: Request) {
         );
     }
 
-    // Redirect ke dashboard di domain yang benar
-    return NextResponse.redirect(`${redirectTo}/dashboard`);
+    // Redirect ke profil di domain yang benar
+    return NextResponse.redirect(`${redirectTo}/myprofile`);
 }

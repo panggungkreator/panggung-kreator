@@ -9,9 +9,11 @@ import {
   ChevronDown,
   RotateCcw,
   Loader,
-  AlertCircle
+  AlertCircle,
+  QrCode
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Modal } from "@/components/ui/Modal";
 
 interface AttendanceRecord {
   id: string;
@@ -69,6 +71,9 @@ export default function AttendanceClient({
   const [formIsSubmitting, setFormIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   // Sync formEventId with selectedEventId when it changes (excluding 'all')
   useEffect(() => {
@@ -257,6 +262,12 @@ export default function AttendanceClient({
       
       // Refresh the dataset
       await refreshAttendances();
+
+      // Close modal on success
+      setTimeout(() => {
+        setIsAddModalOpen(false);
+        setFormSuccess("");
+      }, 1500);
     } catch (err: any) {
       console.error(err);
       setFormError("Gagal mencatat: " + (err.message || "Kesalahan tidak diketahui"));
@@ -310,7 +321,7 @@ export default function AttendanceClient({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Section: Attendance List and Filters */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-12 space-y-6">
           
           {/* Summary & Filters Bar */}
           <div className="bg-bg-card border border-border-default rounded-2xl p-5 space-y-4">
@@ -338,20 +349,24 @@ export default function AttendanceClient({
               </div>
             </div>
 
-            {/* Attendance Summary Panel */}
-            <div className="flex items-center gap-4 py-1.5 px-3 bg-bg-well border border-border-default rounded-xl">
-              <div className="p-2 rounded-lg bg-text-primary text-bg-card shrink-0">
-                <UserCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-[10px] text-text-secondary font-bold uppercase tracking-wider leading-none">Rasio Kehadiran</p>
-                <p className="text-lg font-black text-text-primary mt-1">
-                  {stats.present} <span className="text-xs font-medium text-text-secondary">dari {stats.total} peserta hadir</span>
-                  <span className="text-xs font-bold text-[#2D5A00] px-2 py-0.5 rounded-full bg-accent-green ml-2">
-                    {stats.percentage}% Hadir
-                  </span>
-                </p>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsQrModalOpen(true)}
+                className="border border-border-default rounded-full px-4 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-bg-well text-text-primary transition-colors cursor-pointer"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                QR Code
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-text-primary text-bg-card border border-text-primary rounded-full px-4 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Tambah Daftar Kehadiran
+              </button>
             </div>
           </div>
 
@@ -463,101 +478,121 @@ export default function AttendanceClient({
 
         </div>
 
-        {/* Right Section: Form Manual Attendance */}
-        <div className="lg:col-span-4">
-          
-          <div className="bg-bg-card border border-border-default rounded-2xl p-5 sticky top-6">
-            <div className="flex items-center gap-2 text-xs font-bold text-text-primary pb-3 border-b border-border-default/45 mb-4">
-              <Plus size={14} />
-              <span>CATAT KEHADIRAN MANUAL</span>
-            </div>
+      </div>
 
-            <form onSubmit={handleManualSubmit} className="space-y-4">
-              
-              {/* Select Member */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
-                  Pilih Member
-                </label>
-                <div className="relative">
-                  <select
-                    value={formMemberId}
-                    onChange={(e) => setFormMemberId(e.target.value)}
-                    className="w-full bg-bg-well border border-border-default rounded-full py-2.5 px-4 text-xs text-text-primary focus:outline-none appearance-none cursor-pointer pr-10 font-bold"
-                  >
-                    <option value="">-- Cari & Pilih Member --</option>
-                    {members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.full_name} {member.whatsapp_number ? `(${member.whatsapp_number})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3.5 top-3.5 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Select Event */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
-                  Pilih Acara
-                </label>
-                <div className="relative">
-                  <select
-                    value={formEventId}
-                    onChange={(e) => setFormEventId(e.target.value)}
-                    className="w-full bg-bg-well border border-border-default rounded-full py-2.5 px-4 text-xs text-text-primary focus:outline-none appearance-none cursor-pointer pr-10 font-bold"
-                  >
-                    <option value="">-- Pilih Acara --</option>
-                    {events.map((evt) => (
-                      <option key={evt.id} value={evt.id}>
-                        {evt.title} ({formatDate(evt.event_date)})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3.5 top-3.5 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Alert Status Feedback */}
-              {formError && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
-                  <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              {formSuccess && (
-                <div className="p-3 bg-green-500/10 border border-green-500/30 text-[#2D5A00] rounded-xl text-xs font-semibold flex items-start gap-2 animate-pulse">
-                  <UserCheck className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-                  <span>{formSuccess}</span>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={formIsSubmitting}
-                className="w-full bg-text-primary text-bg-card border border-text-primary rounded-full py-3 text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+      {/* Modal Tambah Kehadiran */}
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setFormError("");
+          setFormSuccess("");
+        }}
+        title="CATAT KEHADIRAN MANUAL"
+        icon={<Plus size={20} />}
+      >
+        <form onSubmit={handleManualSubmit} className="space-y-4">
+          {/* Select Member */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+              Pilih Member
+            </label>
+            <div className="relative">
+              <select
+                value={formMemberId}
+                onChange={(e) => setFormMemberId(e.target.value)}
+                className="w-full bg-bg-well border border-border-default rounded-full py-2.5 px-4 text-xs text-text-primary focus:outline-none appearance-none cursor-pointer pr-10 font-bold"
               >
-                {formIsSubmitting ? (
-                  <>
-                    <Loader className="w-4.5 h-4.5 animate-spin" />
-                    <span>Mencatat...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckSquare className="w-4.5 h-4.5" />
-                    <span>Catat Kehadiran</span>
-                  </>
-                )}
-              </button>
-
-            </form>
+                <option value="">-- Cari & Pilih Member --</option>
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.full_name} {member.whatsapp_number ? `(${member.whatsapp_number})` : ""}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3.5 top-3.5 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+            </div>
           </div>
 
-        </div>
+          {/* Select Event */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+              Pilih Acara
+            </label>
+            <div className="relative">
+              <select
+                value={formEventId}
+                onChange={(e) => setFormEventId(e.target.value)}
+                className="w-full bg-bg-well border border-border-default rounded-full py-2.5 px-4 text-xs text-text-primary focus:outline-none appearance-none cursor-pointer pr-10 font-bold"
+              >
+                <option value="">-- Pilih Acara --</option>
+                {events.map((evt) => (
+                  <option key={evt.id} value={evt.id}>
+                    {evt.title} ({formatDate(evt.event_date)})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3.5 top-3.5 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+            </div>
+          </div>
 
-      </div>
+          {/* Alert Status Feedback */}
+          {formError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
+              <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+              <span>{formError}</span>
+            </div>
+          )}
+
+          {formSuccess && (
+            <div className="p-3 bg-green-500/10 border border-green-500/30 text-[#2D5A00] rounded-xl text-xs font-semibold flex items-start gap-2 animate-pulse">
+              <UserCheck className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+              <span>{formSuccess}</span>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={formIsSubmitting}
+            className="w-full bg-text-primary text-bg-card border border-text-primary rounded-full py-3 text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {formIsSubmitting ? (
+              <>
+                <Loader className="w-4.5 h-4.5 animate-spin" />
+                <span>Mencatat...</span>
+              </>
+            ) : (
+              <>
+                <CheckSquare className="w-4.5 h-4.5" />
+                <span>Catat Kehadiran</span>
+              </>
+            )}
+          </button>
+        </form>
+      </Modal>
+
+      {/* Modal QR Code Scanner (Coming Soon) */}
+      <Modal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        title="ABSENSI QR CODE"
+        icon={<QrCode size={20} />}
+      >
+        <div className="text-center py-8 space-y-4">
+          <div className="w-20 h-20 mx-auto rounded-2xl bg-neutral-100 dark:bg-zinc-900 border border-border-default flex items-center justify-center text-text-muted">
+            <QrCode className="w-10 h-10 animate-pulse" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">
+              [ COMING SOON — QR SCANNER ]
+            </h3>
+            <p className="text-xs text-text-secondary max-w-xs mx-auto leading-relaxed">
+              Fitur absensi mandiri dengan memindai kode QR personal dari sidebar profil member akan segera hadir.
+            </p>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   );

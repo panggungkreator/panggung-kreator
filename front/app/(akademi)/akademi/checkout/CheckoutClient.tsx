@@ -7,6 +7,13 @@ import Header from '@/components/ui/Header';
 import { signout } from '@/lib/actions/auth-actions';
 import { createClient } from '@/lib/supabase/client';
 import { registerMemberAction, validateVoucherAction } from '@/lib/actions/checkout-actions';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const formatWhatsapp = (value: string) => {
   let digits = value.replace(/\D/g, '');
@@ -514,7 +521,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
               </div>
             ) : (
               /* FORM REGISTRASI/CHECKOUT */
-              <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/5 rounded-2xl p-6 md:p-8 backdrop-blur-xs relative overflow-hidden shadow-lg dark:shadow-none transition-colors duration-300">
+              <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/5 rounded-2xl p-6 md:p-8 backdrop-blur-xs relative shadow-lg dark:shadow-none transition-colors duration-300">
                 <h2 className="font-title font-bold text-xl text-zinc-900 dark:text-white uppercase tracking-wider mb-6 flex items-center gap-3 border-b border-zinc-200 dark:border-white/10 pb-4">
                   <span className="w-8 h-8 rounded-full bg-[#bc151b]/20 flex items-center justify-center text-[#bc151b] text-sm">1</span>
                   Informasi Personal
@@ -659,20 +666,22 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                   {/* Profesi */}
                   <div>
                     <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Profesi Saat Ini</label>
-                    <select
-                      name="profession"
+                    <Select
                       value={formData.profession}
-                      onChange={handleChange}
-                      className="w-full bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-lg px-4 py-3 text-zinc-900 dark:text-white focus:outline-none focus:border-[#bc151b] focus:ring-1 focus:ring-[#bc151b] transition-all appearance-none cursor-pointer"
+                      onValueChange={(value) => setFormData((prev) => ({ ...prev, profession: value }))}
                     >
-                      <option value="" disabled>Pilih Profesi</option>
-                      <option value="mahasiswa">Mahasiswa / Pelajar</option>
-                      <option value="karyawan">Karyawan / Profesional</option>
-                      <option value="freelancer">Freelancer</option>
-                      <option value="content_creator">Content Creator</option>
-                      <option value="entrepreneur">Entrepreneur / Bisnis</option>
-                      <option value="lainnya">Lainnya</option>
-                    </select>
+                      <SelectTrigger className="w-full bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-lg px-4 py-3 h-auto text-zinc-900 dark:text-white focus:ring-1 focus:ring-[#bc151b] focus:border-[#bc151b] transition-all cursor-pointer">
+                        <SelectValue placeholder="Pilih Profesi" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white shadow-xl z-50">
+                        <SelectItem value="mahasiswa">Mahasiswa / Pelajar</SelectItem>
+                        <SelectItem value="karyawan">Karyawan / Profesional</SelectItem>
+                        <SelectItem value="freelancer">Freelancer</SelectItem>
+                        <SelectItem value="content_creator">Content Creator</SelectItem>
+                        <SelectItem value="entrepreneur">Entrepreneur / Bisnis</SelectItem>
+                        <SelectItem value="lainnya">Lainnya</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </form>
               </div>
@@ -696,24 +705,23 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                   <span className="font-bold text-md text-zinc-800 dark:text-zinc-100">Rp {basePrice.toLocaleString('id-ID')}</span>
                 </div>
 
-                <div className="space-y-2 mb-6">
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 space-y-2.5 mb-6">
+                  <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Fasilitas Termasuk:</div>
                   {selectedPackage?.benefits ? (
                     selectedPackage.benefits.map((benefit: any, idx: number) => benefit.isIncluded && (
-                      <div key={idx} className="flex justify-between items-center text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-lg border border-emerald-200 dark:border-emerald-950/50 transition-colors">
-                        <span className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-emerald-500 dark:text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                          {benefit.text}
-                        </span>
-                        <span className="font-semibold text-[10px] tracking-wider uppercase opacity-80">Included</span>
+                      <div key={idx} className="flex items-start gap-2.5 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+                        <svg className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span>{benefit.text}</span>
                       </div>
                     ))
                   ) : (
-                    <div className="flex justify-between items-center text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-lg border border-emerald-200 dark:border-emerald-950/50 transition-colors">
-                      <span className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-emerald-500 dark:text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                        Akses Penuh
-                      </span>
-                      <span className="font-semibold text-xs uppercase">Included</span>
+                    <div className="flex items-start gap-2.5 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+                      <svg className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>Akses Penuh Keanggotaan Panggung Kreator</span>
                     </div>
                   )}
                 </div>

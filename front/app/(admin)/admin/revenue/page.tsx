@@ -24,7 +24,7 @@ export default async function RevenuePage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Query 1: Revenue per month (12 months)

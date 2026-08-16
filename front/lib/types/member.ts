@@ -65,3 +65,41 @@ export interface MemberProfile {
   interests?: MemberInterests
   portfolio?: PortfolioItem[]
 }
+
+export interface AttendanceEvent {
+  title: string
+  event_type: string
+  event_date: string
+  start_time: string
+  end_time: string | null
+  location: string
+}
+
+export interface AttendanceRecord {
+  id: string
+  event_id: string
+  member_id: string
+  is_present: boolean
+  scan_method: 'qr' | 'manual' | 'rsvp_only' | null
+  scanned_at: string | null
+  created_at: string
+  event: AttendanceEvent
+}
+
+export interface AttendanceStats {
+  totalAttended: number
+  totalEvents: number
+  attendanceRate: number
+  currentStreak: number
+  longestStreak: number
+  lastAttendedEvent: AttendanceEvent | null
+}
+
+export interface ReferralMember {
+  id: string
+  full_name: string
+  email: string | null
+  membership_tier: MembershipTier
+  created_at: string
+}
+

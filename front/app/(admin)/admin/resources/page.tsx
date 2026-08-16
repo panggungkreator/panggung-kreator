@@ -24,7 +24,7 @@ export default async function ResourcesPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch resources list

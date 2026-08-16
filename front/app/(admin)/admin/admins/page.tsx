@@ -25,7 +25,7 @@ export default async function AdminsPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch admin roles from DB joining members info using Service Role Client to bypass RLS

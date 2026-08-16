@@ -277,7 +277,7 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
-    CONSTRAINT "events_event_type_check" CHECK (("event_type" = ANY (ARRAY['open_mic'::"text", 'sharing_session'::"text", 'networking'::"text", 'level_up'::"text", 'lainnya'::"text"])))
+    CONSTRAINT "events_event_type_check" CHECK (("event_type" = ANY (ARRAY['open_mic'::"text", 'sharing_session'::"text", 'networking'::"text", 'level_up'::"text", 'lainnya'::"text", 'speech_practice'::"text", 'mc_practice'::"text", 'voice_over'::"text", 'workshop'::"text", 'content_class'::"text", 'branding_class'::"text"])))
 );
 
 
@@ -1948,6 +1948,19 @@ using ((bucket_id = 'resources'::text));
   for select
   to public
 using ((bucket_id = 'venues'::text));
+
+
+
+CREATE POLICY "Allow read for authenticated users" ON "public"."admin_roles" FOR SELECT TO "authenticated" USING (true);
+CREATE POLICY "Allow manage for admin users" ON "public"."admin_roles" TO "authenticated" USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
+
+CREATE POLICY "Allow read for authenticated users" ON "public"."admin_role_permissions" FOR SELECT TO "authenticated" USING (true);
+CREATE POLICY "Allow manage for admin users" ON "public"."admin_role_permissions" TO "authenticated" USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
+
+CREATE POLICY "Allow read for authenticated users" ON "public"."privilege_actions" FOR SELECT TO "authenticated" USING (true);
+CREATE POLICY "Allow write for authenticated users" ON "public"."privilege_actions" TO "authenticated" USING (true) WITH CHECK (true);
+
+
 
 
 

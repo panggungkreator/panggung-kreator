@@ -31,7 +31,7 @@ export default async function AddPartnerPage({ searchParams }: PageProps) {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   let initialPartner = null;

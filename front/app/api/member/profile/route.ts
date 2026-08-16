@@ -2,6 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
+const urlSanitizer = z.string().optional().nullable().transform((val) => {
+  if (!val) return "-";
+  const trimmed = val.trim();
+  if (!trimmed || trimmed === "-") return "-";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+});
+
 const profileSchema = z.object({
   full_name: z.string().min(2).max(100),
   stage_name: z.string().min(2).max(50),
@@ -11,9 +19,10 @@ const profileSchema = z.object({
   occupation: z.string().optional().nullable(),
   description: z.string().max(500).optional().nullable(),
   city: z.string().optional().nullable(),
-  youtube_url: z.string().url().optional().or(z.literal('')).nullable(),
-  linkedin_url: z.string().url().optional().or(z.literal('')).nullable(),
-  portfolio_url: z.string().url().optional().or(z.literal('')).nullable(),
+  avatar_url: z.string().optional().nullable(),
+  youtube_url: urlSanitizer,
+  linkedin_url: urlSanitizer,
+  portfolio_url: urlSanitizer,
   subscribed_newsletter: z.boolean().default(true),
   referred_by_code: z.string().optional().nullable(),
 })

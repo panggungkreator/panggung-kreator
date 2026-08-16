@@ -90,7 +90,7 @@ export default function OnboardingForm() {
 
         const result = await submitOnboardingData(payload);
         if (result.success) {
-          router.push("/dashboard");
+          router.push("/myprofile");
         } else {
           setError(result.error || "Gagal menyimpan data. Silakan coba lagi.");
         }

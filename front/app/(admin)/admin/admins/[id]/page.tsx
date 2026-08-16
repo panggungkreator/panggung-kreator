@@ -32,7 +32,7 @@ export default async function AdminDetailPage({ params }: Props) {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // 1. Fetch admin role joined with member using Service Role Client to bypass RLS

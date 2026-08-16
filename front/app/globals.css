@@ -222,7 +222,7 @@ html.lenis body {
 
 /* Dark Mode Override for Stabilo */
 .dark .highlight-stabilo {
-  background: linear-gradient(180deg, transparent 40%, #0762bd 40%, #0762bd 85%, transparent 85%);
+  background: linear-gradient(180deg, transparent 40%, #ffe78a 40%, #ffe78a 85%, transparent 85%);
   animation: draw-stabilo-dark 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   animation-delay: 0.8s;
 }
@@ -230,8 +230,8 @@ html.lenis body {
 @keyframes draw-stabilo-dark {
   to {
     background-size: 100% 100%;
-    color: #ffffff !important;
-    /* Transition to readable white text on blue background */
+    color: #000000 !important;
+    /* Transition to readable black text on yellow background */
   }
 }
 

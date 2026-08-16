@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
   GripVertical, 
   Plus, 
@@ -16,7 +17,8 @@ import {
   XCircle,
   FileText,
   Eye,
-  EyeOff
+  EyeOff,
+  ArrowLeft
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -503,13 +505,22 @@ export default function SidebarLayoutClient() {
       
       {/* Top Header Bar */}
       <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-4 border-b border-border-default">
-        <div>
-          <h1 className="text-lg font-black tracking-wider text-text-primary uppercase">
-            SIDEBAR NAVIGATION LAYOUT
-          </h1>
-          <p className="text-xs text-text-secondary mt-0.5">
-            Sesuaikan grup menu dan susun urutan menu navigasi sidebar admin menggunakan fitur seret-lepas.
-          </p>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin"
+            className="p-2 border border-border-default hover:bg-bg-well rounded-full text-text-secondary hover:text-text-primary transition-colors cursor-pointer shrink-0"
+            title="Kembali ke Dashboard Admin"
+          >
+            <ArrowLeft size={14} />
+          </Link>
+          <div>
+            <h1 className="text-lg font-black tracking-wider text-text-primary uppercase">
+              SIDEBAR NAVIGATION LAYOUT
+            </h1>
+            <p className="text-xs text-text-secondary mt-0.5">
+              Sesuaikan grup menu dan susun urutan menu navigasi sidebar admin menggunakan fitur seret-lepas.
+            </p>
+          </div>
         </div>
         
         <div className="flex items-center gap-3.5 shrink-0">

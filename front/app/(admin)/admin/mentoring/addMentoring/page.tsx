@@ -31,7 +31,7 @@ export default async function AddMentoringPage({ searchParams }: PageProps) {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   let initialSession = null;

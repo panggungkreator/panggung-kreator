@@ -24,7 +24,7 @@ export default async function MentoringPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch mentoring sessions, members list, and packages in parallel

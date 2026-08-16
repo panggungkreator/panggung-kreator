@@ -24,7 +24,7 @@ export default async function AcaraCreatePage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch list of recommended venues to populate location selector

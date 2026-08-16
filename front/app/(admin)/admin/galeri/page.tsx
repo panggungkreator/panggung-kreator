@@ -25,7 +25,7 @@ export default async function GaleriCMSPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Tarik data seluruh album galeri

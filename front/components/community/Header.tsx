@@ -7,12 +7,16 @@ import { createClient } from "@/lib/supabase/client";
 import { signout } from "@/lib/actions/auth-actions";
 import { useRouter, usePathname } from "next/navigation";
 
+import ProfileSidebar from "@/app/myprofile/components/ProfileSidebar";
+import { MemberProfile } from "@/lib/types/member";
+
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [memberProfile, setMemberProfile] = useState<MemberProfile | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -40,6 +44,14 @@ export default function Header() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
+        const { data: memberData } = await supabase
+          .from("members")
+          .select("*, interests:member_interests(*)")
+          .eq("id", session.user.id)
+          .single();
+        if (memberData) {
+          setMemberProfile(memberData as MemberProfile);
+        }
       }
     };
     fetchSession();
@@ -47,6 +59,9 @@ export default function Header() {
     // Listen for auth change
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setUser(session?.user ?? null);
+      if (!session?.user) {
+        setMemberProfile(null);
+      }
     });
 
     return () => {
@@ -222,8 +237,8 @@ export default function Header() {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-white dark:bg-[#2c2c2c] md:hidden flex flex-col pt-28 p-6 gap-8 justify-between">
-          <nav className="flex flex-col gap-6 pt-4 items-start">
+        <div className="fixed inset-0 z-40 bg-white dark:bg-[#2c2c2c] md:hidden flex flex-col pt-24 p-6 gap-6 justify-between overflow-y-auto max-h-screen">
+          <nav className="flex flex-col gap-4 pt-2 items-start">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -242,26 +257,39 @@ export default function Header() {
             })}
           </nav>
 
-          <div className="flex flex-col gap-4 pb-12">
+          <div className="flex flex-col gap-4 pb-8">
             {user ? (
-              <>
-                <Link
-                  href="/myprofile"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full text-center py-3 border border-[#2c2c2c] dark:border-white text-xs uppercase tracking-[0.2em] font-bold text-[#2c2c2c] dark:text-white bg-[#2c2c2c]/5 dark:bg-white/5 rounded-none"
-                >
-                  Profil Saya
-                </Link>
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    handleSignOut();
-                  }}
-                  className="w-full text-center py-3 border border-red-600/30 text-xs uppercase tracking-[0.2em] font-bold text-red-600 bg-red-50 dark:bg-red-950/10 rounded-none"
-                >
-                  Keluar
-                </button>
-              </>
+              memberProfile ? (
+                <div className="border-t border-[#2c2c2c]/10 dark:border-white/10 pt-6">
+                  <ProfileSidebar
+                    member={memberProfile}
+                    onSignout={() => {
+                      setIsMobileMenuOpen(false);
+                      handleSignOut();
+                    }}
+                    onLinkClick={() => setIsMobileMenuOpen(false)}
+                  />
+                </div>
+              ) : (
+                <>
+                  <Link
+                    href="/myprofile"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full text-center py-3 border border-[#2c2c2c] dark:border-white text-xs uppercase tracking-[0.2em] font-bold text-[#2c2c2c] dark:text-white bg-[#2c2c2c]/5 dark:bg-white/5 rounded-none"
+                  >
+                    Profil Saya
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      handleSignOut();
+                    }}
+                    className="w-full text-center py-3 border border-red-600/30 text-xs uppercase tracking-[0.2em] font-bold text-red-600 bg-red-50 dark:bg-red-950/10 rounded-none"
+                  >
+                    Keluar
+                  </button>
+                </>
+              )
             ) : (
               <>
                 <Link

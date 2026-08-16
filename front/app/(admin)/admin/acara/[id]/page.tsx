@@ -47,7 +47,7 @@ export default async function AcaraDetailPage({
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch event details, event attendances, and members list in parallel

@@ -19,6 +19,12 @@ const PILLARS: { value: Pillar; label: string }[] = [
   { value: "personal_branding", label: "✨ Personal Branding" },
 ];
 
+const isValidSocialVal = (val?: string | null): val is string => {
+  if (!val) return false;
+  const trimmed = val.trim();
+  return trimmed !== "" && trimmed !== "-" && trimmed !== "none" && trimmed !== "null" && trimmed !== "undefined";
+};
+
 export default function TalentDetailPage({ params }: TalentDetailPageProps) {
   const resolvedParams = use(Promise.resolve(params));
   const username = resolvedParams.username;
@@ -162,7 +168,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
             <div className="space-y-2 border-t border-zinc-100 dark:border-zinc-900 pt-4">
               <span className="text-[9px] font-mono text-zinc-450 uppercase block">[ HUBUNGI TALENT ]</span>
               <div className="flex flex-wrap gap-2">
-                {member.instagram_username && (
+                {isValidSocialVal(member.instagram_username) && (
                   <a
                     href={
                       member.instagram_username.startsWith("http")
@@ -177,7 +183,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                     <span className="text-[10px] font-bold font-mono">IG</span>
                   </a>
                 )}
-                {member.tiktok_username && (
+                {isValidSocialVal(member.tiktok_username) && (
                   <a
                     href={`https://tiktok.com/@${member.tiktok_username}`}
                     target="_blank"
@@ -188,7 +194,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                     <span className="text-[10px] font-bold font-mono">TK</span>
                   </a>
                 )}
-                {member.youtube_url && (
+                {isValidSocialVal(member.youtube_url) && (
                   <a
                     href={member.youtube_url}
                     target="_blank"
@@ -199,7 +205,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                     <Video size={14} />
                   </a>
                 )}
-                {member.linkedin_url && (
+                {isValidSocialVal(member.linkedin_url) && (
                   <a
                     href={member.linkedin_url}
                     target="_blank"
@@ -210,7 +216,7 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                     <span className="text-[10px] font-bold font-mono">IN</span>
                   </a>
                 )}
-                {member.portfolio_url && (
+                {isValidSocialVal(member.portfolio_url) && (
                   <a
                     href={member.portfolio_url}
                     target="_blank"

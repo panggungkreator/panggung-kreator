@@ -24,7 +24,7 @@ export default async function TransactionsPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch all transactions with member and package details in parallel

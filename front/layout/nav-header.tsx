@@ -140,7 +140,7 @@ export default function NavHeader() {
             </div>
           ) : (
             <Link
-              href="/checkout"
+              href="/akademi/checkout"
               className="text-sm font-bold text-white transition-all bg-[#bc151b] hover:bg-[#9a1116] border border-[#bc151b] hover:border-[#9a1116] rounded-lg px-5 py-2 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] duration-150"
             >
               Daftar Sekarang

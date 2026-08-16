@@ -24,7 +24,7 @@ export default async function FunnelPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Query actual membership tiers counts

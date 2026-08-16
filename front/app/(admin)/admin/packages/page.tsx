@@ -26,7 +26,7 @@ export default async function PackagesPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Tarik data seluruh paket menggunakan server action

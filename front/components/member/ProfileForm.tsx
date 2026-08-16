@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import ImageUploader from "./ImageUploader";
 import { MemberProfile, PrimaryInterest } from "@/lib/types/member";
+import { createClient } from "@/lib/supabase/client";
+import { compressImageForTarget } from "@/lib/utils/image-compress";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner"; // sonner is used for toasts
@@ -15,17 +17,17 @@ interface ProfileFormProps {
 
 const INTEREST_OPTIONS = [
   { value: 'public_speaking', label: '🎤 Public Speaking', desc: 'Bicara didepan umum', color: '#10B981' },
-  { value: 'mc_host',         label: '🎙️ MC / Host',       desc: 'Memandu acara', color: '#3B82F6' },
-  { value: 'voice_over',      label: '🔊 Voice Over',      desc: 'Pengisi suara', color: '#EF4444' },
+  { value: 'mc_host', label: '🎙️ MC / Host', desc: 'Memandu acara', color: '#3B82F6' },
+  { value: 'voice_over', label: '🔊 Voice Over', desc: 'Pengisi suara', color: '#EF4444' },
   { value: 'content_creator', label: '🎬 Content Creator', desc: 'Pembuat konten', color: '#EC4899' },
   { value: 'personal_branding', label: '✨ Personal Brand', desc: 'Branding diri', color: '#F59E0B' },
-  { value: 'live_host',       label: '📱 Live Host',       desc: 'Host streaming', color: '#8B5CF6' },
+  { value: 'live_host', label: '📱 Live Host', desc: 'Host streaming', color: '#8B5CF6' },
 ];
 
 const EXPERIENCE_OPTIONS = [
-  { value: 'beginner',      label: 'Pemula',   desc: 'Baru mulai belajar & mencari tahu' },
-  { value: 'intermediate',  label: 'Menengah', desc: 'Sudah punya pengalaman / pernah praktik' },
-  { value: 'advanced',      label: 'Lanjutan', desc: 'Sudah aktif bekerja secara profesional' },
+  { value: 'beginner', label: 'Pemula', desc: 'Baru mulai belajar & mencari tahu' },
+  { value: 'intermediate', label: 'Menengah', desc: 'Sudah punya pengalaman / pernah praktik' },
+  { value: 'advanced', label: 'Lanjutan', desc: 'Sudah aktif bekerja secara profesional' },
 ];
 
 const OCCUPATION_OPTIONS = [
@@ -50,6 +52,8 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
   const [occupation, setOccupation] = useState(member.occupation || "other");
   const [description, setDescription] = useState(member.description || "");
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url || "");
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [isAvatarRemoved, setIsAvatarRemoved] = useState(false);
 
   // Section B: Sosial Media & Tautan
   const [instagramUsername, setInstagramUsername] = useState(member.instagram_username || "");
@@ -106,7 +110,108 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
     e.preventDefault();
     setIsLoading(true);
 
+    const formatYoutubeUrl = (url: string): string => {
+      const trimmed = (url || "").trim();
+      if (!trimmed || trimmed === "-") return "-";
+      if (/^https?:\/\//i.test(trimmed)) return trimmed;
+      if (trimmed.startsWith("youtube.com") || trimmed.startsWith("www.youtube.com")) {
+        return `https://${trimmed}`;
+      }
+      if (trimmed.startsWith("@")) {
+        return `https://youtube.com/${trimmed}`;
+      }
+      if (!trimmed.includes(".")) {
+        return `https://youtube.com/@${trimmed}`;
+      }
+      return `https://${trimmed}`;
+    };
+
+    const formatLinkedinUrl = (url: string): string => {
+      const trimmed = (url || "").trim();
+      if (!trimmed || trimmed === "-") return "-";
+      if (/^https?:\/\//i.test(trimmed)) return trimmed;
+      if (trimmed.startsWith("linkedin.com") || trimmed.startsWith("www.linkedin.com")) {
+        return `https://${trimmed}`;
+      }
+      if (trimmed.startsWith("in/")) {
+        return `https://linkedin.com/${trimmed}`;
+      }
+      if (!trimmed.includes(".")) {
+        return `https://linkedin.com/in/${trimmed}`;
+      }
+      return `https://${trimmed}`;
+    };
+
+    const formatWebsiteUrl = (url: string): string => {
+      const trimmed = (url || "").trim();
+      if (!trimmed || trimmed === "-") return "-";
+      if (/^https?:\/\//i.test(trimmed)) return trimmed;
+      return `https://${trimmed}`;
+    };
+
+    const cleanYoutube = formatYoutubeUrl(youtubeUrl);
+    const cleanLinkedin = formatLinkedinUrl(linkedinUrl);
+    const cleanPortfolio = formatWebsiteUrl(portfolioUrl);
+
+    let finalAvatarUrl: string | null = avatarUrl;
+
     try {
+      const supabase = createClient();
+
+      // 1. Upload foto baru jika ada file yang dipilih di penampungan sementara
+      if (pendingAvatarFile) {
+        // Hapus file avatar lama di Supabase Storage untuk member ini
+        try {
+          const { data: existingFiles } = await supabase.storage
+            .from("member-avatars")
+            .list(member.id);
+
+          if (existingFiles && existingFiles.length > 0) {
+            const filesToRemove = existingFiles.map((f: any) => `${member.id}/${f.name}`);
+            await supabase.storage.from("member-avatars").remove(filesToRemove);
+          }
+        } catch (cleanupErr) {
+          console.warn("Cleanup old avatar error:", cleanupErr);
+        }
+
+        // Kompresi dan upload avatar baru
+        const compressedFile = await compressImageForTarget(pendingAvatarFile, "avatar");
+        const fileName = `avatar_${Date.now()}.webp`;
+        const path = `${member.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("member-avatars")
+          .upload(path, compressedFile, {
+            contentType: "image/webp",
+            upsert: true,
+          });
+
+        if (uploadError) {
+          throw new Error(`Gagal mengunggah foto profil: ${uploadError.message}`);
+        }
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("member-avatars").getPublicUrl(path);
+
+        finalAvatarUrl = `${publicUrl}?t=${Date.now()}`;
+      } else if (isAvatarRemoved) {
+        // Jika user menghapus foto profilnya
+        try {
+          const { data: existingFiles } = await supabase.storage
+            .from("member-avatars")
+            .list(member.id);
+
+          if (existingFiles && existingFiles.length > 0) {
+            const filesToRemove = existingFiles.map((f: any) => `${member.id}/${f.name}`);
+            await supabase.storage.from("member-avatars").remove(filesToRemove);
+          }
+        } catch (cleanupErr) {
+          console.warn("Cleanup avatar error:", cleanupErr);
+        }
+        finalAvatarUrl = null;
+      }
+
       const response = await fetch("/api/member/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,12 +223,12 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
             city,
             occupation,
             description,
-            avatar_url: avatarUrl,
+            avatar_url: finalAvatarUrl,
             instagram_username: instagramUsername,
             tiktok_username: tiktokUsername,
-            youtube_url: youtubeUrl,
-            linkedin_url: linkedinUrl,
-            portfolio_url: portfolioUrl,
+            youtube_url: cleanYoutube,
+            linkedin_url: cleanLinkedin,
+            portfolio_url: cleanPortfolio,
             subscribed_newsletter: subscribedNewsletter,
           },
           interests: {
@@ -139,8 +244,35 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
 
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || "Gagal memperbarui profil.");
+        let message = "Gagal memperbarui profil.";
+        
+        if (err.error) {
+          if (typeof err.error === "string") {
+            message = err.error;
+          } else if (typeof err.error === "object") {
+            const fieldErrors = err.error.fieldErrors || {};
+            const messages = Object.entries(fieldErrors)
+              .map(([field, msgs]: [string, any]) => {
+                const fieldName = field.replace(/_/g, " ").toUpperCase();
+                return `${fieldName}: ${msgs.join(", ")}`;
+              });
+            
+            const formErrors = err.error.formErrors || [];
+            if (formErrors.length > 0) {
+              messages.push(...formErrors);
+            }
+            
+            if (messages.length > 0) {
+              message = messages.join(" | ");
+            }
+          }
+        }
+        throw new Error(message);
       }
+
+      // Reset pending file
+      setPendingAvatarFile(null);
+      setIsAvatarRemoved(false);
 
       toast.success("Profil Anda berhasil diperbarui!");
       onSave();
@@ -161,11 +293,10 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-4 text-[10px] font-mono uppercase tracking-widest border-r last:border-r-0 border-zinc-250 dark:border-zinc-800 transition-all cursor-pointer ${
-              activeTab === tab
-                ? "bg-neutral-50 dark:bg-zinc-900/50 font-bold border-b-2 border-black dark:border-white text-black dark:text-white"
-                : "text-zinc-500 hover:text-black dark:hover:text-white"
-            }`}
+            className={`flex-1 py-4 text-[10px] font-mono uppercase tracking-widest border-r last:border-r-0 border-zinc-250 dark:border-zinc-800 transition-all cursor-pointer ${activeTab === tab
+              ? "bg-neutral-50 dark:bg-zinc-900/50 font-bold border-b-2 border-black dark:border-white text-black dark:text-white"
+              : "text-zinc-500 hover:text-black dark:hover:text-white"
+              }`}
           >
             {tab === "bio" ? "[ 01. BIO & DATA DIRI ]" : tab === "social" ? "[ 02. SOSIAL & PORTFOLIO ]" : "[ 03. MINAT & GOALS ]"}
           </button>
@@ -181,8 +312,17 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
               <ImageUploader
                 memberId={member.id}
                 target="avatar"
+                mode="deferred"
                 initialImageUrl={avatarUrl}
                 onUploadSuccess={setAvatarUrl}
+                onFileSelect={(file) => {
+                  setPendingAvatarFile(file);
+                  if (file === null) {
+                    setIsAvatarRemoved(true);
+                  } else {
+                    setIsAvatarRemoved(false);
+                  }
+                }}
               />
               <div className="space-y-1">
                 <span className="text-xs font-bold uppercase tracking-wider block">FOTO PROFIL</span>
@@ -253,10 +393,10 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                   PROFESI UTAMA *
                 </label>
                 <Select value={occupation} onValueChange={setOccupation}>
-                  <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1.5 px-0 h-auto text-sm rounded-none focus:outline-none focus:ring-0 focus:border-black dark:focus:border-white transition-colors">
+                  <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1.5 px-0 h-auto text-sm font-normal rounded-none focus:outline-none focus:ring-0 focus:border-black dark:focus:border-white transition-colors">
                     <SelectValue placeholder="Pilih Profesi" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none p-1">
+                  <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 dark:text-white rounded-none p-1">
                     {OCCUPATION_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value} className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">
                         {opt.label}
@@ -328,7 +468,7 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                   LINK CHANNEL YOUTUBE
                 </label>
                 <input
-                  type="url"
+                  type="text"
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
                   placeholder="https://youtube.com/c/yourchannel"
@@ -341,7 +481,7 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                   LINK PROFILE LINKEDIN
                 </label>
                 <input
-                  type="url"
+                  type="text"
                   value={linkedinUrl}
                   onChange={(e) => setLinkedinUrl(e.target.value)}
                   placeholder="https://linkedin.com/in/username"
@@ -355,7 +495,7 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                 TAUTAN WEBSITE LAIN / PORTFOLIO UTAMA
               </label>
               <input
-                type="url"
+                type="text"
                 value={portfolioUrl}
                 onChange={(e) => setPortfolioUrl(e.target.value)}
                 placeholder="https://mywebsite.com"
@@ -381,11 +521,10 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                       key={item.value}
                       type="button"
                       onClick={() => toggleInterest(item.value)}
-                      className={`relative flex items-center space-x-2 px-3 py-2 border text-[11px] uppercase font-mono tracking-wider transition-all outline-none rounded-none cursor-pointer ${
-                        isSelected
-                          ? "bg-[#0A0A0A] dark:bg-white text-white dark:text-black border-black dark:border-white font-bold"
-                          : "bg-transparent border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
-                      }`}
+                      className={`relative flex items-center space-x-2 px-3 py-2 border text-[11px] uppercase font-mono tracking-wider transition-all outline-none rounded-none cursor-pointer ${isSelected
+                        ? "bg-[#0A0A0A] dark:bg-white text-white dark:text-black border-black dark:border-white font-bold"
+                        : "bg-transparent border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
+                        }`}
                     >
                       <span
                         className="h-2 w-2 rounded-full flex-shrink-0"
@@ -411,11 +550,10 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                       key={opt.value}
                       type="button"
                       onClick={() => setExperienceLevel(opt.value)}
-                      className={`flex-1 p-3 border text-left rounded-none transition-all cursor-pointer ${
-                        isSelected
-                          ? "border-black dark:border-white bg-[#0A0A0A]/5 dark:bg-white/5"
-                          : "border-zinc-300 dark:border-zinc-800 hover:border-black dark:hover:border-white"
-                      }`}
+                      className={`flex-1 p-3 border text-left rounded-none transition-all cursor-pointer ${isSelected
+                        ? "border-black dark:border-white bg-[#0A0A0A]/5 dark:bg-white/5"
+                        : "border-zinc-300 dark:border-zinc-800 hover:border-black dark:hover:border-white"
+                        }`}
                     >
                       <span className="text-xs font-bold block">{opt.label}</span>
                       <span className="text-[9px] text-zinc-500 dark:text-zinc-450 leading-tight block mt-1">{opt.desc}</span>
@@ -443,11 +581,10 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                       key={g.value}
                       type="button"
                       onClick={() => toggleGoal(g.value)}
-                      className={`flex items-center justify-between p-3 border text-left text-xs rounded-none transition-all cursor-pointer ${
-                        isSelected
-                          ? "border-black dark:border-white bg-neutral-100 dark:bg-zinc-800/50 font-bold"
-                          : "border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
-                      }`}
+                      className={`flex items-center justify-between p-3 border text-left text-xs rounded-none transition-all cursor-pointer ${isSelected
+                        ? "border-black dark:border-white bg-neutral-100 dark:bg-zinc-800/50 font-bold"
+                        : "border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
+                        }`}
                     >
                       <span>{g.label}</span>
                       {isSelected && <Check size={14} />}
@@ -463,7 +600,7 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                 KAPAN WAKTU LUANG TERBAIKMU UNTUK SESI KELAS?
               </label>
               <Select value={availability} onValueChange={setAvailability}>
-                <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1.5 px-0 h-auto text-xs rounded-none focus:outline-none focus:ring-0 focus:border-black dark:focus:border-white transition-colors">
+                <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1.5 px-0 h-auto text-xs font-normal rounded-none focus:outline-none focus:ring-0 focus:border-black dark:focus:border-white transition-colors">
                   <SelectValue placeholder="Pilih Waktu" />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none p-1">
@@ -483,7 +620,7 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full sm:w-auto px-12 py-3 bg-[#0A0A0A] dark:bg-white text-white dark:text-black hover:bg-[#bc151b] dark:hover:bg-[#bc151b] dark:hover:text-white font-bold text-[10px] uppercase tracking-widest rounded-none transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full sm:w-auto px-12 py-3 bg-[#0A0A0A] dark:bg-white text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold text-[10px] uppercase tracking-widest rounded-none transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {isLoading ? (
               <svg className="animate-spin h-3.5 w-3.5 text-current" fill="none" viewBox="0 0 24 24">

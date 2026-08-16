@@ -89,9 +89,9 @@ export default function Header({ isFixed = false }: { isFixed?: boolean }) {
           <div className="w-8 h-8 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/50 animate-pulse" />
         )}
 
-        {pathname !== '/checkout' && (
+        {pathname !== '/akademi/checkout' && (
           <Link
-            href="/checkout"
+            href="/akademi/checkout"
             className="text-sm font-bold text-white transition-all border border-[#bc151b] hover:border-[#9a1116] rounded-lg px-4 py-2 bg-[#bc151b] hover:bg-[#9a1116] cursor-pointer shadow-sm shadow-[#bc151b]/20"
           >
             Daftar Sekarang

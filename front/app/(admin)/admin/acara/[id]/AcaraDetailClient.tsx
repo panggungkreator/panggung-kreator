@@ -15,10 +15,16 @@ import {
   ChevronDown,
   Loader,
   AlertCircle,
-  UserCheck
+  UserCheck,
+  QrCode,
+  ChevronRight,
+  Check
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { hasPermission } from "@/lib/check-permission-client";
+import { Modal } from "@/components/ui/Modal";
+import { ModalConfirmation } from "@/components/ui/Modal-Confirmation";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface EventDetail {
   id: string;
@@ -72,10 +78,28 @@ export default function AcaraDetailClient({
 
   // Search & Form States
   const [search, setSearch] = useState("");
-  const [formMemberId, setFormMemberId] = useState("");
+  const [comboboxSearch, setComboboxSearch] = useState("");
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: React.ReactNode;
+    onConfirm: () => void;
+    isLoading?: boolean;
+    type?: "delete" | "verify" | "default";
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    onConfirm: () => { },
+    isLoading: false,
+    type: "default",
+  });
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("id-ID", {
@@ -175,15 +199,14 @@ export default function AcaraDetailClient({
       alert("Terjadi kesalahan.");
     }
   };
-
   // Handle Adding Member to attendance list
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
 
-    if (!formMemberId) {
-      setError("Pilih member terlebih dahulu.");
+    if (selectedMemberIds.length === 0) {
+      setError("Pilih setidaknya satu member.");
       return;
     }
 
@@ -192,24 +215,25 @@ export default function AcaraDetailClient({
     try {
       const supabase = createClient();
 
-      // 1. Check if member is already in the list
-      const { data: existing, error: checkError } = await supabase
+      // 1. Get existing records for the selected member IDs
+      const { data, error: checkError } = await supabase
         .from("attendances")
-        .select("id, is_present")
+        .select("id, member_id, is_present")
         .eq("event_id", event.id)
-        .eq("member_id", formMemberId)
-        .maybeSingle();
+        .in("member_id", selectedMemberIds);
 
       if (checkError) throw new Error(checkError.message);
 
-      if (existing) {
-        if (existing.is_present) {
-          setError("Member sudah tercatat HADIR.");
-          setIsSubmitting(false);
-          return;
-        }
+      const existingRecords = data as { id: string; member_id: string; is_present: boolean }[] | null;
 
-        // Update
+      const existingMap = new Map(existingRecords?.map(r => [r.member_id, r]));
+
+      // 2. Determine which ones to insert and which to update
+      const toInsertIds = selectedMemberIds.filter(id => !existingMap.has(id));
+      const toUpdateRecords = existingRecords?.filter(r => !r.is_present) || [];
+
+      // 3. Batch Update existing absent records to present
+      if (toUpdateRecords.length > 0) {
         const { error: updateError } = await supabase
           .from("attendances")
           .update({
@@ -217,27 +241,37 @@ export default function AcaraDetailClient({
             scan_method: "manual",
             scanned_at: new Date().toISOString()
           })
-          .eq("id", existing.id);
+          .in("id", toUpdateRecords.map(r => r.id));
 
         if (updateError) throw new Error(updateError.message);
-      } else {
-        // Insert
+      }
+
+      // 4. Batch Insert new attendance records as present
+      if (toInsertIds.length > 0) {
+        const insertData = toInsertIds.map(id => ({
+          event_id: event.id,
+          member_id: id,
+          is_present: true,
+          scan_method: "manual",
+          scanned_at: new Date().toISOString()
+        }));
+
         const { error: insertError } = await supabase
           .from("attendances")
-          .insert({
-            event_id: event.id,
-            member_id: formMemberId,
-            is_present: true,
-            scan_method: "manual",
-            scanned_at: new Date().toISOString()
-          });
+          .insert(insertData);
 
         if (insertError) throw new Error(insertError.message);
       }
 
-      setSuccess("Peserta berhasil ditambahkan!");
-      setFormMemberId("");
+      setSuccess(`Berhasil mendaftarkan ${selectedMemberIds.length} peserta!`);
+      setSelectedMemberIds([]);
       await refreshAttendances();
+
+      // Close modal on success
+      setTimeout(() => {
+        setIsAddModalOpen(false);
+        setSuccess("");
+      }, 1500);
     } catch (err: any) {
       console.error(err);
       setError("Gagal menambahkan: " + err.message);
@@ -247,12 +281,23 @@ export default function AcaraDetailClient({
   };
 
   // Handle Deleting attendance record
-  const handleDeleteAttendance = async (att: AttendanceRecord) => {
-    const confirmation = window.confirm(
-      `Hapus rekaman kehadiran ${att.member_name} dari acara ini?`
-    );
-    if (!confirmation) return;
+  const handleDeleteAttendance = (att: AttendanceRecord) => {
+    setConfirmModal({
+      isOpen: true,
+      type: "delete",
+      title: "Hapus Rekaman Kehadiran",
+      description: (
+        <span>
+          Apakah Anda yakin ingin menghapus rekaman kehadiran <span className="font-bold text-[#b91c1c]">{att.member_name}</span> dari acara ini? Aksi ini tidak dapat dibatalkan.
+        </span>
+      ),
+      onConfirm: () => executeDeleteAttendance(att),
+      isLoading: false,
+    });
+  };
 
+  const executeDeleteAttendance = async (att: AttendanceRecord) => {
+    setConfirmModal(prev => ({ ...prev, isLoading: true }));
     try {
       const supabase = createClient();
       const { error: deleteError } = await supabase
@@ -262,11 +307,12 @@ export default function AcaraDetailClient({
 
       if (deleteError) throw new Error(deleteError.message);
 
-      alert("Rekaman kehadiran dihapus.");
       await refreshAttendances();
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
     } catch (err: any) {
       console.error(err);
       alert("Gagal menghapus: " + err.message);
+      setConfirmModal(prev => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -324,6 +370,13 @@ export default function AcaraDetailClient({
     return members.filter(m => !attendances.some(a => a.member_id === m.id));
   }, [members, attendances]);
 
+  const filteredComboboxMembers = useMemo(() => {
+    return availableMembers.filter(m =>
+      m.full_name.toLowerCase().includes(comboboxSearch.toLowerCase()) ||
+      (m.whatsapp_number && m.whatsapp_number.includes(comboboxSearch))
+    );
+  }, [availableMembers, comboboxSearch]);
+
   return (
     <div className="space-y-6">
 
@@ -346,99 +399,98 @@ export default function AcaraDetailClient({
       </div>
 
       {/* Event Details Card */}
-      <div className="bg-bg-card border border-border-default rounded-2xl p-5 grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="bg-bg-card  p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
 
-        {/* Info 1: Date & Time */}
-        <div className="flex gap-3">
-          <div className="p-2.5 rounded-lg bg-bg-well border border-border-default text-text-secondary shrink-0 self-start">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Jadwal Acara</p>
-            <p className="text-xs font-bold text-text-primary mt-0.5">{formatDate(event.event_date)}</p>
-            <p className="text-[10px] text-text-secondary mt-0.5">{formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB</p>
-          </div>
-        </div>
+        {/* Left Section: Jadwal & Lokasi Group */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-12">
 
-        {/* Info 2: Location */}
-        <div className="flex gap-3">
-          <div className="p-2.5 rounded-lg bg-bg-well border border-border-default text-text-secondary shrink-0 self-start">
-            <MapPin className="w-5 h-5" />
+          {/* Info 1: Date & Time */}
+          <div className="flex gap-3 items-start">
+            <Calendar className="w-5 h-5 text-[#1a1a1a] dark:text-white shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Jadwal Acara</p>
+              <p className="text-xs font-bold text-text-primary mt-0.5">{formatDate(event.event_date)}</p>
+              <p className="text-[10px] text-text-secondary mt-0.5">{formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Lokasi / Venue</p>
-            <p className="text-xs font-bold text-text-primary mt-0.5 truncate" title={event.location}>{event.location}</p>
-            <p className="text-[10px] text-text-secondary mt-0.5 uppercase font-medium">{event.event_type.replace("_", " ")}</p>
-          </div>
-        </div>
 
-        {/* Info 3: Capacity Ratio */}
-        <div className="flex gap-3">
-          <div className="p-2.5 rounded-lg bg-bg-well border border-border-default text-text-secondary shrink-0 self-start">
-            <Users className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Kapasitas</p>
-            <p className="text-xs font-bold text-text-primary mt-0.5">
-              {event.capacity === 0 ? "Unlimited" : `${event.capacity} Kursi`}
-            </p>
-            <p className="text-[10px] text-text-secondary mt-0.5">{stats.total} pendaftar tercatat</p>
-          </div>
-        </div>
+          {/* Thin divider line (dash tipis) */}
+          <div className="hidden sm:block h-8 w-px bg-border-default/60" />
 
-        {/* Info 4: Present Attendance Stats */}
-        <div className="bg-bg-well border border-border-default rounded-xl p-3.5 flex flex-col justify-center">
-          <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider leading-none">Rasio Kehadiran</p>
-          <p className="text-base font-black text-text-primary mt-1.5 leading-none">
-            {stats.present} / {stats.total} <span className="text-[10px] text-text-secondary font-medium">Hadir</span>
-          </p>
-          <div className="w-full bg-border-default h-1.5 rounded-full mt-2 overflow-hidden">
-            <div className="bg-text-primary h-full" style={{ width: `${stats.percentage}%` }} />
+          {/* Info 2: Location */}
+          <div className="flex gap-3 items-start max-w-md">
+            <MapPin className="w-5 h-5 text-[#1a1a1a] dark:text-white shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Lokasi / Venue</p>
+              <p className="text-xs font-bold text-text-primary mt-0.5 truncate" title={event.location}>{event.location}</p>
+              <p className="text-[10px] text-text-secondary mt-0.5 uppercase font-medium">{event.event_type.replace("_", " ")}</p>
+            </div>
           </div>
+
         </div>
 
       </div>
 
-      {/* Main Grid: Attendance Table (8 cols) and Add Participant form (4 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Main Grid: Attendance Table (Full width) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
 
         {/* Left Section: Attendance List table */}
-        <div className={canCreate ? "lg:col-span-8 space-y-6" : "lg:col-span-12 space-y-6"}>
-          <div className="bg-bg-card border border-border-default rounded-2xl p-5">
-
-            {/* Table toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-border-default/45">
-              <div className="relative w-full sm:w-[260px]">
-                <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
-                  <Search className="w-4 h-4" />
-                </span>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cari nama atau No. WA..."
-                  className="bg-bg-well border border-border-default rounded-full py-2 pl-9 pr-4 text-xs w-full text-text-primary focus:outline-none focus:border-text-primary transition-colors"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={handleExportCSV}
-                  className="border border-border-default rounded-full px-4 py-1.5 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-bg-well text-text-primary transition-colors cursor-pointer"
-                >
-                  <FileDown className="w-3.5 h-3.5" />
-                  Ekspor CSV
-                </button>
-              </div>
+        <div className="lg:col-span-12 space-y-6">{/* Table toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-border-default/45">
+            <div className="relative w-full sm:w-[260px]">
+              <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
+                <Search className="w-4 h-4" />
+              </span>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari nama atau No. WA..."
+                className="bg-bg-well border border-border-default rounded-full py-4 pl-11 pr-4 text-xs w-full text-text-primary focus:outline-none focus:border-text-primary transition-colors"
+              />
             </div>
 
+            <div className="flex gap-2">
+              {canCreate && (
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="flex items-center justify-center gap-1.5 px-6 py-4 text-xs font-bold bg-[#F4F1BB] dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 rounded-full transition-all shadow-sm cursor-pointer tracking-wider flex-shrink-0 border-none"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Tambah Peserta
+                </button>
+              )}
+              <button
+                onClick={handleExportCSV}
+                className="bg-[#107c41] text-white border border-[#107c41] rounded-full px-6 py-4 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-[#0e6c38] transition-colors cursor-pointer flex-shrink-0"
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                Ekspor CSV
+              </button>
+              {/* Info 3: QR Code Button (Aligned to the far right with a premium design) */}
+              <button
+                type="button"
+                onClick={() => setIsQrModalOpen(true)}
+                className="flex gap-4 items-center justify-between text-left bg-zinc-900 border border-border-default text-xs font-semibold rounded-xl py-2 px-3.5 transition-all duration-300 cursor-pointer group shrink-0 shadow-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-text-primary/5 text-white shrink-0 transition-transform duration-300">
+                    <QrCode className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-white">QR Code</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+          <div className="bg-bg-card border border-border-default rounded-2xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="text-zinc-650 dark:text-zinc-400 font-semibold">
                     <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Nama Peserta</th>
                     <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">No. WhatsApp</th>
-                    <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Status Hadir</th>
                     <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Metode Scan</th>
                     <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Waktu Hadir</th>
                     <th className="py-4 px-6 border-b border-border-default/70 bg-bg-well/50 text-center">Aksi</th>
@@ -466,25 +518,6 @@ export default function AcaraDetailClient({
                           </td>
                           <td className={`${cellBorderClass} text-text-secondary font-medium`}>
                             {att.member_wa || "-"}
-                          </td>
-                          <td className={cellBorderClass}>
-                            {/* Toggle Attendance status */}
-                            <div className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={att.is_present}
-                                disabled={!canEdit}
-                                onChange={() => handleToggleAttendance(att.id, att.is_present, att.member_name)}
-                                className="w-4.5 h-4.5 text-text-primary bg-bg-well border-border-default rounded focus:ring-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                                title={canEdit ? "Klik untuk mengubah kehadiran" : "Anda tidak memiliki akses edit"}
-                              />
-                              <span className={`text-[10px] font-bold ml-2 px-2 py-0.5 rounded-full inline-block ${att.is_present
-                                ? "bg-[#EDFFF4] text-[#22C55E]"
-                                : "bg-neutral-100 text-neutral-400 border border-neutral-200"
-                                }`}>
-                                {att.is_present ? "Hadir" : "Absen"}
-                              </span>
-                            </div>
                           </td>
                           <td className={`${cellBorderClass} text-text-secondary font-medium uppercase`}>
                             {att.is_present ? att.scan_method : "-"}
@@ -518,85 +551,238 @@ export default function AcaraDetailClient({
           </div>
         </div>
 
-        {/* Right Section: Add member to attendance list */}
-        {canCreate && (
-          <div className="lg:col-span-4">
-            <div className="bg-bg-card border border-border-default rounded-2xl p-5 sticky top-6">
-              <div className="flex items-center gap-2 text-xs font-bold text-text-primary pb-3 border-b border-border-default/45 mb-4">
-                <Plus size={14} />
-                <span>DAFTARKAN PESERTA ACARA</span>
-              </div>
+      </div>
 
-              <form onSubmit={handleAddMember} className="space-y-4">
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setSelectedMemberIds([]);
+          setComboboxSearch("");
+          setError("");
+          setSuccess("");
+        }}
+        title="Absen Peserta"
+      >
+        <form onSubmit={handleAddMember} className="space-y-4">
 
-                {/* Select Member */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
-                    Pilih Member
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={formMemberId}
-                      onChange={(e) => setFormMemberId(e.target.value)}
-                      className="w-full bg-bg-well border border-border-default rounded-full py-2.5 px-4 text-xs text-text-primary focus:outline-none appearance-none cursor-pointer pr-10 font-bold"
-                    >
-                      <option value="">-- Pilih dari Member --</option>
-                      {availableMembers.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.full_name} {member.whatsapp_number ? `(${member.whatsapp_number})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3.5 top-3.5 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                  </div>
-                </div>
-
-                {/* Status alerts feedback */}
-                {error && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
-                    <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                {success && (
-                  <div className="p-3 bg-green-500/10 border border-green-500/30 text-[#2D5A00] rounded-xl text-xs font-semibold flex items-start gap-2 animate-pulse">
-                    <UserCheck className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-                    <span>{success}</span>
-                  </div>
-                )}
-
-                {/* Submit button */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting || availableMembers.length === 0}
-                  className="w-full bg-text-primary text-bg-card border border-text-primary hover:opacity-90 rounded-full py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          {/* Select Member Dropdown */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-text-primary uppercase tracking-wider block">
+              Pilih Peserta (Bisa memilih beberapa)
+            </label>
+            <div className="relative mt-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between bg-bg-well border border-border-default rounded-full py-3 px-6 text-xs text-text-primary focus:outline-none cursor-pointer pr-10 font-bold text-left min-h-10"
+                  >
+                    <span className="truncate">
+                      {selectedMemberIds.length > 0
+                        ? `${selectedMemberIds.length} Peserta Terpilih`
+                        : availableMembers.length === 0
+                          ? "Semua member sudah terdaftar"
+                          : "Cari & Pilih Member..."}
+                    </span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] p-0 z-50 bg-bg-card border border-border-default/85 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.4)] animate-in fade-in-50 zoom-in-95 duration-150"
+                  align="start"
+                  sideOffset={6}
                 >
-                  {isSubmitting ? (
-                    <>
-                      <Loader className="w-4.5 h-4.5 animate-spin" />
-                      <span>Mendaftarkan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-4.5 h-4.5" />
-                      <span>Daftarkan Hadir</span>
-                    </>
-                  )}
-                </button>
-
-                {availableMembers.length === 0 && (
-                  <p className="text-[9px] text-text-secondary italic text-center">
-                    Semua member terdaftar sudah masuk dalam absensi.
-                  </p>
-                )}
-
-              </form>
+                  <div className="flex items-center border-b border-border-default/50 px-6 py-4">
+                    <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-55 text-text-secondary" />
+                    <input
+                      placeholder="Cari nama atau No. WA..."
+                      value={comboboxSearch}
+                      onChange={(e) => setComboboxSearch(e.target.value)}
+                      className="flex h-7 w-full rounded-md bg-transparent text-xs outline-none placeholder:text-text-muted text-text-primary border-none p-0 focus:ring-0 focus:outline-none"
+                    />
+                  </div>
+                  <div className="max-h-60 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin">
+                    {filteredComboboxMembers.length === 0 ? (
+                      <p className="text-[11px] text-text-muted text-center py-4">
+                        Tidak ada member ditemukan.
+                      </p>
+                    ) : (
+                      filteredComboboxMembers.map((member) => {
+                        const isSelected = selectedMemberIds.includes(member.id);
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedMemberIds(prev =>
+                                isSelected
+                                  ? prev.filter(id => id !== member.id)
+                                  : [...prev, member.id]
+                              );
+                            }}
+                            className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-xs hover:bg-bg-well transition-colors text-text-primary font-medium cursor-pointer"
+                          >
+                            <div className="flex items-center justify-center w-4 h-4 border border-border-default rounded bg-bg-well shrink-0">
+                              {isSelected && <Check className="h-3 w-3 text-text-primary" />}
+                            </div>
+                            <div className="flex-1 truncate">
+                              {member.full_name}{" "}
+                              {member.whatsapp_number && (
+                                <span className="text-text-muted font-normal text-[10px]">
+                                  ({member.whatsapp_number})
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <ChevronDown className="absolute right-3.5 top-3.5 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
             </div>
           </div>
-        )}
 
-      </div>
+          {/* Selected Members List Badge display */}
+          {selectedMemberIds.length > 0 && (
+            <div className="space-y-2 bg-bg-well border border-border-default/60 rounded-xl p-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
+                  Peserta Terpilih ({selectedMemberIds.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMemberIds([])}
+                  className="text-[9px] font-bold text-[#b91c1c] hover:underline cursor-pointer uppercase"
+                >
+                  Hapus Semua
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto scrollbar-thin py-1">
+                {selectedMemberIds.map(id => {
+                  const m = members.find(member => member.id === id);
+                  if (!m) return null;
+                  return (
+                    <div
+                      key={id}
+                      className="flex items-center gap-1.5 bg-bg-card border border-border-default/80 rounded-full py-1 pl-3 pr-2 text-xs font-semibold text-text-primary shadow-sm hover:border-red-500/30 group transition-all"
+                    >
+                      <span>{m.full_name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMemberIds(prev => prev.filter(mid => mid !== id))}
+                        className="w-4 h-4 rounded-full bg-bg-well hover:bg-red-500 hover:text-white flex items-center justify-center text-[10px] font-bold transition-colors cursor-pointer text-text-secondary"
+                        title="Hapus dari pilihan"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Status alerts feedback */}
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
+              <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="p-3 bg-green-500/10 border border-green-500/30 text-[#2D5A00] rounded-xl text-xs font-semibold flex items-start gap-2 animate-pulse">
+              <UserCheck className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+              <span>{success}</span>
+            </div>
+          )}
+
+          {/* Submit button */}
+          <button
+            type="submit"
+            disabled={isSubmitting || selectedMemberIds.length === 0}
+            className="w-full bg-text-primary text-bg-card border border-text-primary rounded-full py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader className="w-4.5 h-4.5 animate-spin" />
+                <span>Mendaftarkan...</span>
+              </>
+            ) : (
+              <>
+                <Plus className="w-4.5 h-4.5" />
+                <span>Daftarkan {selectedMemberIds.length > 0 ? `(${selectedMemberIds.length})` : ""} Hadir</span>
+              </>
+            )}
+          </button>
+
+          {availableMembers.length === 0 && (
+            <p className="text-[9px] text-text-secondary italic text-center">
+              Semua member terdaftar sudah masuk dalam absensi.
+            </p>
+          )}
+
+        </form>
+      </Modal>
+
+      {/* Modal QR Code Acara */}
+      <Modal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        title="QR CODE KEHADIRAN ACARA"
+        icon={<QrCode size={20} />}
+      >
+        <div className="space-y-6 py-4 text-center">
+          {/* Detail Acara */}
+          <div className="space-y-2 border-b border-border-default/50 pb-4">
+            <h3 className="text-lg font-bold text-text-primary">
+              {event.title}
+            </h3>
+            <p className="text-xs text-text-secondary">
+              {formatDate(event.event_date)} • {event.start_time} - {event.end_time || "Selesai"}
+            </p>
+            <p className="text-xs text-text-muted font-medium">
+              📍 {event.location}
+            </p>
+          </div>
+
+          {/* QR Code Container */}
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm flex items-center justify-center">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+                  typeof window !== "undefined"
+                    ? `${window.location.origin}/absensi/${event.id}`
+                    : `/absensi/${event.id}`
+                )}`}
+                alt={`QR Code Kehadiran ${event.title}`}
+                className="w-48 h-48 object-contain"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
+                Pindai untuk Hadir
+              </p>
+              <p className="text-[9px] text-text-muted max-w-xs mx-auto">
+                Scan kode QR ini untuk mencatat kehadiran peserta secara langsung ke sistem.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <ModalConfirmation
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        onConfirm={confirmModal.onConfirm}
+        isLoading={confirmModal.isLoading}
+        type={confirmModal.type}
+      />
 
     </div>
   );

@@ -24,7 +24,7 @@ export default async function AktivitasPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Query 1: Attendances per month (is_present = true)

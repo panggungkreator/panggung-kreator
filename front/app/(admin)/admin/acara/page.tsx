@@ -24,7 +24,7 @@ export default async function AcaraPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch events along with their attendance records to calculate present counts

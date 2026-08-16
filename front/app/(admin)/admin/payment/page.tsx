@@ -24,7 +24,7 @@ export default async function PaymentPage() {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   // Fetch transactions (including member details, package details, and metadata)

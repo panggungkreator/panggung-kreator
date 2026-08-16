@@ -31,7 +31,7 @@ export default async function AddResourcePage({ searchParams }: PageProps) {
     .single();
 
   if (!member || member.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/myprofile");
   }
 
   let initialResource = null;

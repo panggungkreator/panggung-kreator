@@ -30,6 +30,7 @@ import {
   Home,
   LayoutDashboard,
   Settings,
+  PanelLeft,
   Menu,
   X,
   Loader2
@@ -146,6 +147,7 @@ export default function AdminLayout({
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [adminName, setAdminName] = useState("Admin");
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [permissions, setPermissions] = useState<Record<string, Permission>>({});
   const [navGroups, setNavGroups] = useState<NavGroup[]>(staticNavGroups);
 
@@ -240,7 +242,10 @@ export default function AdminLayout({
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          setIsLoadingUser(false);
+          return;
+        }
 
         const { data: member } = await supabase
           .from("members")
@@ -288,6 +293,8 @@ export default function AdminLayout({
         }
       } catch (err) {
         console.warn("Permission fetch error:", err);
+      } finally {
+        setIsLoadingUser(false);
       }
     };
 
@@ -394,6 +401,8 @@ export default function AdminLayout({
 
   const breadcrumbs = getBreadcrumbs();
 
+  const isNoSidebarPage = pathname.includes("/sidebar-layout") || pathname.includes("/settings");
+
   return (
     <div className="flex flex-col h-screen bg-bg-page overflow-hidden font-sans text-text-primary transition-colors duration-300">
 
@@ -402,14 +411,16 @@ export default function AdminLayout({
 
         {/* Left Section: Logo & Breadcrumbs (Grouped together) */}
         <div className="flex items-center gap-6">
-          {/* Hamburger Menu Button (Mobile only) */}
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="lg:hidden p-1.5 rounded-md hover:bg-bg-well border border-border-default text-text-primary cursor-pointer shrink-0"
-            aria-label="Toggle Navigation"
-          >
-            {isSidebarOpen ? <X size={16} /> : <Menu size={16} />}
-          </button>
+          {/* Hamburger Menu Button (Mobile only, hidden if page doesn't have sidebar) */}
+          {!isNoSidebarPage && (
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="lg:hidden p-1.5 rounded-md hover:bg-bg-well border border-border-default text-text-primary cursor-pointer shrink-0"
+              aria-label="Toggle Navigation"
+            >
+              {isSidebarOpen ? <X size={16} /> : <Menu size={16} />}
+            </button>
+          )}
 
           <Link href={getCleanHref("/admin")} className="flex items-center gap-2 font-black text-sm tracking-widest text-text-primary hover:opacity-85 transition-opacity shrink-0">
             <img src="/logo-dark.png" alt="Logo" className="h-20 w-auto dark:block hidden" />
@@ -436,17 +447,6 @@ export default function AdminLayout({
         {/* Right Section: Toggle Theme, Notifications, Profile */}
         <div className="flex items-center gap-4">
 
-          {/* Notification Indicator badge */}
-          {/* {pendingCount > 0 && (
-            <Link
-              href="/admin/akademi/payment"
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold tracking-wider uppercase bg-red-500 text-white rounded-full animate-pulse shrink-0"
-            >
-              <Bell size={10} />
-              <span>{pendingCount} BUTUH KONFIRMASI</span>
-            </Link>
-          )} */}
-
           {/* Theme Toggle */}
           {mounted && (
             <button
@@ -460,18 +460,26 @@ export default function AdminLayout({
 
           {/* User Profile Dropdown */}
           <div className="relative shrink-0" ref={dropdownRef}>
-            <button
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer py-1"
-            >
-              <div className="w-8 h-8 rounded-full bg-text-primary text-bg-card flex items-center justify-center font-bold text-xs uppercase select-none shrink-0">
-                {adminName.charAt(0)}
+            {isLoadingUser ? (
+              <div className="flex items-center gap-2 py-1 animate-pulse select-none">
+                <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 shrink-0" />
+                <div className="hidden sm:block h-3.5 w-16 bg-zinc-200 dark:bg-zinc-800 rounded" />
+                <div className="w-3.5 h-3.5 bg-zinc-250 dark:bg-zinc-750 rounded shrink-0" />
               </div>
-              <span className="hidden sm:inline text-xs font-semibold text-text-primary truncate max-w-[120px]">
-                {adminName}
-              </span>
-              <ChevronDown size={14} className="text-text-secondary shrink-0" />
-            </button>
+            ) : (
+              <button
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer py-1"
+              >
+                <div className="w-8 h-8 rounded-full bg-text-primary text-bg-card flex items-center justify-center font-bold text-xs uppercase select-none shrink-0">
+                  {adminName.charAt(0)}
+                </div>
+                <span className="hidden sm:inline text-xs font-semibold text-text-primary truncate max-w-[120px]">
+                  {adminName}
+                </span>
+                <ChevronDown size={14} className="text-text-secondary shrink-0" />
+              </button>
+            )}
 
             {/* Dropdown Menu */}
             {isProfileOpen && (
@@ -487,8 +495,17 @@ export default function AdminLayout({
                   onClick={() => setIsProfileOpen(false)}
                   className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-page rounded-md transition-all duration-150 cursor-pointer"
                 >
-                  <Settings size={13} />
+                  <PanelLeft size={13} />
                   <span>Sidebar Layout</span>
+                </Link>
+                {/* settings */}
+                <Link
+                  href={getCleanHref("/admin/settings")}
+                  onClick={() => setIsProfileOpen(false)}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-page rounded-md transition-all duration-150 cursor-pointer"
+                >
+                  <Settings size={13} />
+                  <span>Settings</span>
                 </Link>
                 <button
                   onClick={handleSignOut}
@@ -508,7 +525,7 @@ export default function AdminLayout({
       {/* Body Area - Under Header (Contains Sidebar on left, Content on right) */}
       <div className="flex flex-1 overflow-hidden w-full relative z-20">
         {/* Mobile Sidebar Backdrop */}
-        {isSidebarOpen && (
+        {!isNoSidebarPage && isSidebarOpen && (
           <div
             className="fixed inset-0 bg-black/40 z-30 lg:hidden animate-fade-in"
             onClick={() => setIsSidebarOpen(false)}
@@ -516,67 +533,73 @@ export default function AdminLayout({
         )}
 
         {/* Sidebar Navigation - Starts below header, w-56, scrollable */}
-        <aside
-          data-lenis-prevent
-          className={`w-56 flex-shrink-0 flex flex-col bg-bg-sidebar border-r border-border-default overflow-y-auto no-scrollbar transition-all duration-300 z-40
-            ${isSidebarOpen
-              ? "translate-x-0 fixed left-0 top-18 bottom-0 bg-bg-sidebar shadow-2xl"
-              : "-translate-x-full fixed left-0 top-18 bottom-0 lg:translate-x-0 lg:static lg:h-full"
-            }`}
-        >
-          <nav className="py-5 space-y-5">
-            {/* Dashboard (Always at top, no module constraint) */}
-            <div className="px-2">
-              <Link
-                href={getCleanHref("/admin")}
-                className={`flex items-center gap-3 rounded-md px-2 py-2 text-xs font-semibold tracking-wider transition-all duration-150 ${pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/")
-                  ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
-                  : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
+        {!isNoSidebarPage && (
+          <aside
+            data-lenis-prevent
+            className={`w-56 flex-shrink-0 flex flex-col bg-bg-sidebar border-r border-border-default overflow-y-auto no-scrollbar transition-all duration-300 z-40
+              ${isSidebarOpen
+                ? "translate-x-0 fixed left-0 top-18 bottom-0 bg-bg-sidebar shadow-2xl"
+                : "-translate-x-full fixed left-0 top-18 bottom-0 lg:translate-x-0 lg:static lg:h-full"
+              }`}
+          >
+            <nav className="py-5 space-y-5">
+              {/* Dashboard (Always at top, no module constraint) */}
+              <div className="px-2">
+                <Link
+                  href={getCleanHref("/admin")}
+                  className={`flex items-center gap-3 rounded-md px-2 py-2 text-xs font-semibold tracking-wider transition-all duration-150 ${
+                    pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/")
+                      ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
+                      : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
                   }`}
-              >
-                <LayoutDashboard size={14} />
-                <span className={pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/") ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}>
-                  Dashboard
-                </span>
-              </Link>
-            </div>
+                >
+                  <LayoutDashboard size={14} />
+                  <span className={pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/") ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}>
+                    Dashboard
+                  </span>
+                </Link>
+              </div>
 
-            {/* Grouped Menus */}
-            {navGroups.map((group) => {
-              const visibleItems = group.items.filter(item => canView(item.module));
-              if (visibleItems.length === 0) return null;
+              {/* Grouped Menus */}
+              {navGroups.map((group) => {
+                const visibleItems = group.items.filter((item) => canView(item.module));
+                if (visibleItems.length === 0) return null;
 
-              return (
-                <div key={group.title} className="space-y-1">
-                  <div className="px-4 text-[9px] uppercase tracking-[0.2em] font-bold text-text-muted">
-                    {group.title}
-                  </div>
-                  <div className="space-y-0.5">
-                    {visibleItems.map((item) => {
-                      const cleanHref = getCleanHref(item.href);
-                      const isActive = pathname === cleanHref || (cleanHref !== "/" && pathname.startsWith(cleanHref + "/"));
-                      return (
-                        <Link
-                          key={item.href}
-                          href={cleanHref}
-                          className={`flex items-center gap-2.5 px-4 py-3 text-xs font-semibold tracking-wider transition-all duration-150 ${isActive
-                            ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
-                            : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
+                return (
+                  <div key={group.title} className="space-y-1">
+                    <div className="px-4 text-[9px] uppercase tracking-[0.2em] font-bold text-text-muted">
+                      {group.title}
+                    </div>
+                    <div className="space-y-0.5">
+                      {visibleItems.map((item) => {
+                        const cleanHref = getCleanHref(item.href);
+                        const isActive =
+                          pathname === cleanHref ||
+                          (cleanHref !== "/" && pathname.startsWith(cleanHref + "/"));
+                        return (
+                          <Link
+                            key={item.href}
+                            href={cleanHref}
+                            className={`flex items-center gap-2.5 px-4 py-3 text-xs font-semibold tracking-wider transition-all duration-150 ${
+                              isActive
+                                ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
+                                : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
                             }`}
-                        >
-                          {item.icon}
-                          <span className={`truncate ${isActive ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}`}>
-                            {item.label}
-                          </span>
-                        </Link>
-                      );
-                    })}
+                          >
+                            {item.icon}
+                            <span className={`truncate ${isActive ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}`}>
+                              {item.label}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </nav>
-        </aside>
+                );
+              })}
+            </nav>
+          </aside>
+        )}
 
         {/* Scrollable Content Container */}
         <main

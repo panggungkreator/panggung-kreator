@@ -253,14 +253,6 @@ export async function proxy(request: NextRequest) {
             ? `${process.env.NEXT_PUBLIC_ADMIN_URL}/`
             : `${defaultAdminUrl}/`;
           return NextResponse.redirect(new URL(adminRedirectUrl, request.url));
-        } else if (member.membership_tier !== "free") {
-          const defaultAkademiUrl = isLocalhost
-            ? `${protocol}//localhost${port}/akademi/dashboard`
-            : `${protocol}//akademi.${rootHost}/dashboard`;
-          const akademiRedirectUrl = process.env.NEXT_PUBLIC_AKADEMI_URL
-            ? process.env.NEXT_PUBLIC_AKADEMI_URL
-            : defaultAkademiUrl;
-          return NextResponse.redirect(new URL(akademiRedirectUrl, request.url));
         } else {
           return NextResponse.redirect(new URL("/myprofile", request.url));
         }
