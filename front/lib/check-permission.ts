@@ -28,12 +28,12 @@ export async function checkPermission(
     return false;
   }
 
-  // 1. Dapatkan admin_role_id & status
+  // 1. Dapatkan admin_role_id, status & color (Super Admin = color 'slate')
   const { data: adminRole } = await supabase
     .from("admin_roles")
-    .select("id, status")
+    .select("id, status, color")
     .eq("member_id", session.user.id)
-    .single();
+    .maybeSingle();
 
   if (!adminRole || adminRole.status !== "active") {
     if (mode === "page") {
@@ -42,13 +42,18 @@ export async function checkPermission(
     return false;
   }
 
-  // 2. Query apakah ada baris permission
+  // Super Admin (color 'slate') memiliki akses penuh secara langsung
+  if (adminRole.color === "slate") {
+    return true;
+  }
+
+  // 2. Query apakah ada baris permission (relasi via action_id)
   const { data: perm } = await supabase
     .from("admin_role_permissions")
     .select(`
       id,
       privilege_items!inner(slug),
-      privilege_actions!inner(slug)
+      privilege_actions:action_id!inner(slug)
     `)
     .eq("admin_role_id", adminRole.id)
     .eq("privilege_items.slug", pageSlug)
@@ -78,19 +83,21 @@ export async function getPermissionMap(
     .from("admin_role_permissions")
     .select(`
       privilege_items!inner ( slug ),
-      privilege_actions!inner ( slug )
+      privilege_actions:action_id!inner ( slug )
     `)
     .eq("admin_role_id", adminRoleId);
 
   const permMap: Record<string, string[]> = {};
   perms?.forEach((p: any) => {
-    const page = p.privilege_items.slug;
-    const action = p.privilege_actions.slug;
-    if (!permMap[page]) {
-      permMap[page] = [];
-    }
-    if (!permMap[page].includes(action)) {
-      permMap[page].push(action);
+    const page = p.privilege_items?.slug;
+    const action = p.privilege_actions?.slug;
+    if (page && action) {
+      if (!permMap[page]) {
+        permMap[page] = [];
+      }
+      if (!permMap[page].includes(action)) {
+        permMap[page].push(action);
+      }
     }
   });
 
