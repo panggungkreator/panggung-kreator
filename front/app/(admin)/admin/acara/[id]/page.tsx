@@ -51,7 +51,7 @@ export default async function AcaraDetailPage({
   }
 
   // Fetch event details, event attendances, and members list in parallel
-  const [eventResponse, attendancesResponse, membersResponse] = await Promise.all([
+  const [eventResponse, attendancesResponse, membersResponse, adminRolesResponse] = await Promise.all([
     supabase
       .from("events")
       .select("*")
@@ -77,12 +77,21 @@ export default async function AcaraDetailPage({
       .from("members")
       .select("id, full_name, whatsapp_number")
       .eq("role", "member")
-      .order("full_name", { ascending: true })
+      .eq("payment_status", "paid")
+      .order("full_name", { ascending: true }),
+    supabase
+      .from("admin_roles")
+      .select("member_id")
   ]);
 
   const event = eventResponse.data;
   const rawAttendances = attendancesResponse.data || [];
-  const members = membersResponse.data || [];
+  const rawMembers = membersResponse.data || [];
+  const adminRoles = adminRolesResponse.data || [];
+  
+  // Filter out any members who have admin roles
+  const adminMemberIds = new Set(adminRoles.map((r: any) => r.member_id));
+  const members = rawMembers.filter((m: any) => !adminMemberIds.has(m.id));
 
   if (!event) {
     return notFound();

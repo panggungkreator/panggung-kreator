@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { hasPermission } from "@/lib/check-permission-client";
+import { manualAttendanceAddAction } from "@/lib/actions/attendance-actions";
 import { Modal } from "@/components/ui/Modal";
 import { ModalConfirmation } from "@/components/ui/Modal-Confirmation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -199,6 +200,7 @@ export default function AcaraDetailClient({
       alert("Terjadi kesalahan.");
     }
   };
+
   // Handle Adding Member to attendance list
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,65 +215,21 @@ export default function AcaraDetailClient({
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
+      const res = await manualAttendanceAddAction(event.id, selectedMemberIds);
 
-      // 1. Get existing records for the selected member IDs
-      const { data, error: checkError } = await supabase
-        .from("attendances")
-        .select("id, member_id, is_present")
-        .eq("event_id", event.id)
-        .in("member_id", selectedMemberIds);
+      if (res.success) {
+        setSuccess(res.message || "Berhasil mendaftarkan peserta!");
+        setSelectedMemberIds([]);
+        await refreshAttendances();
 
-      if (checkError) throw new Error(checkError.message);
-
-      const existingRecords = data as { id: string; member_id: string; is_present: boolean }[] | null;
-
-      const existingMap = new Map(existingRecords?.map(r => [r.member_id, r]));
-
-      // 2. Determine which ones to insert and which to update
-      const toInsertIds = selectedMemberIds.filter(id => !existingMap.has(id));
-      const toUpdateRecords = existingRecords?.filter(r => !r.is_present) || [];
-
-      // 3. Batch Update existing absent records to present
-      if (toUpdateRecords.length > 0) {
-        const { error: updateError } = await supabase
-          .from("attendances")
-          .update({
-            is_present: true,
-            scan_method: "manual",
-            scanned_at: new Date().toISOString()
-          })
-          .in("id", toUpdateRecords.map(r => r.id));
-
-        if (updateError) throw new Error(updateError.message);
+        // Close modal on success
+        setTimeout(() => {
+          setIsAddModalOpen(false);
+          setSuccess("");
+        }, 1500);
+      } else {
+        setError(res.error || "Gagal menambahkan peserta.");
       }
-
-      // 4. Batch Insert new attendance records as present
-      if (toInsertIds.length > 0) {
-        const insertData = toInsertIds.map(id => ({
-          event_id: event.id,
-          member_id: id,
-          is_present: true,
-          scan_method: "manual",
-          scanned_at: new Date().toISOString()
-        }));
-
-        const { error: insertError } = await supabase
-          .from("attendances")
-          .insert(insertData);
-
-        if (insertError) throw new Error(insertError.message);
-      }
-
-      setSuccess(`Berhasil mendaftarkan ${selectedMemberIds.length} peserta!`);
-      setSelectedMemberIds([]);
-      await refreshAttendances();
-
-      // Close modal on success
-      setTimeout(() => {
-        setIsAddModalOpen(false);
-        setSuccess("");
-      }, 1500);
     } catch (err: any) {
       console.error(err);
       setError("Gagal menambahkan: " + err.message);
@@ -566,6 +524,46 @@ export default function AcaraDetailClient({
       >
         <form onSubmit={handleAddMember} className="space-y-4">
 
+          {/* Selected Members List Badge display */}
+          {selectedMemberIds.length > 0 && (
+            <div className="space-y-2 bg-bg-well border border-border-default/60 rounded-xl p-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
+                  Peserta Terpilih ({selectedMemberIds.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMemberIds([])}
+                  className="text-[9px] font-bold text-[#b91c1c] hover:underline cursor-pointer uppercase"
+                >
+                  Hapus Semua
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto scrollbar-thin py-1">
+                {selectedMemberIds.map(id => {
+                  const m = members.find(member => member.id === id);
+                  if (!m) return null;
+                  return (
+                    <div
+                      key={id}
+                      className="flex items-center gap-1.5 bg-bg-card border border-border-default/80 rounded-full py-1 pl-3 pr-2 text-xs font-semibold text-text-primary shadow-sm hover:border-red-500/30 group transition-all"
+                    >
+                      <span>{m.full_name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMemberIds(prev => prev.filter(mid => mid !== id))}
+                        className="w-4 h-4 rounded-full bg-bg-well hover:bg-red-500 hover:text-white flex items-center justify-center text-[10px] font-bold transition-colors cursor-pointer text-text-secondary"
+                        title="Hapus dari pilihan"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Select Member Dropdown */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-text-primary uppercase tracking-wider block">
@@ -644,46 +642,6 @@ export default function AcaraDetailClient({
             </div>
           </div>
 
-          {/* Selected Members List Badge display */}
-          {selectedMemberIds.length > 0 && (
-            <div className="space-y-2 bg-bg-well border border-border-default/60 rounded-xl p-3.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
-                  Peserta Terpilih ({selectedMemberIds.length})
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedMemberIds([])}
-                  className="text-[9px] font-bold text-[#b91c1c] hover:underline cursor-pointer uppercase"
-                >
-                  Hapus Semua
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto scrollbar-thin py-1">
-                {selectedMemberIds.map(id => {
-                  const m = members.find(member => member.id === id);
-                  if (!m) return null;
-                  return (
-                    <div
-                      key={id}
-                      className="flex items-center gap-1.5 bg-bg-card border border-border-default/80 rounded-full py-1 pl-3 pr-2 text-xs font-semibold text-text-primary shadow-sm hover:border-red-500/30 group transition-all"
-                    >
-                      <span>{m.full_name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedMemberIds(prev => prev.filter(mid => mid !== id))}
-                        className="w-4 h-4 rounded-full bg-bg-well hover:bg-red-500 hover:text-white flex items-center justify-center text-[10px] font-bold transition-colors cursor-pointer text-text-secondary"
-                        title="Hapus dari pilihan"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Status alerts feedback */}
           {error && (
             <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
@@ -736,7 +694,7 @@ export default function AcaraDetailClient({
       >
         <div className="space-y-6 py-4 text-center">
           {/* Detail Acara */}
-          <div className="space-y-2 border-b border-border-default/50 pb-4">
+          <div className="space-y-2 border-b border-border-default/50">
             <h3 className="text-lg font-bold text-text-primary">
               {event.title}
             </h3>
@@ -758,7 +716,7 @@ export default function AcaraDetailClient({
                     : `/absensi/${event.id}`
                 )}`}
                 alt={`QR Code Kehadiran ${event.title}`}
-                className="w-48 h-48 object-contain"
+                className="w-52 h-52 object-contain"
               />
             </div>
             <div className="space-y-1">
