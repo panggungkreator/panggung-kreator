@@ -11,6 +11,19 @@ export default function PageTransitionLoader() {
   const overlayRef = useRef<HTMLDivElement>(null);
   const isNavigatingRef = useRef(false);
 
+  // Check if current hostname or path is for Admin portal
+  const isHostAdmin =
+    typeof window !== "undefined" &&
+    (window.location.hostname.startsWith("admin.") ||
+      window.location.hostname.includes("admin."));
+
+  const isAdminRoute = pathname?.startsWith("/admin") || isHostAdmin;
+
+  // Do not render full-screen transition overlay on Admin portal (Admin uses component/skeleton loading)
+  if (isAdminRoute) {
+    return null;
+  }
+
   // Always refresh ScrollTrigger on pathname change to fix navigation layout rendering issues
   useEffect(() => {
     const timer = setTimeout(() => {
