@@ -551,62 +551,98 @@ export default function AdminLayout({
                 : "-translate-x-full fixed left-0 top-18 bottom-0 lg:translate-x-0 lg:static lg:h-full"
               }`}
           >
-            <nav className="py-5 space-y-5">
-              {/* Dashboard (Always at top, no module constraint) */}
-              <div className="px-2">
-                <Link
-                  href={getCleanHref("/admin")}
-                  className={`flex items-center gap-3 rounded-md px-2 py-2 text-xs font-semibold tracking-wider transition-all duration-150 ${
-                    pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/")
-                      ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
-                      : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
-                  }`}
-                >
-                  <LayoutDashboard size={14} />
-                  <span className={pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/") ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}>
-                    Dashboard
-                  </span>
-                </Link>
-              </div>
+            {isLoadingUser ? (
+              <nav className="py-5 space-y-6 px-4 animate-pulse select-none">
+                {/* Dashboard skeleton */}
+                <div className="flex items-center gap-3 px-2 py-2">
+                  <div className="w-4.5 h-4.5 bg-zinc-200 dark:bg-zinc-800 rounded shrink-0" />
+                  <div className="h-3 w-20 bg-zinc-200 dark:bg-zinc-800 rounded" />
+                </div>
 
-              {/* Grouped Menus */}
-              {navGroups.map((group) => {
-                const visibleItems = group.items.filter((item) => canView(item.module));
-                if (visibleItems.length === 0) return null;
-
-                return (
-                  <div key={group.title} className="space-y-1">
-                    <div className="px-4 text-[9px] uppercase tracking-[0.2em] font-bold text-text-muted">
-                      {group.title}
-                    </div>
-                    <div className="space-y-0.5">
-                      {visibleItems.map((item) => {
-                        const cleanHref = getCleanHref(item.href);
-                        const isActive =
-                          pathname === cleanHref ||
-                          (cleanHref !== "/" && pathname.startsWith(cleanHref + "/"));
-                        return (
-                          <Link
-                            key={item.href}
-                            href={cleanHref}
-                            className={`flex items-center gap-2.5 px-4 py-3 text-xs font-semibold tracking-wider transition-all duration-150 ${
-                              isActive
-                                ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
-                                : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
-                            }`}
-                          >
-                            {item.icon}
-                            <span className={`truncate ${isActive ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}`}>
-                              {item.label}
-                            </span>
-                          </Link>
-                        );
-                      })}
-                    </div>
+                {/* Group 1 */}
+                <div className="space-y-3 pt-2">
+                  <div className="h-2 w-16 bg-zinc-200 dark:bg-zinc-800 rounded px-1" />
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex items-center gap-3 px-2 py-1">
+                        <div className="w-4 h-4 bg-zinc-200 dark:bg-zinc-800 rounded shrink-0" />
+                        <div className="h-2.5 w-24 bg-zinc-200 dark:bg-zinc-800 rounded" />
+                      </div>
+                    ))}
                   </div>
-                );
-              })}
-            </nav>
+                </div>
+
+                {/* Group 2 */}
+                <div className="space-y-3 pt-2">
+                  <div className="h-2 w-12 bg-zinc-200 dark:bg-zinc-800 rounded px-1" />
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-3 px-2 py-1">
+                        <div className="w-4 h-4 bg-zinc-200 dark:bg-zinc-800 rounded shrink-0" />
+                        <div className="h-2.5 w-28 bg-zinc-200 dark:bg-zinc-800 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </nav>
+            ) : (
+              <nav className="py-5 space-y-5">
+                {/* Dashboard (Always at top, no module constraint) */}
+                <div className="px-2">
+                  <Link
+                    href={getCleanHref("/admin")}
+                    className={`flex items-center gap-3 rounded-md px-2 py-2 text-xs font-semibold tracking-wider transition-all duration-150 ${
+                      pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/")
+                        ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
+                        : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
+                    }`}
+                  >
+                    <LayoutDashboard size={14} />
+                    <span className={pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/") ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}>
+                      Dashboard
+                    </span>
+                  </Link>
+                </div>
+
+                {/* Grouped Menus */}
+                {navGroups.map((group) => {
+                  const visibleItems = group.items.filter((item) => canView(item.module));
+                  if (visibleItems.length === 0) return null;
+
+                  return (
+                    <div key={group.title} className="space-y-1">
+                      <div className="px-4 text-[9px] uppercase tracking-[0.2em] font-bold text-text-muted">
+                        {group.title}
+                      </div>
+                      <div className="space-y-0.5">
+                        {visibleItems.map((item) => {
+                          const cleanHref = getCleanHref(item.href);
+                          const isActive =
+                            pathname === cleanHref ||
+                            (cleanHref !== "/" && pathname.startsWith(cleanHref + "/"));
+                          return (
+                            <Link
+                              key={item.href}
+                              href={cleanHref}
+                              className={`flex items-center gap-2.5 px-4 py-3 text-xs font-semibold tracking-wider transition-all duration-150 ${
+                                isActive
+                                  ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
+                                  : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
+                              }`}
+                            >
+                              {item.icon}
+                              <span className={`truncate ${isActive ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}`}>
+                                {item.label}
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </nav>
+            )}
           </aside>
         )}
 
