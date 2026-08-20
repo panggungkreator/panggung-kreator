@@ -73,23 +73,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 })
     }
 
-    // Logika Affiliate Code
+    // Logika Affiliate Code / Referral Code
     let affiliate_code = currentMember?.affiliate_code
     if (!affiliate_code && profileResult.data.stage_name) {
       affiliate_code = generateAffiliateCode(profileResult.data.stage_name)
+      
+      // Sinkronisasi ke tabel referral_codes (Single Source of Truth)
+      try {
+        const { createServiceRoleClient } = await import('@/lib/supabase/service-role')
+        const adminClient = createServiceRoleClient()
+        await adminClient
+          .from('referral_codes')
+          .insert({
+            code: affiliate_code,
+            owner_member_id: user.id,
+            description: `Auto-generated referral code untuk ${profileResult.data.stage_name}`,
+            is_active: true,
+          })
+      } catch (err) {
+        console.error('Failed to sync to referral_codes:', err)
+      }
     }
 
     let referred_by = currentMember?.referred_by
     if (!referred_by && profileResult.data.referred_by_code) {
-      // Cari member pemilik code referral
-      const { data: referrer } = await supabase
-        .from('members')
-        .select('id')
-        .eq('affiliate_code', profileResult.data.referred_by_code.trim())
+      const cleanCode = profileResult.data.referred_by_code.trim()
+      // Cari pemilik code di referral_codes atau fallback ke members
+      const { data: refCode } = await supabase
+        .from('referral_codes')
+        .select('owner_member_id')
+        .eq('code', cleanCode)
         .maybeSingle()
 
-      if (referrer) {
-        referred_by = referrer.id
+      if (refCode?.owner_member_id) {
+        referred_by = refCode.owner_member_id
+      } else {
+        const { data: referrer } = await supabase
+          .from('members')
+          .select('id')
+          .eq('affiliate_code', cleanCode)
+          .maybeSingle()
+
+        if (referrer) {
+          referred_by = referrer.id
+        }
       }
     }
 

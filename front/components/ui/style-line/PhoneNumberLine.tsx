@@ -9,6 +9,7 @@ export interface PhoneNumberLineProps {
   onChange: (formattedVal: string) => void;
   error?: string;
   placeholder?: string;
+  focusClassName?: string;
 }
 
 export const PhoneNumberLine: React.FC<PhoneNumberLineProps> = ({
@@ -19,6 +20,7 @@ export const PhoneNumberLine: React.FC<PhoneNumberLineProps> = ({
   onChange,
   error,
   placeholder = "0812-3456-7890",
+  focusClassName,
 }) => {
   const [displayValue, setDisplayValue] = useState(value);
 
@@ -57,6 +59,7 @@ export const PhoneNumberLine: React.FC<PhoneNumberLineProps> = ({
       value={displayValue}
       onChange={handleInputChange}
       error={error}
+      focusClassName={focusClassName}
     />
   );
 };

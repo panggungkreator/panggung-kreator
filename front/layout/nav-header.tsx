@@ -125,7 +125,7 @@ export default function NavHeader() {
           {user ? (
             <div className="flex items-center gap-2">
               <Link
-                href="/dashboard"
+                href="/akademi/dashboard"
                 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white flex items-center gap-1 py-2 px-3 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white/50 dark:bg-zinc-900/50"
               >
                 <User size={14} /> Dashboard
@@ -140,7 +140,7 @@ export default function NavHeader() {
             </div>
           ) : (
             <Link
-              href="/akademi/checkout"
+              href="/checkout"
               className="text-sm font-bold text-white transition-all bg-[#bc151b] hover:bg-[#9a1116] border border-[#bc151b] hover:border-[#9a1116] rounded-lg px-5 py-2 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] duration-150"
             >
               Daftar Sekarang
@@ -188,7 +188,7 @@ export default function NavHeader() {
               {user ? (
                 <>
                   <Link
-                    href="/dashboard"
+                    href="/akademi/dashboard"
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="text-center font-semibold text-zinc-700 dark:text-zinc-300 py-3 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-900"
                   >

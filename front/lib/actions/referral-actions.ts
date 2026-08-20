@@ -1,0 +1,739 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import nodemailer from "nodemailer";
+import {
+  getReferralCommissionSettingsAction,
+} from "./settings-actions";
+
+export interface ReferralReward {
+  id: string;
+  transaction_id: string;
+  referral_code_id: string | null;
+  referrer_id: string;
+  referred_id: string;
+  reward_amount: number;
+  status: "pending" | "confirmed" | "paid_out" | "cancelled";
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  // Joined fields
+  referred_name?: string;
+  package_name?: string;
+  transaction_amount?: number;
+}
+
+/**
+ * Validasi Kode Referral untuk Form Checkout (Real-time Validation)
+ */
+export async function validateReferralCodeAction(code: string) {
+  try {
+    if (!code || !code.trim()) {
+      return { success: false, isValid: false, message: "Kode referral kosong.", error: "Kode referral kosong." };
+    }
+
+    const cleanCode = code.trim().toUpperCase();
+    const supabaseAdmin = createServiceRoleClient();
+
+    // 1. Cek di tabel referral_codes
+    const { data: refCode, error } = await supabaseAdmin
+      .from("referral_codes")
+      .select("id, code, owner_member_id, is_active, max_usage, usage_count, default_reward")
+      .eq("code", cleanCode)
+      .maybeSingle();
+
+    if (!error && refCode) {
+      if (!refCode.is_active) {
+        return { success: false, isValid: false, message: "Kode referral tidak aktif.", error: "Kode referral tidak aktif." };
+      }
+      if (refCode.max_usage > 0 && refCode.usage_count >= refCode.max_usage) {
+        return { success: false, isValid: false, message: "Kode referral sudah mencapai batas penggunaan.", error: "Kode referral sudah mencapai batas penggunaan." };
+      }
+
+      // Ambil nama pemilik kode
+      const { data: owner } = await supabaseAdmin
+        .from("members")
+        .select("full_name, stage_name")
+        .eq("id", refCode.owner_member_id)
+        .single();
+
+      const ownerName = owner?.stage_name || owner?.full_name || "Member Panggung Kreator";
+
+      return {
+        success: true,
+        isValid: true,
+        code: cleanCode,
+        ownerName: ownerName,
+        message: `Kode valid (Pemilik: ${ownerName})`,
+        ownerId: refCode.owner_member_id,
+        defaultReward: refCode.default_reward || 0,
+      };
+    }
+
+    // 2. Fallback: Cek di tabel members kolom affiliate_code atau my_referral_code
+    const { data: refMember } = await supabaseAdmin
+      .from("members")
+      .select("id, full_name, stage_name, affiliate_code, my_referral_code")
+      .or(`affiliate_code.eq.${cleanCode},my_referral_code.eq.${cleanCode}`)
+      .maybeSingle();
+
+    if (refMember) {
+      const ownerName = refMember.stage_name || refMember.full_name || "Member Panggung Kreator";
+      return {
+        success: true,
+        isValid: true,
+        code: cleanCode,
+        ownerName: ownerName,
+        message: `Kode valid (Pemilik: ${ownerName})`,
+        ownerId: refMember.id,
+        defaultReward: 10000,
+      };
+    }
+
+    return { success: false, isValid: false, message: "Kode referral tidak ditemukan.", error: "Kode referral tidak ditemukan." };
+  } catch (err: any) {
+    console.error("Error validating referral code:", err);
+    return { success: false, isValid: false, message: "Gagal memvalidasi kode referral.", error: "Gagal memvalidasi kode referral." };
+  }
+}
+
+/**
+ * Helper untuk mengirim email notifikasi reward ke pemilik kode referral
+ */
+export async function sendReferralRewardNotificationEmail({
+  recipientEmail,
+  recipientName,
+  referralCode,
+  newMemberName,
+  packageName,
+  finalAmount,
+  rewardAmount,
+  newBalance,
+}: {
+  recipientEmail: string;
+  recipientName: string;
+  referralCode: string;
+  newMemberName: string;
+  packageName: string;
+  finalAmount: number;
+  rewardAmount: number;
+  newBalance: number;
+}) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn("SMTP_USER atau SMTP_PASS tidak diset, email notifikasi referral reward tidak dikirim.");
+    return;
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: parseInt(process.env.SMTP_PORT || "465"),
+      secure: process.env.SMTP_SECURE === "false" ? false : true,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    const formatRupiah = (val: number) => `Rp ${val.toLocaleString("id-ID")}`;
+
+    await transporter.sendMail({
+      from: `"Panggung Kreator" <${process.env.SMTP_USER}>`,
+      to: recipientEmail,
+      subject: `🎉 Komisi Referral Masuk: ${formatRupiah(rewardAmount)} - Panggung Kreator`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827; line-height: 1.6;">
+          <div style="background-color: #bc151b; color: #ffffff; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 20px; font-weight: bold;">🎉 Komisi Referral Berhasil Masuk!</h1>
+            <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.95;">Ada member baru yang bergabung lewat kode referral Anda</p>
+          </div>
+
+          <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
+            <p style="font-size: 14px; margin-top: 0;">Halo <strong>${recipientName}</strong>,</p>
+            <p style="font-size: 14px; color: #374151;">Kabar baik! Member baru baru saja menyelesaikan pendaftaran dan pembayarannya telah dikonfirmasi lunas oleh Admin.</p>
+
+            <div style="background-color: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 16px; margin: 20px 0;">
+              <h3 style="margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; tracking: 1px; color: #6b7280; font-weight: bold;">Detail Komisi Referral</h3>
+              <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 4px 0; color: #6b7280;">Kode Referral:</td>
+                  <td style="padding: 4px 0; font-weight: bold; text-align: right; font-family: monospace;">${referralCode}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #6b7280;">Member Baru:</td>
+                  <td style="padding: 4px 0; font-weight: bold; text-align: right;">${newMemberName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #6b7280;">Paket Pendaftaran:</td>
+                  <td style="padding: 4px 0; font-weight: bold; text-align: right;">${packageName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #6b7280;">Nominal Pembayaran:</td>
+                  <td style="padding: 4px 0; font-weight: bold; text-align: right;">${formatRupiah(finalAmount)}</td>
+                </tr>
+                <tr style="border-top: 1px border #e5e7eb;">
+                  <td style="padding: 8px 0 4px 0; color: #16a34a; font-weight: bold;">Reward Ditambahkan:</td>
+                  <td style="padding: 8px 0 4px 0; font-weight: bold; text-align: right; color: #16a34a; font-size: 15px;">+${formatRupiah(rewardAmount)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #111827; font-weight: bold;">Total Saldo Komisi Saat Ini:</td>
+                  <td style="padding: 4px 0; font-weight: bold; text-align: right; color: #111827; font-size: 15px;">${formatRupiah(newBalance)}</td>
+                </tr>
+              </table>
+            </div>
+
+            <p style="font-size: 13px; color: #4b5563;">
+              Saldo komisi Anda dapat digunakan sebagai potongan harga untuk langganan berikutnya atau dicairkan melalui dashboard profil Anda.
+            </p>
+
+            <div style="margin-top: 24px; pt-16 border-top: 1px solid #f3f4f6; text-align: center;">
+              <p style="font-size: 12px; color: #9ca3af; margin: 0;">Terima kasih telah membantu memperluas komunitas Panggung Kreator! 🙏</p>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+  } catch (emailErr) {
+    console.error("Gagal mengirim email notifikasi referral reward:", emailErr);
+  }
+}
+
+/**
+ * Konfirmasi pembayaran oleh admin sekaligus mencatat reward referral dinamis
+ */
+export async function confirmPaymentWithRewardAction({
+  transactionId,
+  rewardAmount = 0,
+  notes = "",
+}: {
+  transactionId: string;
+  rewardAmount?: number;
+  notes?: string;
+}) {
+  try {
+    const supabase = await createClient();
+
+    // 1. Verifikasi Admin Session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return { success: false, error: "Tidak diotorisasi. Silakan login kembali." };
+    }
+
+    const { data: currentAdmin } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!currentAdmin || currentAdmin.role !== "admin") {
+      return { success: false, error: "Hanya admin yang diperbolehkan memverifikasi pembayaran." };
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
+
+    // 2. Ambil data transaksi beserta relasi member & package
+    const { data: tx, error: fetchTxError } = await supabaseAdmin
+      .from("transactions")
+      .select(`
+        id,
+        member_id,
+        package_id,
+        referral_code,
+        referred_by_id,
+        final_amount,
+        status,
+        members:member_id (
+          id,
+          full_name,
+          stage_name,
+          email,
+          referred_by,
+          referred_by_member_id
+        ),
+        packages:package_id (
+          id,
+          name,
+          tier
+        )
+      `)
+      .eq("id", transactionId)
+      .single();
+
+    if (fetchTxError || !tx) {
+      return { success: false, error: "Transaksi tidak ditemukan." };
+    }
+
+    if (tx.status === "paid") {
+      return { success: false, error: "Transaksi ini sudah dikonfirmasi lunas sebelumnya." };
+    }
+
+    const nowStr = new Date().toISOString();
+    const payingMember = tx.members as any;
+    const pkg = tx.packages as any;
+
+    // Resolve Referrer ID with multiple fallbacks
+    let referrerId: string | null = tx.referred_by_id;
+
+    if (!referrerId && payingMember) {
+      referrerId = payingMember.referred_by || payingMember.referred_by_member_id || null;
+    }
+
+    if (!referrerId && tx.referral_code) {
+      const { data: rc } = await supabaseAdmin
+        .from("referral_codes")
+        .select("owner_member_id")
+        .eq("code", tx.referral_code)
+        .maybeSingle();
+
+      if (rc?.owner_member_id) {
+        referrerId = rc.owner_member_id;
+      } else {
+        const { data: refMem } = await supabaseAdmin
+          .from("members")
+          .select("id")
+          .or(`affiliate_code.eq.${tx.referral_code},my_referral_code.eq.${tx.referral_code}`)
+          .maybeSingle();
+        if (refMem?.id) {
+          referrerId = refMem.id;
+        }
+      }
+    }
+
+    // Hitung besaran reward jika cleanRewardAmount masih 0 tapi ada referrer/kode referral
+    let cleanRewardAmount = Math.max(0, Number(rewardAmount) || 0);
+
+    if (cleanRewardAmount === 0 && (referrerId || tx.referral_code)) {
+      if (tx.referral_code) {
+        const { data: rc } = await supabaseAdmin
+          .from("referral_codes")
+          .select("default_reward")
+          .eq("code", tx.referral_code)
+          .maybeSingle();
+        if (rc?.default_reward && Number(rc.default_reward) > 0) {
+          cleanRewardAmount = Number(rc.default_reward);
+        }
+      }
+
+      if (cleanRewardAmount === 0) {
+        const settings = await getReferralCommissionSettingsAction();
+        if (settings.mode === "percentage") {
+          const pct = parseFloat(settings.percentage) || 10;
+          cleanRewardAmount = Math.round((Number(tx.final_amount || 0) * pct) / 100);
+        } else {
+          cleanRewardAmount = parseInt(settings.flatAmount.replace(/\D/g, ""), 10) || 10000;
+        }
+      }
+    }
+
+    // 3. Update status transaksi
+    const { error: updateTxError } = await supabaseAdmin
+      .from("transactions")
+      .update({
+        status: "paid",
+        paid_at: nowStr,
+        commission_earned: cleanRewardAmount,
+        referred_by_id: referrerId || tx.referred_by_id,
+      })
+      .eq("id", tx.id);
+
+    if (updateTxError) {
+      return { success: false, error: `Gagal memperbarui transaksi: ${updateTxError.message}` };
+    }
+
+    // 4. Update status & membership_tier member yang mendaftar
+    const targetTier = pkg?.tier || "membership";
+    const updateMemberPayload: any = {
+      payment_status: "paid",
+      membership_tier: targetTier,
+      tier_changed_at: nowStr,
+      tier_changed_by: session.user.id,
+    };
+
+    if (referrerId) {
+      updateMemberPayload.referred_by = referrerId;
+      updateMemberPayload.referred_by_member_id = referrerId;
+    }
+
+    const { error: updateMemberError } = await supabaseAdmin
+      .from("members")
+      .update(updateMemberPayload)
+      .eq("id", tx.member_id);
+
+    if (updateMemberError) {
+      console.error("Gagal upgrade tier member:", updateMemberError);
+    }
+
+    // 5. Proses Komisi Referral jika ada referrer
+    let referrerMember: any = null;
+    let newReferrerBalance = 0;
+
+    if (referrerId) {
+      // Ambil data referrer
+      const { data: refUser } = await supabaseAdmin
+        .from("members")
+        .select("id, full_name, stage_name, email, commission_balance")
+        .eq("id", referrerId)
+        .single();
+
+      if (refUser) {
+        referrerMember = refUser;
+        const currentBalance = Number(refUser.commission_balance || 0);
+        newReferrerBalance = currentBalance + cleanRewardAmount;
+
+        // Ambil ID referral_codes jika ada
+        let referralCodeId: string | null = null;
+        if (tx.referral_code) {
+          const { data: rc } = await supabaseAdmin
+            .from("referral_codes")
+            .select("id, total_revenue")
+            .eq("code", tx.referral_code)
+            .maybeSingle();
+
+          if (rc) {
+            referralCodeId = rc.id;
+            await supabaseAdmin
+              .from("referral_codes")
+              .update({
+                total_revenue: Number(rc.total_revenue || 0) + Number(tx.final_amount || 0),
+                updated_at: nowStr,
+              })
+              .eq("id", rc.id);
+          }
+        }
+
+        // Catat ke referral_rewards
+        const { data: rewardRecord, error: rewardErr } = await supabaseAdmin
+          .from("referral_rewards")
+          .insert({
+            transaction_id: tx.id,
+            referral_code_id: referralCodeId,
+            referrer_id: refUser.id,
+            referred_id: tx.member_id,
+            reward_amount: cleanRewardAmount,
+            status: "confirmed",
+            confirmed_by: session.user.id,
+            confirmed_at: nowStr,
+            notes: notes || null,
+          })
+          .select("id")
+          .single();
+
+        if (rewardErr) {
+          console.error("Gagal mencatat referral_rewards:", rewardErr);
+        }
+
+        // Update commission_balance referrer jika reward > 0
+        if (cleanRewardAmount > 0) {
+          await supabaseAdmin
+            .from("members")
+            .update({
+              commission_balance: newReferrerBalance,
+            })
+            .eq("id", refUser.id);
+
+          // Catat ke commission_ledger
+          await supabaseAdmin
+            .from("commission_ledger")
+            .insert({
+              member_id: refUser.id,
+              type: "credit",
+              amount: cleanRewardAmount,
+              balance_after: newReferrerBalance,
+              source: "referral_reward",
+              reference_id: rewardRecord?.id || tx.id,
+              description: `Komisi referral dari pendaftaran ${payingMember?.full_name || "member"}`,
+              created_by: session.user.id,
+            });
+        }
+
+        // Kirim email notifikasi reward ke referrer
+        if (refUser.email) {
+          sendReferralRewardNotificationEmail({
+            recipientEmail: refUser.email,
+            recipientName: refUser.stage_name || refUser.full_name || "Kreator",
+            referralCode: tx.referral_code || "KODE REFERRAL",
+            newMemberName: payingMember?.full_name || "Member Baru",
+            packageName: pkg?.name || "Akademi Membership",
+            finalAmount: Number(tx.final_amount || 0),
+            rewardAmount: cleanRewardAmount,
+            newBalance: newReferrerBalance,
+          }).catch((err) => console.error("Error email reward notification:", err));
+        }
+      }
+    }
+
+    // 6. Kirim email konfirmasi ke member yang mendaftar
+    if (payingMember?.email && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || "smtp.gmail.com",
+          port: parseInt(process.env.SMTP_PORT || "465"),
+          secure: process.env.SMTP_SECURE === "false" ? false : true,
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
+
+        await transporter.sendMail({
+          from: `"Panggung Kreator" <${process.env.SMTP_USER}>`,
+          to: payingMember.email,
+          subject: "Pembayaran Terkonfirmasi - Panggung Kreator Akademi",
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827; line-height: 1.6;">
+              <h2 style="color: #bc151b;">Selamat, Pembayaran Anda Sudah Terkonfirmasi! 🎉</h2>
+              <p>Halo <strong>${payingMember.full_name || "Kreator"}</strong>,</p>
+              <p>Pembayaran Anda untuk bergabung di Panggung Kreator Akademi telah berhasil kami verifikasi.</p>
+              <p>Silakan klik tombol di bawah ini untuk bergabung dengan Grup WhatsApp Akademi:</p>
+              <div style="margin: 25px 0;">
+                <a href="https://chat.whatsapp.com/JrJ9oXeYmdG4zC40HXMXjt" style="background-color: #25d366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Gabung ke Grup WhatsApp</a>
+              </div>
+              <p style="font-size: 13px; color: #6b7280;">Jika Anda mengalami kendala, silakan balas email ini untuk menghubungi tim support kami.</p>
+              <p style="margin-top: 25px;">Salam hangat,<br/><strong>Tim Panggung Kreator</strong></p>
+            </div>
+          `,
+        });
+      } catch (emailErr) {
+        console.error("Gagal mengirim email konfirmasi pembeli:", emailErr);
+      }
+    }
+
+    return {
+      success: true,
+      rewardRecorded: !!referrerMember,
+      rewardAmount: cleanRewardAmount,
+      referrerName: referrerMember?.stage_name || referrerMember?.full_name || null,
+    };
+  } catch (error: any) {
+    console.error("Error in confirmPaymentWithRewardAction:", error);
+    return { success: false, error: error.message || "Terjadi kesalahan internal server." };
+  }
+}
+
+/**
+ * Admin Action: Mengambil seluruh referral codes untuk dikelola di dashboard admin
+ */
+export async function getAdminReferralCodesAction() {
+  try {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return { success: false, error: "Tidak diotorisasi." };
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
+    const { data, error } = await supabaseAdmin
+      .from("referral_codes")
+      .select(`
+        id,
+        code,
+        owner_member_id,
+        description,
+        is_active,
+        usage_count,
+        max_usage,
+        total_revenue,
+        default_reward,
+        created_at,
+        updated_at,
+        members:owner_member_id (
+          id,
+          full_name,
+          email,
+          stage_name
+        )
+      `)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mengambil data referral codes." };
+  }
+}
+
+/**
+ * Admin Action: Membuat / Mengubah Kode Referral
+ */
+export async function upsertReferralCodeAction({
+  id,
+  code,
+  ownerMemberId,
+  description,
+  isActive = true,
+  maxUsage = 0,
+  defaultReward = 0,
+}: {
+  id?: string;
+  code: string;
+  ownerMemberId: string;
+  description?: string;
+  isActive?: boolean;
+  maxUsage?: number;
+  defaultReward?: number;
+}) {
+  try {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return { success: false, error: "Tidak diotorisasi." };
+
+    const supabaseAdmin = createServiceRoleClient();
+    const cleanCode = code.trim().toUpperCase();
+
+    if (id) {
+      // Update
+      const { error } = await supabaseAdmin
+        .from("referral_codes")
+        .update({
+          code: cleanCode,
+          owner_member_id: ownerMemberId,
+          description: description || null,
+          is_active: isActive,
+          max_usage: maxUsage,
+          default_reward: defaultReward,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+
+      if (error) return { success: false, error: error.message };
+    } else {
+      // Create
+      const { error } = await supabaseAdmin
+        .from("referral_codes")
+        .insert({
+          code: cleanCode,
+          owner_member_id: ownerMemberId,
+          description: description || null,
+          is_active: isActive,
+          max_usage: maxUsage,
+          default_reward: defaultReward,
+        });
+
+      if (error) return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal menyimpan kode referral." };
+  }
+}
+
+/**
+ * Admin Action: Toggle status aktif kode referral
+ */
+export async function toggleReferralCodeStatusAction(id: string, currentStatus: boolean) {
+  try {
+    const supabaseAdmin = createServiceRoleClient();
+    const { error } = await supabaseAdmin
+      .from("referral_codes")
+      .update({ is_active: !currentStatus, updated_at: new Date().toISOString() })
+      .eq("id", id);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal mengubah status." };
+  }
+}
+
+/**
+ * Admin Action: Memproses Pencairan Saldo Komisi (Cash Out)
+ */
+export async function processCashoutAction({
+  memberId,
+  amount,
+  notes,
+}: {
+  memberId: string;
+  amount: number;
+  notes?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return { success: false, error: "Tidak diotorisasi." };
+
+    const supabaseAdmin = createServiceRoleClient();
+    const cleanAmount = Number(amount);
+
+    if (isNaN(cleanAmount) || cleanAmount <= 0) {
+      return { success: false, error: "Nominal pencairan tidak valid." };
+    }
+
+    // Ambil data member
+    const { data: member, error: memberErr } = await supabaseAdmin
+      .from("members")
+      .select("id, commission_balance, full_name")
+      .eq("id", memberId)
+      .single();
+
+    if (memberErr || !member) {
+      return { success: false, error: "Member tidak ditemukan." };
+    }
+
+    const currentBalance = Number(member.commission_balance || 0);
+    if (currentBalance < cleanAmount) {
+      return { success: false, error: "Saldo komisi member tidak mencukupi untuk pencairan ini." };
+    }
+
+    const newBalance = currentBalance - cleanAmount;
+
+    // Update balance
+    await supabaseAdmin
+      .from("members")
+      .update({ commission_balance: newBalance })
+      .eq("id", member.id);
+
+    // Catat ke commission_ledger
+    await supabaseAdmin
+      .from("commission_ledger")
+      .insert({
+        member_id: member.id,
+        type: "debit",
+        amount: cleanAmount,
+        balance_after: newBalance,
+        source: "cash_out",
+        description: notes || `Pencairan dana komisi sebesar Rp ${cleanAmount.toLocaleString("id-ID")}`,
+        created_by: session.user.id,
+      });
+
+    return { success: true, newBalance };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Gagal memproses pencairan dana." };
+  }
+}
+
+/**
+ * Member Action: Mengambil daftar teman yang bergabung menggunakan kode referral user
+ */
+export async function getReferredMembersAction() {
+  try {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return { success: false, data: [] };
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
+    const { data, error } = await supabaseAdmin
+      .from("members")
+      .select("id, full_name, email, membership_tier, created_at")
+      .or(`referred_by.eq.${session.user.id},referred_by_member_id.eq.${session.user.id}`)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching referred members:", error);
+      return { success: false, data: [] };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (err: any) {
+    console.error("getReferredMembersAction error:", err);
+    return { success: false, data: [] };
+  }
+}

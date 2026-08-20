@@ -15,11 +15,13 @@ import ProfileStatsCards from "./components/ProfileStatsCards";
 import AttendanceTracker from "./components/AttendanceTracker";
 import AffiliatePanel from "./components/AffiliatePanel";
 import { Loader2 } from "lucide-react";
+import { getReferredMembersAction } from "@/lib/actions/referral-actions";
 
 export default function MyProfilePage() {
   const router = useRouter();
   const [member, setMember] = useState<MemberProfile | null>(null);
   const [referrals, setReferrals] = useState<ReferralMember[]>([]);
+  const [ledger, setLedger] = useState<any[]>([]);
   const [attendanceCount, setAttendanceCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
@@ -38,7 +40,7 @@ export default function MyProfilePage() {
       }
 
       // Parallel fetching initial data
-      const [profileRes, attendanceCountRes, referralRes] = await Promise.all([
+      const [profileRes, attendanceCountRes, referralRes, ledgerRes] = await Promise.all([
         // 1. Profile & interests
         supabase
           .from("members")
@@ -53,11 +55,14 @@ export default function MyProfilePage() {
           .eq("member_id", user.id)
           .eq("is_present", true),
 
-        // 3. Referred members list
+        // 3. Referred members list via Server Action (bypasses RLS restrictions)
+        getReferredMembersAction(),
+
+        // 4. Commission ledger history
         supabase
-          .from("members")
-          .select("id, full_name, email, membership_tier, created_at")
-          .eq("referred_by", user.id)
+          .from("commission_ledger")
+          .select("*")
+          .eq("member_id", user.id)
           .order("created_at", { ascending: false }),
       ]);
 
@@ -65,10 +70,11 @@ export default function MyProfilePage() {
 
       setMember(profileRes.data as MemberProfile);
       setAttendanceCount(attendanceCountRes.count ?? 0);
-      setReferrals((referralRes.data as ReferralMember[]) || []);
+      setReferrals((referralRes as any)?.data || []);
+      setLedger((ledgerRes.data as any[]) || []);
     } catch (err: any) {
       console.error("Error loading profile:", err);
-      toast.error("Gagal memuat profil.");
+      toast.error("Gagal memuat profil. \n Coba reload kembali.");
     } finally {
       setIsLoading(false);
     }
@@ -132,7 +138,7 @@ export default function MyProfilePage() {
       )}
 
       {activeTab === "affiliate" && isAffiliateActive && (
-        <AffiliatePanel member={member} referrals={referrals} />
+        <AffiliatePanel member={member} referrals={referrals} ledger={ledger} />
       )}
     </ProfileLayout>
   );

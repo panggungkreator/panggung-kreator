@@ -4,10 +4,11 @@ export interface InputLineProps extends React.InputHTMLAttributes<HTMLInputEleme
   label: string;
   error?: string;
   prefixText?: string;
+  focusClassName?: string;
 }
 
 export const InputLine = forwardRef<HTMLInputElement, InputLineProps>(
-  ({ label, error, prefixText, className = "", ...props }, ref) => {
+  ({ label, error, prefixText, className = "", focusClassName, ...props }, ref) => {
     return (
       <div className="w-full">
         <label className="text-[11px] font-bold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase block mb-1">
@@ -16,7 +17,7 @@ export const InputLine = forwardRef<HTMLInputElement, InputLineProps>(
         <div className={`flex items-center w-full border-b transition-colors ${
           error
             ? "border-red-500 dark:border-red-500 focus-within:border-red-500 dark:focus-within:border-red-500"
-            : "border-zinc-300 dark:border-zinc-700 focus-within:border-black dark:focus-within:border-white"
+            : `border-zinc-300 dark:border-zinc-700 ${focusClassName || "focus-within:border-black dark:focus-within:border-white"}`
         }`}>
           {prefixText && (
             <span className="text-zinc-400 dark:text-zinc-500 mr-1 select-none text-sm py-1.5">

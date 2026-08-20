@@ -33,7 +33,8 @@ import {
   PanelLeft,
   Menu,
   X,
-  Loader2
+  Loader2,
+  Gift,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isSuperAdmin as checkIsSuperAdmin } from "@/lib/security";
@@ -60,6 +61,7 @@ export const getIconComponent = (name: string, size = 14) => {
     case "check-square": return <CheckSquare size={size} />;
     case "package": return <Package size={size} />;
     case "tag": return <Tag size={size} />;
+    case "gift": return <Gift size={size} />;
     case "dollar-sign": return <DollarSign size={size} />;
     case "calendar": return <Calendar size={size} />;
     case "file-text": return <FileText size={size} />;
@@ -90,6 +92,7 @@ const staticNavGroups: NavGroup[] = [
     items: [
       { label: "Packages", href: "/admin/packages", icon: getIconComponent("package"), module: "packages" },
       { label: "Voucher", href: "/admin/voucher", icon: getIconComponent("tag"), module: "voucher" },
+      { label: "Referral Code", href: "/admin/referral", icon: getIconComponent("gift"), module: "referral" },
       { label: "Payment", href: "/admin/payment", icon: getIconComponent("dollar-sign"), module: "payment" },
       { label: "Mentoring", href: "/admin/mentoring", icon: getIconComponent("calendar"), module: "mentoring" },
       { label: "Resources", href: "/admin/resources", icon: getIconComponent("file-text"), module: "resources" },

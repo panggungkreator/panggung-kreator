@@ -6,6 +6,11 @@ import Groq from "groq-sdk";
 import nodemailer from "nodemailer";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import {
+  confirmPaymentWithRewardAction,
+  sendReferralRewardNotificationEmail,
+} from "./referral-actions";
+import { getReferralCommissionSettingsAction } from "./settings-actions";
 
 type OnboardingPayload = {
   full_name: string;
@@ -137,6 +142,8 @@ type CheckoutPayload = {
   packageId?: string;
   usedVoucherCode?: string;
   finalPrice?: number;
+  referralCode?: string;
+  useReferralBalance?: number;
 };
 
 export async function validateVoucherAction(code: string) {
@@ -147,8 +154,8 @@ export async function validateVoucherAction(code: string) {
       {
         cookies: {
           get(name: string) { return ""; },
-          set() {},
-          remove() {},
+          set() { },
+          remove() { },
         },
       }
     );
@@ -175,10 +182,10 @@ export async function validateVoucherAction(code: string) {
       return { success: false, error: "Kode voucher sudah kadaluarsa." };
     }
 
-    return { 
-      success: true, 
-      discount_type: voucher.discount_type, 
-      discount_value: voucher.discount_value 
+    return {
+      success: true,
+      discount_type: voucher.discount_type,
+      discount_value: voucher.discount_value
     };
   } catch (error: any) {
     return { success: false, error: "Terjadi kesalahan sistem saat memvalidasi voucher." };
@@ -269,7 +276,7 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         .select("price")
         .eq("id", payload.packageId)
         .single();
-      
+
       if (pkg?.price) {
         const parsed = parseInt(pkg.price.replace(/\D/g, ""), 10);
         if (!isNaN(parsed)) {
@@ -286,7 +293,7 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         .select("*")
         .eq("code", payload.usedVoucherCode)
         .single();
-      
+
       if (voucher && voucher.is_active && (voucher.max_uses === 0 || voucher.current_uses < voucher.max_uses)) {
         if (voucher.discount_type === 'nominal') {
           validFinalPrice = Math.max(0, validBasePrice - voucher.discount_value);
@@ -302,6 +309,43 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       } else {
         // Fallback if voucher is invalid at the last moment
         return { success: false, error: "Voucher yang Anda gunakan sudah tidak berlaku atau kuota habis." };
+      }
+    }
+
+    // Handle Referral Code Validation & Attribution
+    let referralOwnerId: string | null = null;
+    let cleanReferralCode: string | null = null;
+
+    if (payload.referralCode && payload.referralCode.trim()) {
+      cleanReferralCode = payload.referralCode.trim().toUpperCase();
+
+      const { data: refCode } = await supabaseAdmin
+        .from("referral_codes")
+        .select("id, owner_member_id, is_active, max_usage, usage_count")
+        .eq("code", cleanReferralCode)
+        .maybeSingle();
+
+      if (refCode && refCode.is_active) {
+        if (refCode.max_usage === 0 || refCode.usage_count < refCode.max_usage) {
+          referralOwnerId = refCode.owner_member_id;
+
+          // Panggil RPC function use_referral_code
+          await supabaseAdmin.rpc("use_referral_code", {
+            p_code: cleanReferralCode,
+            p_member_id: user.id,
+          });
+        }
+      } else {
+        // Fallback: Jika kode tidak ada di referral_codes, cari di tabel members (affiliate_code / my_referral_code)
+        const { data: refMember } = await supabaseAdmin
+          .from("members")
+          .select("id")
+          .or(`affiliate_code.eq.${cleanReferralCode},my_referral_code.eq.${cleanReferralCode}`)
+          .maybeSingle();
+
+        if (refMember) {
+          referralOwnerId = refMember.id;
+        }
       }
     }
 
@@ -330,7 +374,9 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         used_voucher_code: payload.usedVoucherCode || null,
         package_id: payload.packageId || null,
         final_price: finalPriceWithUniqueCode,
-        payment_order_id: orderId
+        payment_order_id: orderId,
+        referred_by: referralOwnerId || null,
+        referred_by_member_id: referralOwnerId || null,
       });
 
     if (dbError) {
@@ -358,6 +404,9 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         member_id: user.id,
         package_id: payload.packageId || null,
         voucher_id: voucherId,
+        referral_code: cleanReferralCode || null,
+        referred_by_id: referralOwnerId || null,
+        affiliate_code_used: cleanReferralCode || null,
         order_id: orderId,
         status: 'pending',
         gross_amount: validBasePrice,
@@ -408,23 +457,6 @@ export async function registerMemberAction(payload: CheckoutPayload) {
               <div style="padding: 25px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
                 <p>Halo <strong>${payload.fullName}</strong>,</p>
                 <p>Terima kasih telah mendaftar di <strong>Panggung Kreator Akademi</strong>. Akun Anda telah berhasil dibuat dengan status <strong>Menunggu Pembayaran</strong>.</p>
-                
-                <!-- KREDENSIAL AKUN -->
-                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin: 25px 0;">
-                  <h3 style="margin-top: 0; color: #0f172a; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">🔑 KREDENSIAL LOGIN ANDA</h3>
-                  <p style="margin: 8px 0; font-size: 13px;">Kredensial di bawah ini dapat digunakan untuk login setelah akun Anda diaktifkan oleh Admin:</p>
-                  <table style="width: 100%; font-size: 13px; font-family: monospace;">
-                    <tr>
-                      <td style="width: 90px; font-weight: bold; color: #64748b; padding: 4px 0;">Username:</td>
-                      <td style="font-weight: bold; color: #0f172a; padding: 4px 0;">${generatedUsername}</td>
-                    </tr>
-                    <tr>
-                      <td style="font-weight: bold; color: #64748b; padding: 4px 0;">Password:</td>
-                      <td style="font-weight: bold; color: #0f172a; padding: 4px 0;">${generatedPassword}</td>
-                    </tr>
-                  </table>
-                  <p style="margin: 12px 0 0 0; font-size: 11px; color: #b91c1c; font-style: italic;">* Jangan lupa untuk mengganti password Anda setelah berhasil login pertama kali demi keamanan akun.</p>
-                </div>
 
                 <!-- INSTRUKSI PEMBAYARAN -->
                 <div style="border: 2px dashed #e2e8f0; padding: 20px; border-radius: 12px; margin: 25px 0; background-color: #fffdf5;">
@@ -503,10 +535,38 @@ export async function verifyMemberPaymentAction(memberId: string) {
       return { success: false, error: "Hanya admin yang diperbolehkan memverifikasi pembayaran." };
     }
 
-    // Fetch member details before updating
-    const { data: memberToVerify, error: fetchError } = await supabase
+    const supabaseAdmin = createServiceRoleClient();
+
+    // Cek apakah ada transaksi pending untuk member ini di tabel transactions
+    const { data: tx } = await supabaseAdmin
+      .from("transactions")
+      .select("id, status")
+      .eq("member_id", memberId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (tx && tx.status !== "paid") {
+      // Panggil confirmPaymentWithRewardAction agar alur komisi referral, ledger & email terpicu
+      const confirmRes = await confirmPaymentWithRewardAction({
+        transactionId: tx.id,
+      });
+
+      if (!confirmRes.success) {
+        console.warn("confirmPaymentWithRewardAction warning:", confirmRes.error);
+        // Fallback update payment_status jika ada kendala
+        await supabaseAdmin
+          .from("members")
+          .update({ payment_status: "paid" })
+          .eq("id", memberId);
+      }
+      return { success: true };
+    }
+
+    // Fallback jika tidak ada transaksi di tabel transactions
+    const { data: memberToVerify, error: fetchError } = await supabaseAdmin
       .from("members")
-      .select("email, username, full_name")
+      .select("id, email, username, full_name, referred_by, referred_by_member_id")
       .eq("id", memberId)
       .single();
 
@@ -515,30 +575,79 @@ export async function verifyMemberPaymentAction(memberId: string) {
     }
 
     // Update status
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("members")
-      .update({ payment_status: "paid" })
+      .update({
+        payment_status: "paid",
+        membership_tier: "membership",
+        tier_changed_at: new Date().toISOString(),
+        tier_changed_by: session.user.id,
+      })
       .eq("id", memberId);
 
     if (error) {
       return { success: false, error: error.message };
     }
 
-    // Kirim Email Konfirmasi menggunakan Nodemailer
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    // Jika member ini punya referrer, proses komisi referral & email
+    const referrerId = memberToVerify.referred_by || memberToVerify.referred_by_member_id;
+    if (referrerId) {
+      const { data: refUser } = await supabaseAdmin
+        .from("members")
+        .select("id, full_name, stage_name, email, commission_balance")
+        .eq("id", referrerId)
+        .single();
+
+      if (refUser) {
+        const settings = await getReferralCommissionSettingsAction();
+        const rewardAmount = parseInt(settings.flatAmount.replace(/\D/g, ""), 10) || 10000;
+        const newBalance = Number(refUser.commission_balance || 0) + rewardAmount;
+
+        await supabaseAdmin
+          .from("members")
+          .update({ commission_balance: newBalance })
+          .eq("id", refUser.id);
+
+        await supabaseAdmin
+          .from("commission_ledger")
+          .insert({
+            member_id: refUser.id,
+            type: "credit",
+            amount: rewardAmount,
+            balance_after: newBalance,
+            source: "referral_reward",
+            description: `Komisi referral dari pendaftaran ${memberToVerify.full_name || "member"}`,
+            created_by: session.user.id,
+          });
+
+        if (refUser.email) {
+          sendReferralRewardNotificationEmail({
+            recipientEmail: refUser.email,
+            recipientName: refUser.stage_name || refUser.full_name || "Kreator",
+            referralCode: "KODE REFERRAL",
+            newMemberName: memberToVerify.full_name || "Member Baru",
+            packageName: "Akademi Membership",
+            finalAmount: 49000,
+            rewardAmount: rewardAmount,
+            newBalance: newBalance,
+          }).catch((err) => console.error("Error email reward notification:", err));
+        }
+      }
+    }
+
+    // Kirim Email Konfirmasi menggunakan Nodemailer ke pembeli
+    if (process.env.SMTP_USER && process.env.SMTP_PASS && memberToVerify.email) {
       try {
         const transporter = nodemailer.createTransport({
           host: process.env.SMTP_HOST || "smtp.gmail.com",
           port: parseInt(process.env.SMTP_PORT || "465"),
-          secure: process.env.SMTP_SECURE === "false" ? false : true, // true untuk port 465, false untuk port lain
+          secure: process.env.SMTP_SECURE === "false" ? false : true,
           auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
           },
         });
 
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-        
         await transporter.sendMail({
           from: `"Panggung Kreator" <${process.env.SMTP_USER}>`,
           to: memberToVerify.email,
@@ -560,8 +669,6 @@ export async function verifyMemberPaymentAction(memberId: string) {
       } catch (emailError) {
         console.error("Gagal mengirim email konfirmasi:", emailError);
       }
-    } else {
-      console.warn("SMTP_USER atau SMTP_PASS tidak ditemukan di .env, email konfirmasi tidak dikirim.");
     }
 
     return { success: true };
@@ -579,8 +686,8 @@ export async function deleteMembersAction(memberIds: string[]) {
       {
         cookies: {
           get(name: string) { return cookieStore.get(name)?.value; },
-          set(name: string, value: string, options: CookieOptions) {},
-          remove(name: string, options: CookieOptions) {},
+          set(name: string, value: string, options: CookieOptions) { },
+          remove(name: string, options: CookieOptions) { },
         },
       }
     );

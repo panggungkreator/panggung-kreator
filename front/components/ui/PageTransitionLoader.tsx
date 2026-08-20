@@ -17,25 +17,24 @@ export default function PageTransitionLoader() {
     (window.location.hostname.startsWith("admin.") ||
       window.location.hostname.includes("admin."));
 
-  const isAdminRoute = pathname?.startsWith("/admin") || isHostAdmin;
-
-  // Do not render full-screen transition overlay on Admin portal (Admin uses component/skeleton loading)
-  if (isAdminRoute) {
-    return null;
-  }
+  const isAdminRoute = Boolean(pathname?.startsWith("/admin") || isHostAdmin);
 
   // Always refresh ScrollTrigger on pathname change to fix navigation layout rendering issues
   useEffect(() => {
+    if (isAdminRoute) return;
+
     const timer = setTimeout(() => {
       // Recalculate ScrollTrigger markers for current page elements
       ScrollTrigger.refresh();
     }, 450); // layout settle buffer
 
     return () => clearTimeout(timer);
-  }, [pathname]);
+  }, [pathname, isAdminRoute]);
 
   // Handle fading out the loader when pathname changes (meaning route change completed)
   useEffect(() => {
+    if (isAdminRoute) return;
+
     if (overlayRef.current && isNavigatingRef.current) {
       const timer = setTimeout(() => {
         // Scroll to top of the page instantly
@@ -62,10 +61,12 @@ export default function PageTransitionLoader() {
 
       return () => clearTimeout(timer);
     }
-  }, [pathname]);
+  }, [pathname, isAdminRoute]);
 
   // Intercept all internal Link / Anchor clicks for page transition
   useEffect(() => {
+    if (isAdminRoute) return;
+
     function handleLinkClick(e: MouseEvent) {
       // Check for modifier keys or non-left click to preserve browser default options
       if (
@@ -131,7 +132,12 @@ export default function PageTransitionLoader() {
     return () => {
       document.removeEventListener("click", handleLinkClick, { capture: true });
     };
-  }, [router, pathname]);
+  }, [router, pathname, isAdminRoute]);
+
+  // Do not render full-screen transition overlay on Admin portal (Admin uses component/skeleton loading)
+  if (isAdminRoute) {
+    return null;
+  }
 
   return (
     <div

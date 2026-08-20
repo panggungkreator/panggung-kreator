@@ -95,8 +95,9 @@ export function SelectValue({
 export function SelectContent({
   className,
   children,
+  side = "bottom",
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes<HTMLDivElement> & { side?: "top" | "bottom" }) {
   const context = useContext(SelectContext);
   if (!context) throw new Error("SelectContent must be used within Select");
 
@@ -123,7 +124,8 @@ export function SelectContent({
     <div
       ref={contentRef}
       className={cn(
-        "absolute z-50 mt-1.5 max-h-60 w-full overflow-y-auto rounded-2xl border border-border-default bg-bg-card p-1 shadow-lg",
+        "absolute z-50 max-h-60 w-full overflow-y-auto rounded-2xl border border-border-default bg-bg-card p-1 shadow-lg",
+        side === "top" ? "bottom-full mb-1.5" : "top-full mt-1.5",
         open ? "block animate-in fade-in-0 zoom-in-95 duration-105" : "hidden",
         className
       )}

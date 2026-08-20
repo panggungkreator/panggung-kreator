@@ -27,7 +27,7 @@ export default async function PaymentPage() {
     redirect("/myprofile");
   }
 
-  // Fetch transactions (including member details, package details, and metadata)
+  // Fetch transactions (including member details, package details, metadata, and referral attribution)
   const { data: rawTx } = await supabase
     .from("transactions")
     .select(`
@@ -35,6 +35,11 @@ export default async function PaymentPage() {
       member_id,
       package_id,
       voucher_id,
+      referral_code,
+      referred_by_id,
+      affiliate_code_used,
+      commission_earned,
+      referral_credit_used,
       order_id,
       status,
       gross_amount,
@@ -45,10 +50,16 @@ export default async function PaymentPage() {
       expired_at,
       metadata,
       created_at,
-      members (
+      members:member_id (
         full_name,
         email,
         membership_tier
+      ),
+      referrer:referred_by_id (
+        id,
+        full_name,
+        stage_name,
+        email
       ),
       packages (
         name,
@@ -65,6 +76,12 @@ export default async function PaymentPage() {
     member_id: tx.member_id,
     package_id: tx.package_id,
     voucher_id: tx.voucher_id,
+    referral_code: tx.referral_code || tx.affiliate_code_used || null,
+    referred_by_id: tx.referred_by_id || null,
+    commission_earned: tx.commission_earned || 0,
+    referral_credit_used: tx.referral_credit_used || 0,
+    referrer_name: tx.referrer?.stage_name || tx.referrer?.full_name || null,
+    referrer_email: tx.referrer?.email || null,
     order_id: tx.order_id,
     status: tx.status,
     gross_amount: tx.gross_amount || 0,

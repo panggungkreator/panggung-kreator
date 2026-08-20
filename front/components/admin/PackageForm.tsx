@@ -7,6 +7,13 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import Link from "next/link";
 import { createPackageAction, updatePackageAction } from "@/lib/actions/package-actions";
 
+const formatRupiah = (value: string) => {
+  const numberString = value.replace(/\D/g, "");
+  if (!numberString) return "";
+  const formattedNumber = new Intl.NumberFormat("id-ID").format(parseInt(numberString, 10));
+  return `Rp ${formattedNumber}`;
+};
+
 export default function PackageForm({ initialData = null }: { initialData?: any }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,8 +26,8 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     subtitle: initialData?.subtitle || "",
-    price: initialData?.price || "",
-    original_price: initialData?.original_price || "",
+    price: initialData?.price ? formatRupiah(String(initialData.price)) : "",
+    original_price: initialData?.original_price ? formatRupiah(String(initialData.original_price)) : "",
     is_highlighted: initialData?.is_highlighted || false,
     cta_text: initialData?.cta_text || "DAFTAR SEKARANG",
     order_index: initialData?.order_index || 1,
@@ -32,9 +39,15 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
+    
+    let processedValue = value;
+    if (name === "price" || name === "original_price") {
+      processedValue = formatRupiah(value);
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : processedValue,
     }));
   };
 

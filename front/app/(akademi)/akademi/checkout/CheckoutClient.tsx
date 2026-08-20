@@ -7,6 +7,7 @@ import Header from '@/components/ui/Header';
 import { signout } from '@/lib/actions/auth-actions';
 import { createClient } from '@/lib/supabase/client';
 import { registerMemberAction, validateVoucherAction } from '@/lib/actions/checkout-actions';
+import { validateReferralCodeAction } from '@/lib/actions/referral-actions';
 import {
   Select,
   SelectContent,
@@ -14,6 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Modal } from '@/components/ui/Modal';
+import { InputLine } from '@/components/ui/style-line/InputLine';
+import { PhoneNumberLine } from '@/components/ui/style-line/PhoneNumberLine';
 
 const formatWhatsapp = (value: string) => {
   let digits = value.replace(/\D/g, '');
@@ -46,12 +50,22 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
   const [loadingSession, setLoadingSession] = useState(true);
   const [generatedAccount, setGeneratedAccount] = useState<{ username: string, password: string } | null>(null);
   const [error, setError] = useState("");
+  const [isBenefitsModalOpen, setIsBenefitsModalOpen] = useState(false);
+  const [showVoucherInput, setShowVoucherInput] = useState(false);
+  const [showReferralInput, setShowReferralInput] = useState(false);
 
   // Voucher State
   const [voucherCodeInput, setVoucherCodeInput] = useState("");
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
   const [appliedVoucher, setAppliedVoucher] = useState<{ code: string, discountNominal: number } | null>(null);
   const [voucherMessage, setVoucherMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+
+  // Referral Code State
+  const [referralCodeInput, setReferralCodeInput] = useState("");
+  const [isValidatingReferral, setIsValidatingReferral] = useState(false);
+  const [appliedReferral, setAppliedReferral] = useState<{ code: string, ownerName: string } | null>(null);
+  const [referralMessage, setReferralMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+  const [isReferralFromUrl, setIsReferralFromUrl] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -97,7 +111,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                   setQrisGenerated(false);
                 } else if (member.payment_status === 'paid') {
                   localStorage.removeItem("pangkreas_checkout_state");
-                  router.push('/dashboard');
+                  router.push('/myprofile');
                 } else {
                   const { data: transaction } = await supabase
                     .from("transactions")
@@ -158,7 +172,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
             if (member.payment_status === 'paid') {
               // Redirect member yang sudah lunas ke dashboard akademi
               localStorage.removeItem("pangkreas_checkout_state");
-              router.push('/dashboard');
+              router.push('/akademi/dashboard');
             } else {
               // Fetch pending transaction to get unique_code
               const { data: transaction } = await supabase
@@ -228,6 +242,27 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
       }
       setLoadingSession(false);
     };
+
+    // Auto-detect referral code from URL parameter (?ref=... or ?referral=...)
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const refParam = urlParams.get('ref') || urlParams.get('referral');
+      if (refParam) {
+        const cleanRef = refParam.trim().toUpperCase();
+        setReferralCodeInput(cleanRef);
+        setShowReferralInput(true);
+        setIsReferralFromUrl(true);
+
+        validateReferralCodeAction(cleanRef).then((res) => {
+          if (res.success) {
+            setAppliedReferral({ code: res.code!, ownerName: res.ownerName! });
+            setReferralMessage({ type: 'success', text: `Kode referral terpasang` });
+          } else {
+            setReferralMessage({ type: 'error', text: res.error || "Kode referral dari link tidak valid." });
+          }
+        });
+      }
+    }
 
     checkSession();
   }, []);
@@ -347,6 +382,40 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
     setVoucherMessage(null);
   };
 
+  const handleApplyReferral = async () => {
+    if (!referralCodeInput.trim()) return;
+    setIsValidatingReferral(true);
+    setReferralMessage(null);
+
+    try {
+      const result = await validateReferralCodeAction(referralCodeInput.trim());
+      if (result.success) {
+        setAppliedReferral({
+          code: result.code!,
+          ownerName: result.ownerName!,
+        });
+        setReferralMessage({
+          type: 'success',
+          text: `Kode referral terpasang`
+        });
+      } else {
+        setReferralMessage({ type: 'error', text: result.error || "Kode referral tidak valid." });
+        setAppliedReferral(null);
+      }
+    } catch (err) {
+      setReferralMessage({ type: 'error', text: "Gagal memvalidasi kode referral." });
+    } finally {
+      setIsValidatingReferral(false);
+    }
+  };
+
+  const handleRemoveReferral = () => {
+    setAppliedReferral(null);
+    setReferralCodeInput("");
+    setReferralMessage(null);
+    setIsReferralFromUrl(false);
+  };
+
   const handleGenerateQris = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -359,7 +428,8 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
       const payloadData = {
         ...formData,
         packageId: selectedPackage?.id,
-        usedVoucherCode: appliedVoucher?.code
+        usedVoucherCode: appliedVoucher?.code,
+        referralCode: appliedReferral?.code
       };
       const result = await registerMemberAction(payloadData);
 
@@ -451,17 +521,23 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
     );
   }
 
+  const renderQrisBlock = (isMobile = false) => (
+    <div className="w-full">
+      <img src="/qris.jpeg" alt="QRIS Panggung Kreator" className={`${isMobile ? "w-64" : "w-80 md:w-96"} h-auto mx-auto object-contain`} />
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-[#2c2c2c] dark:text-white font-sans transition-colors duration-300 selection:bg-[#bc151b] selection:text-white">
       {/* Header Minimalis */}
       <Header />
 
-      <main className="max-w-6xl mx-auto px-6 py-12 md:py-16">
-        <div className="mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-4xl font-title font-bold uppercase tracking-wider mb-2 text-zinc-900 dark:text-white">
+      <main className="max-w-5xl mx-auto px-4 py-4 md:py-6">
+        <div className="mb-4 md:mb-6">
+          <h1 className="text-2xl md:text-xl font-title font-bold uppercase mb-1 text-zinc-900 dark:text-white">
             Pendaftaran <span className="text-[#bc151b]">Panggung Kreator Akademi</span>
           </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm md:text-base">
+          <p className="text-zinc-500 dark:text-zinc-400 text-xs">
             {qrisGenerated
               ? "Selesaikan pembayaran manual Anda untuk mengaktifkan akun."
               : "Lengkapi data diri lo dan selesaikan pembayaran untuk bergabung."
@@ -469,61 +545,112 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-          {/* Kolom Kiri: Form Data Diri ATAU Panel Akun Pending */}
-          <div className="w-full lg:w-3/5">
-            {qrisGenerated ? (
-              /* PANEL AKUN PENDING & INSTRUKSI WA */
-              <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/5 rounded-2xl p-6 md:p-8 backdrop-blur-xs space-y-6 animate-fade-in shadow-lg dark:shadow-none transition-colors duration-300">
-                <div className="flex items-center gap-3 border-b border-zinc-200 dark:border-white/10 pb-4">
-                  <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500 text-sm font-bold animate-pulse">
-                    !
+        {qrisGenerated ? (
+          /* TAMPILAN 2 KOLOM UNTUK PEMBAYARAN (QRIS GENERATED) */
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-stretch w-full max-w-5xl mx-auto">
+            {/* Kolom Kiri: Info Pendaftaran, Rincian, Langkah, & WhatsApp Button (Tanpa Background Card, Ditambah Separator Kanan) */}
+            <div className="w-full lg:w-7/12 flex flex-col justify-between space-y-4 animate-fade-in transition-colors duration-300 lg:border-r lg:border-zinc-200 dark:lg:border-zinc-800 lg:pr-8">
+              <div className="space-y-4">
+                {/* Header: Status Pendaftaran */}
+                <div className="flex items-center gap-3 border-b border-zinc-200 dark:border-white/10 pb-3">
+                  <div className="w-6 h-6 rounded-full bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-xs font-bold animate-pulse">
+                    ✓
                   </div>
-                  <h2 className="font-title font-bold text-xl text-zinc-900 dark:text-white uppercase tracking-wider">
-                    Pendaftaran Berhasil diproses
-                  </h2>
+                  <div>
+                    <h2 className="font-title font-bold text-sm text-zinc-900 dark:text-white uppercase tracking-wider">
+                      Pendaftaran Berhasil diproses
+                    </h2>
+                    <p className="text-[10px] text-zinc-400">Akun Anda sedang disiapkan di sistem</p>
+                  </div>
                 </div>
 
-                <div className="bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-white/5 rounded-xl p-5 space-y-3 transition-colors duration-300">
-                  <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-300 tracking-wider">AKUN LOGIN SEDANG DISIAPKAN</h3>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-medium">
-                    Kredensial login Anda (Username & Password) sedang disiapkan dan akan dikirimkan langsung ke email Anda setelah pembayaran Anda diverifikasi dan dikonfirmasi oleh Admin.
-                  </p>
-                  <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-medium leading-relaxed">
-                    * <strong className="text-[#bc151b]">PENTING:</strong> Pastikan Anda mengirimkan bukti transfer pembayaran ke WhatsApp agar Admin dapat memverifikasi dan mengaktifkan akun Anda.
-                  </p>
+                {/* Rincian Tagihan & Nominal */}
+                <div className="bg-zinc-100 dark:bg-zinc-900/50 rounded-xl p-3 border border-zinc-200 dark:border-white/5 text-xs">
+                  <div className="flex justify-between items-center mb-1.5 font-bold text-zinc-800 dark:text-zinc-200">
+                    <span>Panggung Kreator Akademi</span>
+                    <span className="uppercase tracking-wider font-semibold">({selectedPackage?.name || "Paket Advanced"})</span>
+                  </div>
+                  <div className="space-y-1.5 text-zinc-500 dark:text-zinc-400 text-[14px]">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span>Rp {basePrice.toLocaleString('id-ID')}</span>
+                    </div>
+                    {appliedVoucher && (
+                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <span>Diskon ({appliedVoucher.code})</span>
+                        <span>- Rp {appliedVoucher.discountNominal.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {uniqueCode > 0 && (
+                      <div className="flex justify-between">
+                        <span>Kode Unik</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">+ Rp {uniqueCode.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-t border-dashed border-zinc-200 dark:border-white/10 my-2 pt-2 flex justify-between items-center font-bold text-zinc-900 dark:text-white text-sm">
+                    <span>Total Transfer</span>
+                    <span className="text-[#bc151b] text-base">Rp {finalPrice.toLocaleString('id-ID')}</span>
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="font-title font-bold text-sm text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
-                    LANGKAH VERIFIKASI PEMBAYARAN:
-                  </h3>
-                  <ol className="list-decimal list-inside text-xs text-zinc-600 dark:text-zinc-400 space-y-3 leading-relaxed">
-                    <li>Pindai QRIS manual yang ada di panel sebelah kanan.</li>
-                    <li>Bayar sebesar <strong className="text-[#bc151b] dark:text-red-400 text-sm">Rp {finalPrice.toLocaleString('id-ID')}</strong> (pastikan nominal transfer persis sesuai tagihan termasuk 3 digit terakhir).</li>
-                    <li>Ambil screenshot bukti transfer Anda.</li>
-                    <li>Kirimkan bukti transfer tersebut ke WhatsApp Admin dengan menekan tombol di bawah ini untuk mengonfirmasi pembayaran.</li>
-                    <li>Setelah bukti transfer dikirim, Anda akan di-invite ke grup dan menerima email konfirmasi.</li>
-                  </ol>
+                {/* QRIS Code (Mobile Only - Tampil di bawah Total Transfer) */}
+                <div className="lg:hidden mt-2">
+                  {renderQrisBlock(true)}
+                </div>
 
+                {/* Langkah Pembayaran */}
+                <div className="text-[14px] text-zinc-600 dark:text-zinc-400 space-y-1.5 border-t border-zinc-100 dark:border-white/5 pt-3">
+                  <div className="flex gap-2">
+                    <span className="font-bold text-emerald-600">1.</span>
+                    <span>Transfer tepat <strong className="text-red-600 font-semibold">Rp {finalPrice.toLocaleString('id-ID')}</strong> (termasuk kode unik).</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-bold text-emerald-600">2.</span>
+                    <span>Ambil screenshot bukti transfer sukses Anda.</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-bold text-emerald-600">3.</span>
+                    <span>Kirim bukti transfer ke WhatsApp admin menggunakan tombol di bawah.</span>
+                  </div>
+                </div> <div className="pt-3 border-t border-zinc-100 dark:border-white/5">
+                  {/* Tombol CTA WhatsApp */}
                   <a
                     href={`https://wa.me/6281111156736?text=Halo%20Admin%20Panggung%20Kreator%2C%20saya%20sudah%20melakukan%20pembayaran%20pendaftaran%20Akademi.%20Berikut%20bukti%20transfernya.%0A%0AUsername%20Login%20Saya%3A%20${activeUsername}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full mt-6 py-4 bg-[#25D366] hover:bg-[#20BA5A] text-white font-bold rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(37,211,102,0.2)] text-sm"
+                    className="w-full py-3 bg-[#25D366] hover:bg-[#20BA5A] text-white font-bold rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(37,211,102,0.15)] text-xs"
                   >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.73-1.45L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.968C16.574 1.97 14.101.945 11.472.945 6.037.945 1.611 5.316 1.607 10.744c-.002 1.716.446 3.39 1.298 4.872L1.876 21.09l5.771-1.936z" />
                     </svg>
                     Kirim Bukti Transfer ke WhatsApp
                   </a>
+
+                  {/* Keamanan */}
+
                 </div>
               </div>
-            ) : (
-              /* FORM REGISTRASI/CHECKOUT */
+              <div className="flex mb-2 items-center gap-1.5 justify-center text-[10px] text-zinc-400">
+                <svg className="w-3.5 h-3.5 text-zinc-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" /></svg>
+                <span>Transaksi aman & terverifikasi manual oleh Admin</span>
+              </div>
+
+            </div>
+
+            {/* Kolom Kanan: QRIS Code (Desktop Only - Diperbesar, Tanpa Background Card) */}
+            <div className="hidden lg:flex w-full lg:w-5/12 flex-col justify-center items-center space-y-4 animate-fade-in transition-colors duration-300 lg:pl-8">
+              {renderQrisBlock(false)}
+            </div>
+          </div>
+        ) : (
+          /* TATA LETAK 2 KOLOM (FORM PENGISIAN DATA DIRI & CHECKOUT) */
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+            {/* Kolom Kiri: Form Data Diri */}
+            <div className="w-full lg:w-3/5">
               <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/5 rounded-2xl p-6 md:p-8 backdrop-blur-xs relative shadow-lg dark:shadow-none transition-colors duration-300">
-                <h2 className="font-title font-bold text-xl text-zinc-900 dark:text-white uppercase tracking-wider mb-6 flex items-center gap-3 border-b border-zinc-200 dark:border-white/10 pb-4">
-                  <span className="w-8 h-8 rounded-full bg-[#bc151b]/20 flex items-center justify-center text-[#bc151b] text-sm">1</span>
+                <h2 className="font-title font-bold text-md text-zinc-900 dark:text-white uppercase tracking-wider mb-6 flex items-center gap-3 border-b border-zinc-200 dark:border-white/10 pb-4">
+                  <span className="w-6 h-6 rounded-full bg-[#bc151b]/20 flex items-center justify-center text-[#bc151b] text-sm">1</span>
                   Informasi Personal
                 </h2>
 
@@ -537,143 +664,93 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                 )}
 
                 <form id="checkout-form" onSubmit={handleGenerateQris} className="space-y-6" noValidate>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Nama Lengkap */}
-                    <div>
-                      <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Nama Lengkap *</label>
-                      <input
-                        type="text"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleChange}
-                        placeholder="Sesuai KTP/Identitas"
-                        className={`w-full bg-white dark:bg-[#2c2c2c] border ${errors.fullName ? 'border-[#bc151b] focus:ring-[#bc151b]' : 'border-zinc-200 dark:border-white/10 focus:border-[#bc151b] focus:ring-[#bc151b]'
-                          } rounded-lg px-4 py-3 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 transition-all`}
-                        required
-                      />
-                      {errors.fullName && (
-                        <p className="mt-1.5 text-xs text-[#bc151b] flex items-center gap-1.5 animate-fade-in font-medium">
-                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          {errors.fullName}
-                        </p>
-                      )}
-                    </div>
+                  {/* Nama Lengkap */}
+                  <InputLine
+                    label="Nama Lengkap *"
+                    type="text"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    placeholder="Sesuai KTP/Identitas"
+                    error={errors.fullName}
+                    focusClassName="focus-within:border-[#bc151b] dark:focus-within:border-[#bc151b]"
+                    required
+                  />
 
-                    {/* Nama Panggung */}
-                    <div>
-                      <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Nama Panggung</label>
-                      <input
-                        type="text"
-                        name="stageName"
-                        value={formData.stageName}
-                        onChange={handleChange}
-                        placeholder="Nama panggilan/panggung"
-                        className="w-full bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-lg px-4 py-3 text-zinc-900 dark:text-white focus:outline-none focus:border-[#bc151b] focus:ring-1 focus:ring-[#bc151b] transition-all"
-                      />
-                    </div>
-                  </div>
+                  {/* Nama Panggung */}
+                  <InputLine
+                    label="Nama Panggung"
+                    type="text"
+                    name="stageName"
+                    value={formData.stageName}
+                    onChange={handleChange}
+                    placeholder="Nama panggilan/panggung"
+                    focusClassName="focus-within:border-[#bc151b] dark:focus-within:border-[#bc151b]"
+                  />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* No WA */}
-                    <div>
-                      <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Nomor WhatsApp *</label>
-                      <input
-                        type="tel"
-                        name="whatsapp"
-                        value={formData.whatsapp}
-                        onChange={handleWhatsappChange}
-                        placeholder="0812xxxxxxxx"
-                        className={`w-full bg-white dark:bg-[#2c2c2c] border ${errors.whatsapp ? 'border-[#bc151b] focus:ring-[#bc151b]' : 'border-zinc-200 dark:border-white/10 focus:border-[#bc151b] focus:ring-[#bc151b]'
-                          } rounded-lg px-4 py-3 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 transition-all`}
-                        required
-                      />
-                      {errors.whatsapp && (
-                        <p className="mt-1.5 text-xs text-[#bc151b] flex items-center gap-1.5 animate-fade-in font-medium">
-                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          {errors.whatsapp}
-                        </p>
-                      )}
-                    </div>
+                  {/* No WA */}
+                  <PhoneNumberLine
+                    label="Nomor WhatsApp *"
+                    name="whatsapp"
+                    value={formData.whatsapp}
+                    onChange={(formattedVal) => {
+                      setFormData((prev) => ({ ...prev, whatsapp: formattedVal }));
+                      if (errors.whatsapp) {
+                        setErrors((prev) => ({ ...prev, whatsapp: '' }));
+                      }
+                    }}
+                    error={errors.whatsapp}
+                    focusClassName="focus-within:border-[#bc151b] dark:focus-within:border-[#bc151b]"
+                  />
 
-                    {/* Email */}
-                    <div>
-                      <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Alamat Email *</label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder="email@contoh.com"
-                        className={`w-full bg-white dark:bg-[#2c2c2c] border ${errors.email ? 'border-[#bc151b] focus:ring-[#bc151b]' : 'border-zinc-200 dark:border-white/10 focus:border-[#bc151b] focus:ring-[#bc151b]'
-                          } rounded-lg px-4 py-3 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 transition-all`}
-                        required
-                      />
-                      {errors.email && (
-                        <p className="mt-1.5 text-xs text-[#bc151b] flex items-center gap-1.5 animate-fade-in font-medium">
-                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          {errors.email}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  {/* Email */}
+                  <InputLine
+                    label="Alamat Email *"
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="email@contoh.com"
+                    error={errors.email}
+                    focusClassName="focus-within:border-[#bc151b] dark:focus-within:border-[#bc151b]"
+                    required
+                  />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Instagram */}
-                    <div>
-                      <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2 flex items-center gap-2">
-                        <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
-                        Akun Instagram
-                      </label>
-                      <div className="flex items-center w-full bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-lg px-4 focus-within:border-[#bc151b] focus-within:ring-1 focus-within:ring-[#bc151b] transition-all">
-                        <span className="text-zinc-400 dark:text-zinc-500 mr-3 select-none font-medium text-base">@</span>
-                        <input
-                          type="text"
-                          name="instagram"
-                          value={formData.instagram}
-                          onChange={handleSocialChange}
-                          placeholder="username"
-                          className="w-full bg-transparent border-0 py-3 text-zinc-900 dark:text-white focus:outline-none focus:ring-0 p-0 placeholder-zinc-400 dark:placeholder-zinc-600"
-                        />
-                      </div>
-                    </div>
+                  {/* Instagram */}
+                  <InputLine
+                    label="Akun Instagram"
+                    type="text"
+                    name="instagram"
+                    value={formData.instagram}
+                    onChange={handleSocialChange}
+                    placeholder="username"
+                    prefixText="@"
+                    focusClassName="focus-within:border-[#bc151b] dark:focus-within:border-[#bc151b]"
+                  />
 
-                    {/* TikTok */}
-                    <div>
-                      <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2 flex items-center gap-2">
-                        <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.8-5.46-.4-2.51.13-5.23 1.61-7.23 1.35-1.84 3.48-3 5.75-3.35V11.1c-1.04.14-2.03.62-2.76 1.41-.75.83-1.16 1.96-1.15 3.09.02 1.15.42 2.29 1.18 3.13.78.86 1.9 1.36 3.08 1.42 1.05.05 2.1-.28 2.92-.93.74-.58 1.25-1.42 1.4-2.36.08-.54.08-1.1.08-1.64V.02h2.52z" /></svg>
-                        Akun TikTok
-                      </label>
-                      <div className="flex items-center w-full bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-lg px-4 focus-within:border-[#bc151b] focus-within:ring-1 focus-within:ring-[#bc151b] transition-all">
-                        <span className="text-zinc-400 dark:text-zinc-500 mr-3 select-none font-medium text-base">@</span>
-                        <input
-                          type="text"
-                          name="tiktok"
-                          value={formData.tiktok}
-                          onChange={handleSocialChange}
-                          placeholder="username"
-                          className="w-full bg-transparent border-0 py-3 text-zinc-900 dark:text-white focus:outline-none focus:ring-0 p-0 placeholder-zinc-400 dark:placeholder-zinc-600"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  {/* TikTok */}
+                  <InputLine
+                    label="Akun TikTok"
+                    type="text"
+                    name="tiktok"
+                    value={formData.tiktok}
+                    onChange={handleSocialChange}
+                    placeholder="username"
+                    prefixText="@"
+                    focusClassName="focus-within:border-[#bc151b] dark:focus-within:border-[#bc151b]"
+                  />
 
                   {/* Profesi */}
                   <div>
-                    <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Profesi Saat Ini</label>
+                    <label className="text-[11px] font-bold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase block mb-1">Profesi Saat Ini</label>
                     <Select
                       value={formData.profession}
                       onValueChange={(value) => setFormData((prev) => ({ ...prev, profession: value }))}
                     >
-                      <SelectTrigger className="w-full bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-lg px-4 py-3 h-auto text-zinc-900 dark:text-white focus:ring-1 focus:ring-[#bc151b] focus:border-[#bc151b] transition-all cursor-pointer">
+                      <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 rounded-none px-0 py-1.5 h-auto text-zinc-900 dark:text-white focus:ring-0 focus:border-[#bc151b] focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-offset-0 transition-all cursor-pointer shadow-none">
                         <SelectValue placeholder="Pilih Profesi" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white shadow-xl z-50">
+                      <SelectContent side="top" className="bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white shadow-xl z-50 w-full max-h-[220px]">
                         <SelectItem value="mahasiswa">Mahasiswa / Pelajar</SelectItem>
                         <SelectItem value="karyawan">Karyawan / Profesional</SelectItem>
                         <SelectItem value="freelancer">Freelancer</SelectItem>
@@ -685,127 +762,178 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                   </div>
                 </form>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Kolom Kanan: Order Summary & Pembayaran */}
-          <div className="w-full lg:w-2/5">
-            <div className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-white/5 rounded-2xl p-6 md:p-8 sticky top-24 shadow-lg dark:shadow-2xl transition-colors duration-300">
-              <h2 className="font-title font-bold text-xl text-zinc-900 dark:text-white uppercase tracking-wider mb-6 flex items-center gap-3 border-b border-zinc-200 dark:border-white/10 pb-4">
-                <span className="w-8 h-8 rounded-full bg-[#bc151b]/20 flex items-center justify-center text-[#bc151b] text-sm">2</span>
-                Pembayaran
-              </h2>
-
-              <div className="mb-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-bold text-md text-zinc-800 dark:text-zinc-100">Panggung Kreator Akademi</h3>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">{selectedPackage?.name || "Paket Advanced"}</p>
-                  </div>
-                  <span className="font-bold text-md text-zinc-800 dark:text-zinc-100">Rp {basePrice.toLocaleString('id-ID')}</span>
-                </div>
-
-                <div className="p-4 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 space-y-2.5 mb-6">
-                  <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Fasilitas Termasuk:</div>
-                  {selectedPackage?.benefits ? (
-                    selectedPackage.benefits.map((benefit: any, idx: number) => benefit.isIncluded && (
-                      <div key={idx} className="flex items-start gap-2.5 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
-                        <svg className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span>{benefit.text}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex items-start gap-2.5 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
-                      <svg className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <span>Akses Penuh Keanggotaan Panggung Kreator</span>
+            {/* Kolom Kanan: Order Summary & Pembayaran */}
+            <div className="w-full lg:w-2/5">
+              <div className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-white/5 rounded-xl p-4 md:p-5 sticky top-28 shadow-md dark:shadow-xl transition-colors duration-300">
+                <h2 className="font-title font-bold text-md text-zinc-900 dark:text-white uppercase tracking-wider mb-6 flex items-center gap-3 border-b border-zinc-200 dark:border-white/10 pb-4">
+                  <span className="w-6 h-6 rounded-full bg-[#bc151b]/20 flex items-center justify-center text-[#bc151b] text-sm">2</span>
+                  Pembayaran
+                </h2>
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <div>
+                      <h3 className="font-bold text-sm text-zinc-800 dark:text-zinc-100">Panggung Kreator Akademi</h3>
+                      <button
+                        type="button"
+                        onClick={() => setIsBenefitsModalOpen(true)}
+                        className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-[#bc151b] transition-colors cursor-pointer flex items-center gap-1 font-semibold underline decoration-dotted text-left uppercase tracking-wider"
+                      >
+                        {selectedPackage?.name || "Paket Advanced"}
+                      </button>
                     </div>
-                  )}
+                    <span className="font-bold text-sm text-zinc-800 dark:text-zinc-100">Rp {basePrice.toLocaleString('id-ID')}</span>
+                  </div>
                 </div>
-              </div>
+                <div className="border-t border-b border-zinc-200 dark:border-white/10 py-3 mb-4 space-y-4">
+                  {/* Subtotal, Biaya Layanan & Total Pembayaran (Moved to top) */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-zinc-400">
+                      <span>Subtotal</span>
+                      <span>Rp {basePrice.toLocaleString('id-ID')}</span>
+                    </div>
+                    {appliedVoucher && (
+                      <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <span>Diskon ({appliedVoucher.code})</span>
+                        <span>- Rp {appliedVoucher.discountNominal.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {uniqueCode > 0 && (
+                      <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-zinc-400">
+                        <span>Kode Unik</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">+ Rp {uniqueCode.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-xs text-zinc-400 dark:text-zinc-500 pb-1.5">
+                      <span>Biaya Layanan</span>
+                      <span>Rp 0</span>
+                    </div>
+                    <div className="flex justify-between items-center font-bold text-base mt-2 text-zinc-900 dark:text-white border-t border-zinc-200 dark:border-white/10 pt-2.5">
+                      <span>Total Pembayaran</span>
+                      <span className="text-[#bc151b]">Rp {finalPrice.toLocaleString('id-ID')}</span>
+                    </div>
+                  </div>
 
-              <div className="border-t border-b border-zinc-200 dark:border-white/10 py-4 mb-6">
+                  <div className="border-t border-zinc-150 dark:border-zinc-800/80 my-3" />
 
-                {/* Kolom Input Voucher */}
-                {!qrisGenerated && (
-                  <div className="mb-4 pb-4 border-b border-zinc-200 dark:border-white/10">
-                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Punya Kode Voucher?</label>
+                  {/* Kolom Input Voucher */}
+                  <div className="pb-3 border-b border-zinc-200 dark:border-white/10">
                     {appliedVoucher ? (
-                      <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-lg px-3 py-2">
-                        <span className="text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-lg px-2.5 py-1.5">
+                        <span className="text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5">
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                           {appliedVoucher.code} Terpasang
                         </span>
-                        <button onClick={handleRemoveVoucher} className="text-zinc-400 hover:text-red-500 text-xs font-medium transition-colors">
+                        <button onClick={handleRemoveVoucher} className="text-zinc-400 hover:text-red-500 text-xs font-medium transition-colors cursor-pointer">
                           Hapus
                         </button>
                       </div>
+                    ) : !showVoucherInput ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowVoucherInput(true)}
+                        className="text-xs font-semibold text-[#bc151b] hover:underline cursor-pointer flex items-center gap-1"
+                      >
+                        Punya Kode Voucher?
+                      </button>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={voucherCodeInput}
-                          onChange={(e) => setVoucherCodeInput(e.target.value.toUpperCase())}
-                          placeholder="Masukkan kode"
-                          className="flex-1 bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white uppercase focus:outline-none focus:border-[#bc151b]"
-                        />
+                      <div className="flex items-end gap-2 w-full animate-fade-in">
+                        <div className="flex-1">
+                          <InputLine
+                            label="Punya Kode Voucher?"
+                            type="text"
+                            value={voucherCodeInput}
+                            onChange={(e) => setVoucherCodeInput(e.target.value.toUpperCase())}
+                            placeholder="Masukkan kode"
+                            focusClassName="focus-within:border-[#bc151b] dark:focus-within:border-[#bc151b]"
+                          />
+                        </div>
                         <button
                           onClick={handleApplyVoucher}
                           disabled={isValidatingVoucher || !voucherCodeInput.trim()}
-                          className="bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-4 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                          className="bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer h-[30px] flex items-center justify-center shrink-0 mb-0.5"
                         >
                           {isValidatingVoucher ? "Cek..." : "Terapkan"}
                         </button>
                       </div>
                     )}
                     {voucherMessage && (
-                      <p className={`mt-2 text-[10px] font-medium ${voucherMessage.type === 'error' ? 'text-red-500' : 'text-emerald-500'}`}>
+                      <p className={`mt-1.5 text-[9px] font-medium ${voucherMessage.type === 'error' ? 'text-red-500' : 'text-emerald-500'}`}>
                         {voucherMessage.text}
                       </p>
                     )}
                   </div>
-                )}
 
-                <div className="flex justify-between items-center text-sm text-zinc-500 dark:text-zinc-400 mb-2">
-                  <span>Subtotal</span>
-                  <span>Rp {basePrice.toLocaleString('id-ID')}</span>
-                </div>
-                {appliedVoucher && (
-                  <div className="flex justify-between items-center text-sm text-emerald-600 dark:text-emerald-400 mb-2 font-medium">
-                    <span>Diskon ({appliedVoucher.code})</span>
-                    <span>- Rp {appliedVoucher.discountNominal.toLocaleString('id-ID')}</span>
+                  {/* Kolom Input Kode Referral */}
+                  <div className="pb-1">
+                    {appliedReferral && !isReferralFromUrl ? (
+                      <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg px-2.5 py-1.5">
+                        <span className="text-blue-700 dark:text-blue-400 text-xs font-bold flex items-center gap-1.5">
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          {appliedReferral.code} ({appliedReferral.ownerName})
+                        </span>
+                        <button onClick={handleRemoveReferral} className="text-zinc-400 hover:text-red-500 text-xs font-medium transition-colors cursor-pointer">
+                          Hapus
+                        </button>
+                      </div>
+                    ) : !showReferralInput ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowReferralInput(true)}
+                        className="text-xs font-semibold text-[#bc151b] hover:underline cursor-pointer flex items-center gap-1"
+                      >
+                        Punya Kode Referral?
+                      </button>
+                    ) : (
+                      <div className="flex items-end gap-2 w-full animate-fade-in">
+                        <div className="flex-1">
+                          <InputLine
+                            label={isReferralFromUrl ? "Kode Referral (Dari Link)" : "Punya Kode Referral? (Opsional)"}
+                            type="text"
+                            value={referralCodeInput}
+                            disabled={isReferralFromUrl}
+                            onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                            placeholder="Contoh: RIZAL2026"
+                            focusClassName="focus-within:border-[#bc151b] dark:focus-within:border-[#bc151b]"
+                            className={isReferralFromUrl ? "opacity-75 cursor-not-allowed font-semibold text-blue-600 dark:text-blue-400 select-none" : ""}
+                          />
+                        </div>
+                        {isReferralFromUrl ? (
+                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-2.5 py-1.5 flex items-center shrink-0 mb-0.5 h-[30px]">
+                            Terpasang
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleApplyReferral}
+                            disabled={isValidatingReferral || !referralCodeInput.trim()}
+                            className="bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer h-[30px] flex items-center justify-center shrink-0 mb-0.5"
+                          >
+                            {isValidatingReferral ? "Cek..." : "Gunakan"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {referralMessage && (
+                      <p className={`mt-1.5 text-[9px] font-medium ${referralMessage.type === 'error' ? 'text-red-500' : 'text-blue-500'}`}>
+                        {referralMessage.text}
+                      </p>
+                    )}
                   </div>
-                )}
-                {uniqueCode > 0 && (
-                  <div className="flex justify-between items-center text-sm text-zinc-500 dark:text-zinc-400 mb-2">
-                    <span>Kode Unik</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">+ Rp {uniqueCode.toLocaleString('id-ID')}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center text-sm text-zinc-400 dark:text-zinc-500 mb-2">
-                  <span>Biaya Layanan</span>
-                  <span>Rp 0</span>
                 </div>
-                <div className="flex justify-between items-center font-bold text-lg mt-4 text-zinc-900 dark:text-white border-t border-zinc-200 dark:border-white/10 pt-4">
-                  <span>Total Pembayaran</span>
-                  <span className="text-[#bc151b]">Rp {finalPrice.toLocaleString('id-ID')}</span>
-                </div>
-              </div>
 
-              {/* Area QRIS */}
-              {!qrisGenerated ? (
                 <button
                   type="submit"
                   form="checkout-form"
                   disabled={isSubmitting}
-                  className="w-full py-4 bg-[#bc151b] hover:bg-[#bc151b]/90 text-white font-bold rounded-xl uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-[0_0_20px_rgba(188,21,27,0.4)] hover:shadow-[0_0_30px_rgba(188,21,27,0.6)] text-sm cursor-pointer"
+                  className="w-full py-3 bg-[#bc151b] hover:bg-[#bc151b]/90 text-white font-bold rounded-lg uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-[0_0_15px_rgba(188,21,27,0.3)] hover:shadow-[0_0_20px_rgba(188,21,27,0.5)] text-xs cursor-pointer"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center gap-2">
-                      <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -815,46 +943,43 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                     "Daftar & Dapatkan QRIS"
                   )}
                 </button>
-              ) : (
-                <div className="animate-fade-in transition-all duration-500">
-                  <div className="bg-white rounded-xl p-6 text-center text-black border border-zinc-200 shadow-sm">
-                    <div className="flex justify-between items-center mb-4 border-b pb-2">
-                      <span className="font-bold text-[#bc151b] font-title tracking-wider">QRIS MANUAL</span>
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/a/a2/Logo_QRIS.svg" alt="QRIS" className="h-6" />
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded-lg inline-block mb-4 relative border border-gray-100">
-                      {/* QR code untuk transfer manual menggunakan gambar screenshot qris.jpeg */}
-                      <img src="/qris.jpeg" alt="QRIS Panggung Kreator" className="w-48 h-auto mx-auto object-contain" />
-                    </div>
-                    <p className="text-sm font-bold text-gray-700 mb-1">Total Transfer: Rp {finalPrice.toLocaleString('id-ID')}</p>
-                    {uniqueCode > 0 && (
-                      <p className="text-[11px] text-emerald-600 font-bold mb-1">
-                        * Wajib transfer sesuai nominal sampai 3 digit terakhir (termasuk kode unik Rp {uniqueCode})
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-400 mb-4">Pindai QRIS di atas untuk melakukan transfer</p>
 
-                    <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-xs font-semibold flex flex-col gap-2 border border-yellow-100 mb-4 text-left leading-relaxed">
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <strong>Menunggu Verifikasi Pembayaran</strong>
-                      </div>
-                      <p className="text-[11px] text-yellow-700">
-                        Kirim bukti transfer ke WhatsApp <strong>081111156736</strong>. Setelah terverifikasi, Anda akan segera di-invite ke grup dan menerima email konfirmasi.
-                      </p>
-                    </div>
-                  </div>
+                <div className="mt-3.5 flex items-start gap-2 text-[10px] text-zinc-500 leading-normal">
+                  <svg className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" /></svg>
+                  <p>Pendaftaran Anda aman. Akun Anda akan aktif setelah diverifikasi oleh admin melalui chat bukti transfer WhatsApp.</p>
                 </div>
-              )}
-
-              <div className="mt-6 flex items-start gap-3 text-xs text-zinc-500">
-                <svg className="w-4 h-4 text-zinc-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" /></svg>
-                <p>Pendaftaran Anda aman. Akun Anda akan aktif setelah diverifikasi oleh admin melalui chat bukti transfer WhatsApp.</p>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
+
+      <Modal
+        isOpen={isBenefitsModalOpen}
+        onClose={() => setIsBenefitsModalOpen(false)}
+        title="Fasilitas Termasuk"
+        subtitle={selectedPackage?.name || "Paket Advanced"}
+      >
+        <div className="space-y-3">
+          {selectedPackage?.benefits ? (
+            selectedPackage.benefits.map((benefit: any, idx: number) => benefit.isIncluded && (
+              <div key={idx} className="flex items-start gap-2.5 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+                <svg className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                <span>{benefit.text}</span>
+              </div>
+            ))
+          ) : (
+            <div className="flex items-start gap-2.5 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+              <svg className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              <span>Akses Penuh Keanggotaan Panggung Kreator</span>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       <style jsx global>{`
         @keyframes progress {

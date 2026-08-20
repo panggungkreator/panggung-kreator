@@ -28,10 +28,18 @@ export default async function RegistrationPage() {
     redirect("/myprofile");
   }
 
-  // Tarik data seluruh member untuk tabel admin (kecuali admin dan priority)
+  // Tarik data seluruh member beserta relasi referrer
   const { data: members, error } = await supabase
     .from("members")
-    .select("*")
+    .select(`
+      *,
+      referrer:referred_by (
+        id,
+        full_name,
+        stage_name,
+        affiliate_code
+      )
+    `)
     .neq("role", "admin")
     .or("membership_tier.neq.priority,membership_tier.is.null")
     .order("created_at", { ascending: false });

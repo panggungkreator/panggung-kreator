@@ -36,6 +36,13 @@ type Member = {
   created_at: string;
   final_price?: number;
   used_voucher_code?: string;
+  referred_by?: string;
+  referrer?: {
+    id: string;
+    full_name: string;
+    stage_name: string;
+    affiliate_code?: string;
+  } | null;
   unique_code?: number;
   role?: string;
   package_id?: string | null;
@@ -625,6 +632,21 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                                   </>
                                 )}
                               </div>
+                              {/* Badges Petanda Referral & Voucher */}
+                              {(member.used_voucher_code || member.referrer || member.referred_by) && (
+                                <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                                  {member.used_voucher_code && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20" title={`Menggunakan Voucher: ${member.used_voucher_code}`}>
+                                      🎟️ {member.used_voucher_code}
+                                    </span>
+                                  )}
+                                  {(member.referrer || member.referred_by) && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" title={`Menggunakan Referral dari ${member.referrer?.stage_name || member.referrer?.full_name || "Pengundang"}`}>
+                                      🎁 Ref: {member.referrer?.stage_name || member.referrer?.full_name || "Ada"}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -781,8 +803,8 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">Instagram:</span>
                   {detailMember.instagram_username &&
-                  detailMember.instagram_username.trim() !== "" &&
-                  detailMember.instagram_username.trim() !== "-" ? (
+                    detailMember.instagram_username.trim() !== "" &&
+                    detailMember.instagram_username.trim() !== "-" ? (
                     <a
                       href={`https://instagram.com/${detailMember.instagram_username.replace("@", "")}`}
                       target="_blank"
@@ -798,8 +820,8 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">TikTok:</span>
                   {detailMember.tiktok_username &&
-                  detailMember.tiktok_username.trim() !== "" &&
-                  detailMember.tiktok_username.trim() !== "-" ? (
+                    detailMember.tiktok_username.trim() !== "" &&
+                    detailMember.tiktok_username.trim() !== "-" ? (
                     <a
                       href={`https://tiktok.com/@${detailMember.tiktok_username.replace("@", "")}`}
                       target="_blank"
@@ -815,8 +837,8 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">Email:</span>
                   {detailMember.email &&
-                  detailMember.email.trim() !== "" &&
-                  detailMember.email.trim() !== "-" ? (
+                    detailMember.email.trim() !== "" &&
+                    detailMember.email.trim() !== "-" ? (
                     <a
                       href={`mailto:${detailMember.email}`}
                       className="font-bold text-[#bc151b] hover:underline"
@@ -850,7 +872,15 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">Voucher Terpakai:</span>
-                  <span className="font-bold text-[#bc151b] dark:text-[#ef4444]">{detailMember.used_voucher_code || "Tidak ada"}</span>
+                  <span className="font-bold text-purple-600 dark:text-purple-400">
+                    {detailMember.used_voucher_code ? `🎟️ ${detailMember.used_voucher_code}` : "Tidak ada"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Referral by:</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">
+                    {detailMember.referrer?.stage_name || detailMember.referrer?.full_name || (detailMember.referred_by ? "Ada (Referral)" : "Tidak ada")}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">Kode Unik:</span>

@@ -103,3 +103,62 @@ export interface ReferralMember {
   created_at: string
 }
 
+export interface ReferralCode {
+  id: string
+  code: string
+  owner_member_id: string
+  description: string | null
+  is_active: boolean
+  usage_count: number
+  max_usage: number
+  total_revenue: number
+  default_reward: number
+  created_at: string
+  updated_at: string
+  owner?: {
+    full_name: string
+    email: string | null
+  }
+}
+
+export interface ReferralReward {
+  id: string
+  transaction_id: string
+  referral_code_id: string | null
+  referrer_id: string
+  referred_id: string
+  reward_amount: number
+  status: 'pending' | 'confirmed' | 'redeemed' | 'paid_out' | 'cancelled'
+  confirmed_by: string | null
+  confirmed_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  referrer?: {
+    full_name: string
+    email: string | null
+  }
+  referred?: {
+    full_name: string
+    email: string | null
+  }
+  transaction?: {
+    order_id: string
+    final_amount: number
+  }
+}
+
+export interface CommissionLedgerEntry {
+  id: string
+  member_id: string
+  type: 'credit' | 'debit'
+  amount: number
+  balance_after: number
+  source: 'referral_reward' | 'redeem_membership' | 'cash_out' | 'manual_adjustment'
+  reference_id: string | null
+  description: string | null
+  created_by: string | null
+  created_at: string
+}
+
+
