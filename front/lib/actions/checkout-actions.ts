@@ -383,6 +383,18 @@ export async function registerMemberAction(payload: CheckoutPayload) {
 
     if (dbError) {
       console.error("Database insert error:", dbError);
+
+      const dbErrMsg = dbError.message || "";
+      if (dbErrMsg.includes("members_whatsapp_number_key") || dbErrMsg.includes("duplicate key") && dbErrMsg.includes("whatsapp")) {
+        return { success: false, error: "Nomor WhatsApp ini sudah terdaftar oleh akun lain. Gunakan nomor WhatsApp yang berbeda atau hubungi Admin jika ini adalah kesalahan." };
+      }
+      if (dbErrMsg.includes("members_email_key") || dbErrMsg.includes("duplicate key") && dbErrMsg.includes("email")) {
+        return { success: false, error: "Email ini sudah terdaftar. Silakan gunakan email lain atau hubungi Admin." };
+      }
+      if (dbErrMsg.includes("members_username_key") || dbErrMsg.includes("duplicate key") && dbErrMsg.includes("username")) {
+        return { success: false, error: "Username yang dibuat secara otomatis sudah ada. Silakan coba daftar kembali." };
+      }
+
       return { success: false, error: dbError.message };
     }
 
