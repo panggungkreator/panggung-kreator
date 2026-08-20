@@ -5,6 +5,10 @@ export async function createClient() {
   const cookieStore = await cookies();
   const headersList = await headers();
   
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const cleanUrl = rawUrl.trim().replace(/\/+$/, "").replace(/^["']|["']$/g, "");
+  const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim().replace(/^["']|["']$/g, "");
+
   const host = headersList.get("host") || "";
   const cleanHost = host.split(":")[0];
   const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
@@ -22,8 +26,8 @@ export async function createClient() {
   }
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    cleanUrl,
+    anonKey,
     {
       cookies: {
         getAll() {

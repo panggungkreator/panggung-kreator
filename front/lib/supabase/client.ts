@@ -4,11 +4,15 @@ import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 let supabaseBrowserInstance: ReturnType<typeof createBrowserClient> | null = null;
 
 export function createClient() {
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const cleanUrl = rawUrl.trim().replace(/\/+$/, "").replace(/^["']|["']$/g, "");
+  const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim().replace(/^["']|["']$/g, "");
+
   if (typeof window === "undefined") {
     // Return fresh instance for SSR to avoid state leaking across requests
     return createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      cleanUrl,
+      anonKey,
       {
         cookieOptions: {
           path: "/",
@@ -36,8 +40,8 @@ export function createClient() {
     }
 
     supabaseBrowserInstance = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      cleanUrl,
+      anonKey,
       {
         cookieOptions: {
           domain: cookieDomain,
