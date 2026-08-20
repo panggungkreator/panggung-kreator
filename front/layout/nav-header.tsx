@@ -13,6 +13,7 @@ export default function NavHeader() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -46,9 +47,15 @@ export default function NavHeader() {
     // Check user session
     const supabase = createClient();
     const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+        }
+      } catch (error) {
+        console.error("Error fetching session:", error);
+      } finally {
+        setLoadingSession(false);
       }
     };
     fetchSession();
@@ -56,6 +63,7 @@ export default function NavHeader() {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setUser(session?.user ?? null);
+      setLoadingSession(false);
     });
 
     return () => {
@@ -122,7 +130,12 @@ export default function NavHeader() {
             <div className="w-9 h-9 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
           )}
 
-          {user ? (
+          {loadingSession ? (
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-28 bg-zinc-200 dark:bg-zinc-800 rounded-lg animate-pulse" />
+              <div className="h-9 w-9 bg-zinc-200 dark:bg-zinc-800 rounded-lg animate-pulse" />
+            </div>
+          ) : user ? (
             <div className="flex items-center gap-2">
               <Link
                 href="/akademi/dashboard"
@@ -185,7 +198,9 @@ export default function NavHeader() {
             </nav>
 
             <div className="flex flex-col gap-4 pb-12">
-              {user ? (
+              {loadingSession ? (
+                <div className="h-12 w-full bg-zinc-200 dark:bg-zinc-800 rounded-lg animate-pulse" />
+              ) : user ? (
                 <>
                   <Link
                     href="/akademi/dashboard"
