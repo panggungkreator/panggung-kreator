@@ -248,7 +248,7 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       Object.getOwnPropertyNames(authError).forEach((k) => {
         errorProps[k] = (authError as any)[k];
       });
-      console.error("[REGISTER AUTH ERROR DETAILS]:", JSON.stringify(errorProps));
+      console.error("[REGISTER AUTH ERROR DETAILS]:", JSON.stringify(errorProps), `KeyRef: ${keyRefInfo}`);
 
       let friendlyError = authError.message;
       const lowerMsg = (authError.message || "").toLowerCase();
@@ -257,8 +257,10 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         friendlyError = "Batas pendaftaran email terlampaui (rate limit Supabase). Silakan coba lagi nanti atau hubungi Admin.";
       } else if (lowerMsg.includes("already registered") || lowerMsg.includes("already exists")) {
         friendlyError = "Email sudah terdaftar. Jika sebelumnya Anda belum menyelesaikan pembayaran dan sesi telah habis, silakan hubungi Admin untuk bantuan.";
-      } else if (authError.name === "AuthRetryableFetchError" || authError.status === 500 || !friendlyError || friendlyError === "{}") {
-        friendlyError = `Server tidak dapat terhubung ke Supabase Auth (Status ${authError.status || 500}). Periksa log server untuk detail JWT Key Info.`;
+      } else if (authError.name === "AuthRetryableFetchError" || !friendlyError || friendlyError === "{}") {
+        friendlyError = `Gagal terhubung ke Supabase Auth (Status ${authError.status || 500}). Periksa koneksi jaringan atau URL Supabase server.`;
+      } else if (authError.status === 500) {
+        friendlyError = `Supabase Auth Error (Status 500): ${authError.message}. Periksa konfigurasi API Key / DB Trigger di Supabase.`;
       }
       return { success: false, error: friendlyError };
     }
