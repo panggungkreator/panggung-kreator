@@ -32,7 +32,7 @@ export async function proxy(request: NextRequest) {
   } else {
     rootDomain = "localhost";
   }
-  
+
   const protocol = request.nextUrl.protocol; // "http:" or "https:"
   const rootHost = rootDomain === "localhost" ? `localhost${port}` : `${rootDomain}${port}`;
 
@@ -194,6 +194,12 @@ export async function proxy(request: NextRequest) {
 
   // B. Web Akademi Subdomain (akademi.panggungkreator.web.id)
   if (sub === "akademi") {
+    // Redirect untuk menghilangkan prefix "/akademi" jika diakses via subdomain akademi
+    if (pathname === "/akademi" || pathname.startsWith("/akademi/")) {
+      const strippedPath = pathname.replace(/^\/akademi/, "") || "/";
+      return NextResponse.redirect(new URL(`${protocol}//${host}${strippedPath}${search}`));
+    }
+
     if (pathname.startsWith("/dashboard")) {
       if (!user) {
         return NextResponse.redirect(new URL(`${protocol}//${rootHost}/login`, request.url));
@@ -212,8 +218,8 @@ export async function proxy(request: NextRequest) {
       const isAdmin = member?.role === "admin";
 
       if (!isPaid && !isAdmin) {
-        // Rewrite to checkout page on the same akademi subdomain
-        return NextResponse.rewrite(new URL(`/akademi/checkout${search}`, request.url));
+        // Redirect to /checkout on the same akademi subdomain
+        return NextResponse.redirect(new URL(`${protocol}//${host}/checkout${search}`, request.url));
       }
     }
 
@@ -246,10 +252,10 @@ export async function proxy(request: NextRequest) {
 
       if (member) {
         if (member.role === "admin") {
-          const defaultAdminUrl = isLocalhost 
+          const defaultAdminUrl = isLocalhost
             ? `${protocol}//localhost${port}/admin`
             : `${protocol}//admin.${rootHost}`;
-          const adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL 
+          const adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL
             ? `${process.env.NEXT_PUBLIC_ADMIN_URL}/`
             : `${defaultAdminUrl}/`;
           return NextResponse.redirect(new URL(adminRedirectUrl, request.url));
