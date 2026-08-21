@@ -230,6 +230,40 @@ export async function registerMemberAction(payload: CheckoutPayload) {
     // Initialize Supabase Admin client using official service-role client
     const supabaseAdmin = createServiceRoleClient();
 
+    const cleanEmail = payload.email.trim().toLowerCase();
+    const cleanWhatsapp = payload.whatsapp ? payload.whatsapp.trim() : "";
+
+    // 1.5 Pre-submission validation: Check existing email or WhatsApp before calling createUser
+    if (cleanEmail) {
+      const { data: existingEmailMember } = await supabaseAdmin
+        .from("members")
+        .select("id")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (existingEmailMember) {
+        return {
+          success: false,
+          error: "Email ini sudah terdaftar. Silakan gunakan email lain atau hubungi Admin.",
+        };
+      }
+    }
+
+    if (cleanWhatsapp) {
+      const { data: existingWaMember } = await supabaseAdmin
+        .from("members")
+        .select("id")
+        .eq("whatsapp_number", cleanWhatsapp)
+        .maybeSingle();
+
+      if (existingWaMember) {
+        return {
+          success: false,
+          error: "Nomor WhatsApp ini sudah terdaftar oleh akun lain. Gunakan nomor WhatsApp yang berbeda.",
+        };
+      }
+    }
+
     // 2. Sign Up User using Supabase Auth Admin API (bypasses rate limit and email verification SMTP)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: payload.email.trim(),
@@ -384,14 +418,22 @@ export async function registerMemberAction(payload: CheckoutPayload) {
     if (dbError) {
       console.error("Database insert error:", dbError);
 
+      // Rollback Auth user creation if DB insert fails to prevent orphaned Auth user
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(user.id);
+        console.log(`[REGISTER ROLLBACK] Deleted orphaned Auth user ${user.id} due to DB error.`);
+      } catch (rollbackErr) {
+        console.error("[REGISTER ROLLBACK ERROR]: Failed to delete Auth user after DB error:", rollbackErr);
+      }
+
       const dbErrMsg = dbError.message || "";
-      if (dbErrMsg.includes("members_whatsapp_number_key") || dbErrMsg.includes("duplicate key") && dbErrMsg.includes("whatsapp")) {
+      if (dbErrMsg.includes("members_whatsapp_number_key") || (dbErrMsg.includes("duplicate key") && dbErrMsg.includes("whatsapp"))) {
         return { success: false, error: "Nomor WhatsApp ini sudah terdaftar oleh akun lain. Gunakan nomor WhatsApp yang berbeda atau hubungi Admin jika ini adalah kesalahan." };
       }
-      if (dbErrMsg.includes("members_email_key") || dbErrMsg.includes("duplicate key") && dbErrMsg.includes("email")) {
+      if (dbErrMsg.includes("members_email_key") || (dbErrMsg.includes("duplicate key") && dbErrMsg.includes("email"))) {
         return { success: false, error: "Email ini sudah terdaftar. Silakan gunakan email lain atau hubungi Admin." };
       }
-      if (dbErrMsg.includes("members_username_key") || dbErrMsg.includes("duplicate key") && dbErrMsg.includes("username")) {
+      if (dbErrMsg.includes("members_username_key") || (dbErrMsg.includes("duplicate key") && dbErrMsg.includes("username"))) {
         return { success: false, error: "Username yang dibuat secara otomatis sudah ada. Silakan coba daftar kembali." };
       }
 
@@ -432,6 +474,12 @@ export async function registerMemberAction(payload: CheckoutPayload) {
 
     if (txError) {
       console.error("Transaction insert error:", txError);
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(user.id);
+        console.log(`[REGISTER ROLLBACK] Deleted orphaned Auth user ${user.id} due to Transaction error.`);
+      } catch (rollbackErr) {
+        console.error("[REGISTER ROLLBACK ERROR]: Failed to delete Auth user after TX error:", rollbackErr);
+      }
       return { success: false, error: txError.message };
     }
 

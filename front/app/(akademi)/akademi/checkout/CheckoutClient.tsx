@@ -122,9 +122,10 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                     .limit(1)
                     .maybeSingle();
 
+                  const derivedUniqueCode = transaction?.unique_code || (member.final_price ? member.final_price % 1000 : 0);
                   const updatedMemberData = {
                     ...member,
-                    unique_code: transaction?.unique_code || 0
+                    unique_code: derivedUniqueCode
                   };
                   setDbMember(updatedMemberData);
                   localStorage.setItem("pangkreas_checkout_state", JSON.stringify({
@@ -184,9 +185,10 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                 .limit(1)
                 .maybeSingle();
 
+              const derivedUniqueCode = transaction?.unique_code || (member.final_price ? member.final_price % 1000 : 0);
               const memberData = {
                 ...member,
-                unique_code: transaction?.unique_code || 0
+                unique_code: derivedUniqueCode
               };
               setDbMember(memberData);
               // Set values to form
@@ -505,7 +507,9 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
     ? dbMember.final_price
     : (appliedVoucher ? Math.max(0, basePrice - appliedVoucher.discountNominal) : basePrice);
 
-  const uniqueCode = (dbMember && qrisGenerated) ? (dbMember.unique_code || 0) : 0;
+  const uniqueCode = (dbMember && qrisGenerated)
+    ? (dbMember.unique_code || (dbMember.final_price ? dbMember.final_price % 1000 : 0))
+    : 0;
 
   if (loadingSession) {
     return (
