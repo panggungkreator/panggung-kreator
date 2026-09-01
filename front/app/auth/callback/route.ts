@@ -2,12 +2,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getPublicOrigin } from "@/lib/utils/url";
 
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url);
+    const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
     const next = searchParams.get("next") || "/myprofile";
-    const redirectTo = origin;
+    const redirectTo = getPublicOrigin(request);
 
     if (!code) {
         // Jika tidak ada code (misal alur implicit/hash URL dari Supabase recovery link),

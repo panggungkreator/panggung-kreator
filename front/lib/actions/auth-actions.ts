@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import nodemailer from "nodemailer";
+import { getPublicOrigin } from "@/lib/utils/url";
 
 export async function signout() {
   const supabase = await createClient();
@@ -600,7 +601,7 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
   }
 
   const headersList = await headers();
-  const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const origin = getPublicOrigin(null, headersList);
 
   // Generate link recovery menggunakan Supabase Admin API
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
