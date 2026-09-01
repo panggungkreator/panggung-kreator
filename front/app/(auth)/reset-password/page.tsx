@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { clearStaleAuthStorage } from "@/lib/utils/url";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -27,62 +28,47 @@ function ResetPasswordContent() {
     const supabase = createClient();
 
     const checkSession = async () => {
-      console.group("🔑 [RESET-PASSWORD DIAGNOSTICS]");
-      console.log("📍 Window URL:", typeof window !== "undefined" ? window.location.href : "SSR");
-      console.log("📍 Query Search:", typeof window !== "undefined" ? window.location.search : "");
-      console.log("📍 Hash Fragment:", typeof window !== "undefined" ? window.location.hash : "");
-
       // 1. Cek parameter error dari URL (misal dari /auth/confirm)
       if (typeof window !== "undefined") {
         const params = new URLSearchParams(window.location.search);
         const errParam = params.get("error");
         if (errParam) {
-          console.warn("⚠️ URL contains error parameter:", errParam);
           setError(errParam);
           setHasRecoverySession(false);
-          console.groupEnd();
           return;
         }
       }
 
       // 2. Cek apakah ada sesi aktif di cookie / client (user / session)
-      const { data: { user }, error: userErr } = await supabase.auth.getUser();
-      const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       const hasHash = typeof window !== "undefined" && (
         window.location.hash.includes("access_token=") ||
         window.location.hash.includes("type=recovery")
       );
 
-      console.log("👤 getUser():", { user: user ? { id: user.id, email: user.email } : null, error: userErr?.message });
-      console.log("🔑 getSession():", { hasSession: !!session, expiresAt: session?.expires_at, error: sessionErr?.message });
-      console.log("🏷️ Has Hash Fragment:", hasHash);
-      console.log("🍪 Document Cookies present:", typeof document !== "undefined" ? document.cookie.split(";").map(c => c.trim().split("=")[0]) : []);
-
       if (user || session || hasHash) {
-        console.log("✅ Initial Recovery Session DETECTED!");
         setHasRecoverySession(true);
       } else {
-        console.warn("⏳ Sesi belum ditemukan pada frame pertama, menunggu delayed check 1.2s...");
+        // Otomatis bersihkan stale local storage token yang korup dari sesi terdahulu
+        clearStaleAuthStorage();
+
+        // Beri toleransi sebentar untuk penanganan event auth
         setTimeout(async () => {
           const { data: { user: delayedUser } } = await supabase.auth.getUser();
           const { data: { session: delayedSession } } = await supabase.auth.getSession();
-          console.log("⏰ Delayed check result:", { hasUser: !!delayedUser, hasSession: !!delayedSession });
           if (delayedUser || delayedSession) {
-            console.log("✅ Delayed Recovery Session DETECTED!");
             setHasRecoverySession(true);
           } else {
-            console.error("❌ Recovery session NULL after delayed check. Setting Kedaluwarsa.");
             setHasRecoverySession(false);
           }
         }, 1200);
       }
-      console.groupEnd();
     };
 
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      console.log("🔔 [onAuthStateChange] Event:", event, "Session exists:", !!session, "User email:", session?.user?.email);
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session) || (event === "TOKEN_REFRESHED" && session)) {
         setHasRecoverySession(true);
       }

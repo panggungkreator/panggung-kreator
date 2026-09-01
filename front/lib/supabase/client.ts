@@ -1,5 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { clearStaleAuthStorage } from "@/lib/utils/url";
 
 let supabaseBrowserInstance: ReturnType<typeof createBrowserClient> | null = null;
 
@@ -68,20 +69,9 @@ export function createClient() {
         (error.message?.includes("Refresh Token Not Found") ||
           error.message?.includes("Invalid Refresh Token"))
       ) {
-        // Jangan panggil auth.signOut() otomatis jika sedang berada di halaman reset-password / auth confirm
-        // karena panggilan signOut() akan menghapus cookie sesi recovery yang baru saja di-set.
-        const isAuthFlow =
-          typeof window !== "undefined" &&
-          (window.location.pathname.includes("/reset-password") ||
-            window.location.pathname.includes("/auth/"));
-
-        if (!isAuthFlow) {
-          supabaseBrowserInstance?.auth.signOut().catch(console.warn).finally(() => {
-            supabaseBrowserInstance = null;
-          });
-        } else {
-          supabaseBrowserInstance = null;
-        }
+        // Otomatis bersihkan localStorage dari token korup agar tidak mengganggu sesi pemulihan baru
+        clearStaleAuthStorage();
+        supabaseBrowserInstance = null;
       }
     });
   }

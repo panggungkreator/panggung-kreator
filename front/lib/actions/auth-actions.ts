@@ -603,12 +603,6 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
   const headersList = await headers();
   const origin = getPublicOrigin(null, headersList);
 
-  console.log("📧 [REQUEST RESET PASSWORD ACTION]", {
-    targetEmail,
-    origin,
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  });
-
   // Generate link recovery menggunakan Supabase Admin API
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
     type: "recovery",
@@ -619,7 +613,7 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
   });
 
   if (linkError) {
-    console.error("❌ Generate recovery link error:", linkError);
+    console.error("Generate recovery link error:", linkError);
     return { success: false, error: `Gagal membuat link reset password: ${linkError.message}` };
   }
 
@@ -627,12 +621,6 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
   const actionLink = hashedToken
     ? `${origin}/auth/confirm?token_hash=${hashedToken}&type=recovery&next=/reset-password`
     : linkData?.properties?.action_link;
-
-  console.log("🔗 Generated recovery actionLink:", {
-    actionLink,
-    hashedToken: hashedToken ? `${hashedToken.substring(0, 10)}...` : null,
-    hasActionLinkProps: !!linkData?.properties?.action_link,
-  });
 
   if (!actionLink) {
     return { success: false, error: "Gagal membuat link verifikasi reset password." };

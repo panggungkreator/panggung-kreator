@@ -43,3 +43,30 @@ export function getPublicOrigin(
 
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 }
+
+/**
+ * Membersihkan token/sesi auth yang sudah kedaluwarsa atau korup dari localStorage & sessionStorage.
+ * Mencegah konflik token lama saat alur reset password / pemulihan akun dilakukan.
+ */
+export function clearStaleAuthStorage() {
+  if (typeof window === "undefined") return;
+
+  try {
+    // 1. Bersihkan kunci Supabase dari localStorage
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith("sb-") || key.includes("supabase.auth")) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    // 2. Bersihkan kunci Supabase dari sessionStorage
+    Object.keys(sessionStorage).forEach((key) => {
+      if (key.startsWith("sb-") || key.includes("supabase.auth")) {
+        sessionStorage.removeItem(key);
+      }
+    });
+  } catch (e) {
+    console.warn("Auth storage cleanup warning:", e);
+  }
+}
+
