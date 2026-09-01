@@ -134,12 +134,6 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // DEBUG: Log session state for diagnosis
-  const allCookieNames = request.cookies.getAll().map(c => c.name);
-  console.log(`[PROXY DEBUG] host=${host} sub="${sub}" isRootDomain=${isRootDomain} pathname=${pathname}`);
-  console.log(`[PROXY DEBUG] cookieDomain=${cookieDomain ?? "undefined (localhost)"} user=${user ? user.email : "NULL"} authError=${getUserError?.message ?? "none"}`);
-  console.log(`[PROXY DEBUG] cookies present: ${allCookieNames.join(", ") || "(none)"}`);
-
 
   // 6. Direct Path Guards (for localhost or direct path access)
   const isDirectAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
