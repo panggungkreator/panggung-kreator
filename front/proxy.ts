@@ -114,6 +114,26 @@ export async function proxy(request: NextRequest) {
     await supabase.auth.signOut();
   }
 
+  // 5.1 SECURITY GUARD: Scoped Recovery Session Protection
+  // Mencegah login tanpa password jika pengguna meninggalkan halaman /reset-password
+  const isRecoveryMode = request.cookies.get("sb-recovery-mode")?.value === "1";
+  if (isRecoveryMode) {
+    const isResetPasswordPath = pathname === "/reset-password";
+    if (!isResetPasswordPath) {
+      console.log(`[PROXY SECURITY] Recovery session attempted to access ${pathname}. Destroying recovery session!`);
+      await supabase.auth.signOut();
+      response.cookies.set("sb-recovery-mode", "", { maxAge: 0, path: "/" });
+      const loginRedirect = new URL("/login", request.url);
+      loginRedirect.searchParams.set(
+        "error",
+        "Sesi pemulihan dibatalkan karena Anda meninggalkan halaman reset password."
+      );
+      return NextResponse.redirect(loginRedirect, {
+        headers: response.headers,
+      });
+    }
+  }
+
   // DEBUG: Log session state for diagnosis
   const allCookieNames = request.cookies.getAll().map(c => c.name);
   console.log(`[PROXY DEBUG] host=${host} sub="${sub}" isRootDomain=${isRootDomain} pathname=${pathname}`);

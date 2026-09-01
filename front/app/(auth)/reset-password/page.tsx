@@ -104,11 +104,12 @@ function ResetPasswordContent() {
       });
 
       if (!clientUpdateErr) {
+        document.cookie = "sb-recovery-mode=; path=/; max-age=0;";
         await supabase.auth.signOut({ scope: "global" }).catch(console.warn);
         setIsSuccess(true);
         toast.success("Password baru berhasil disimpan!");
         setTimeout(() => {
-          router.push("/login?message=Password berhasil diperbarui. Silakan login.");
+          window.location.href = "/login?message=Password berhasil diperbarui. Silakan login dengan password baru Anda.";
         }, 1500);
         return;
       }

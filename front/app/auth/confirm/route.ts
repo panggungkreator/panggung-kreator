@@ -47,6 +47,14 @@ export async function GET(request: Request) {
     });
 
     if (!error) {
+      if (type === "recovery") {
+        response.cookies.set("sb-recovery-mode", "1", {
+          path: "/",
+          httpOnly: true,
+          sameSite: "lax",
+          maxAge: 600, // 10 menit batas waktu reset password
+        });
+      }
       return response;
     } else {
       console.error("verifyOtp error:", error);
