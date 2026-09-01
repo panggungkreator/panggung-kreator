@@ -287,3 +287,81 @@ export async function sendMemberCredentialsAction(
     };
   }
 }
+
+export async function deleteMemberAction(memberId: string): Promise<ActionResponse> {
+  try {
+    const supabaseServer = await createClient();
+
+    // 1. Verify caller authentication & admin role
+    const {
+      data: { user: currentUser },
+    } = await supabaseServer.auth.getUser();
+
+    if (!currentUser) {
+      return { success: false, error: "Sesi tidak valid. Silakan login kembali." };
+    }
+
+    const { data: adminMember } = await supabaseServer
+      .from("members")
+      .select("role")
+      .eq("id", currentUser.id)
+      .single();
+
+    if (!adminMember || adminMember.role !== "admin") {
+      return {
+        success: false,
+        error: "Akses ditolak. Anda tidak memiliki wewenang admin.",
+      };
+    }
+
+    // Prevent self-deletion by admin
+    if (currentUser.id === memberId) {
+      return {
+        success: false,
+        error: "Anda tidak dapat menghapus akun admin Anda sendiri.",
+      };
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
+
+    // Delete all related records across linked tables
+    await supabaseAdmin.from("member_interests").delete().eq("member_id", memberId);
+    await supabaseAdmin.from("member_ai_analysis").delete().eq("member_id", memberId);
+    await supabaseAdmin.from("event_attendances").delete().eq("member_id", memberId);
+    await supabaseAdmin.from("member_portfolios").delete().eq("member_id", memberId);
+    await supabaseAdmin.from("transactions").delete().eq("member_id", memberId);
+    await supabaseAdmin.from("referrals").delete().or(`referrer_id.eq.${memberId},referee_id.eq.${memberId}`);
+
+    // Delete from public.members table
+    const { error: deleteMemberErr } = await supabaseAdmin
+      .from("members")
+      .delete()
+      .eq("id", memberId);
+
+    if (deleteMemberErr) {
+      console.error("Error deleting member record:", deleteMemberErr);
+      return { success: false, error: `Gagal menghapus data member: ${deleteMemberErr.message}` };
+    }
+
+    // Delete from Supabase Auth auth.users
+    try {
+      await supabaseAdmin.auth.admin.deleteUser(memberId);
+    } catch (authDelErr: any) {
+      console.warn("Auth delete warning (user might already be deleted):", authDelErr?.message);
+    }
+
+    revalidatePath("/admin/members");
+
+    return {
+      success: true,
+      message: "Member dan seluruh data terkait berhasil dihapus.",
+    };
+  } catch (err: any) {
+    console.error("Error in deleteMemberAction:", err);
+    return {
+      success: false,
+      error: err.message || "Terjadi kesalahan saat menghapus member.",
+    };
+  }
+}
+

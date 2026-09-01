@@ -118,3 +118,75 @@ export async function saveReferralCommissionSettingsAction(settings: ReferralCom
     return { success: false, error: err.message || "Gagal menyimpan ke database." };
   }
 }
+
+// ═══ TAB VISIBILITY SETTINGS ═══
+
+export interface TabVisibilitySettings {
+  tab_attendance_enabled: boolean;
+  tab_portfolio_enabled: boolean;
+  tab_affiliate_enabled: boolean;
+}
+
+export async function getTabVisibilitySettingsAction(): Promise<TabVisibilitySettings> {
+  const defaultSettings: TabVisibilitySettings = {
+    tab_attendance_enabled: true,
+    tab_portfolio_enabled: true,
+    tab_affiliate_enabled: true,
+  };
+
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from("system_settings")
+      .select("key, value")
+      .in("key", [
+        "tab_attendance_enabled",
+        "tab_portfolio_enabled",
+        "tab_affiliate_enabled",
+      ]);
+
+    if (error) {
+      console.warn("getTabVisibilitySettingsAction query error:", error.message);
+    }
+
+    if (data && data.length > 0) {
+      const map = Object.fromEntries(data.map((item) => [item.key, item.value]));
+      return {
+        tab_attendance_enabled: map["tab_attendance_enabled"] !== "false",
+        tab_portfolio_enabled: map["tab_portfolio_enabled"] !== "false",
+        tab_affiliate_enabled: map["tab_affiliate_enabled"] !== "false",
+      };
+    }
+  } catch (err) {
+    console.warn("getTabVisibilitySettingsAction error, fallback to defaults:", err);
+  }
+
+  return defaultSettings;
+}
+
+export async function saveTabVisibilitySettingsAction(settings: TabVisibilitySettings) {
+  try {
+    const supabase = createServiceRoleClient();
+    const now = new Date().toISOString();
+    const rows = [
+      { key: "tab_attendance_enabled", value: settings.tab_attendance_enabled ? "true" : "false", updated_at: now },
+      { key: "tab_portfolio_enabled", value: settings.tab_portfolio_enabled ? "true" : "false", updated_at: now },
+      { key: "tab_affiliate_enabled", value: settings.tab_affiliate_enabled ? "true" : "false", updated_at: now },
+    ];
+
+    const { error } = await supabase
+      .from("system_settings")
+      .upsert(rows, { onConflict: "key" });
+
+    if (error) {
+      console.error("saveTabVisibilitySettingsAction upsert error:", error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, settings };
+  } catch (err: any) {
+    console.error("saveTabVisibilitySettingsAction error:", err);
+    return { success: false, error: err.message || "Gagal menyimpan ke database." };
+  }
+}
+

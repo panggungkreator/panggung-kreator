@@ -10,31 +10,63 @@ const urlSanitizer = z.string().optional().nullable().transform((val) => {
   return `https://${trimmed}`;
 });
 
+const emptyStringSanitizer = z.string().optional().nullable().transform((val) => {
+  if (!val || val.trim() === "") return null;
+  return val.trim();
+});
+
+const dateSanitizer = z.string().optional().nullable().transform((val) => {
+  if (!val || val.trim() === "" || val === "-") return null;
+  return val.trim();
+});
+
 const profileSchema = z.object({
   full_name: z.string().min(2).max(100),
   stage_name: z.string().min(2).max(50),
   whatsapp_number: z.string().min(10).max(20),
-  instagram_username: z.string().optional().nullable(),
-  tiktok_username: z.string().optional().nullable(),
-  occupation: z.string().optional().nullable(),
-  description: z.string().max(500).optional().nullable(),
-  city: z.string().optional().nullable(),
-  avatar_url: z.string().optional().nullable(),
-  youtube_url: urlSanitizer,
-  linkedin_url: urlSanitizer,
+  occupation: emptyStringSanitizer,
+  description: emptyStringSanitizer,
+  city: emptyStringSanitizer,
+  birth_date: dateSanitizer,
+  address: emptyStringSanitizer,
+  social_media: z.object({
+    instagram: emptyStringSanitizer,
+    tiktok: emptyStringSanitizer,
+    twitter: emptyStringSanitizer,
+    youtube: urlSanitizer,
+    linkedin: urlSanitizer,
+    spotify: emptyStringSanitizer,
+  }).optional().nullable(),
+  avatar_url: emptyStringSanitizer,
   portfolio_url: urlSanitizer,
   subscribed_newsletter: z.boolean().default(true),
-  referred_by_code: z.string().optional().nullable(),
+  referred_by_code: emptyStringSanitizer,
 })
 
 const interestsSchema = z.object({
-  primary_interests: z.array(z.string()).min(1),
-  experience_level: z.enum(['beginner', 'intermediate', 'advanced']).optional().nullable(),
+  primary_interests: z.array(z.string()).default([]),
+  experience_level: z.string().optional().nullable().transform((val) => {
+    if (!val || val === "" || !['beginner', 'intermediate', 'advanced'].includes(val)) return null;
+    return val;
+  }),
   goals: z.array(z.string()).default([]),
   content_topics: z.array(z.string()).default([]),
-  availability: z.string().optional().nullable(),
+  availability: z.string().optional().nullable().transform((val) => {
+    if (!val || val === "" || !['morning', 'afternoon', 'evening', 'night', 'flexible'].includes(val)) return null;
+    return val;
+  }),
   learning_preference: z.array(z.string()).default([]),
-  referral_source: z.string().optional().nullable(),
+  ps_challenges: z.array(z.string()).default([]),
+  confidence_scale: z.number().min(1).max(10).optional().nullable(),
+  nervous_trigger: emptyStringSanitizer,
+  skills_to_master: emptyStringSanitizer,
+  role_model: emptyStringSanitizer,
+  monetization_interest: emptyStringSanitizer,
+  target_audience: emptyStringSanitizer,
+  expert_desire: emptyStringSanitizer,
+  career_obstacle: emptyStringSanitizer,
+  active_communities: emptyStringSanitizer,
+  time_commitment: emptyStringSanitizer,
 })
 
 function generateAffiliateCode(stageName: string): string {

@@ -98,8 +98,6 @@ export default function EditProfilePage() {
           <ProfileForm member={member} onSave={handleSaveSuccess} />
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 }

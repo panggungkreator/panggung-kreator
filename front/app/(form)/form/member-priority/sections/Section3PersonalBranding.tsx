@@ -1,59 +1,49 @@
 import React from "react";
-import { ScaleSelectorLine } from "@/components/ui/style-line/ScaleSelectorLine";
-import { MultiSelectLine } from "@/components/ui/style-line/MultiSelectLine";
+import { RadioGroupLine } from "@/components/ui/style-line/RadioGroupLine";
 import { InputLine } from "@/components/ui/style-line/InputLine";
-import { LEARNING_TOPIC_OPTIONS } from "../constants";
+import { SKILLS_TO_MASTER_OPTIONS, MONETIZATION_OPTIONS } from "../constants";
 
 interface Section3PersonalBrandingProps {
-  pbImportance: number | null;
-  setPbImportance: (val: number) => void;
-  learningTopics: string[];
-  toggleLearningTopic: (val: string) => void;
-  customLearningTopic: string;
-  setCustomLearningTopic: (val: string) => void;
+  skillsToMaster: string;
+  setSkillsToMaster: (val: string) => void;
+  customSkillsToMaster: string;
+  setCustomSkillsToMaster: (val: string) => void;
   roleModel: string;
   setRoleModel: (val: string) => void;
+  monetizationInterest: string;
+  setMonetizationInterest: (val: string) => void;
+  customMonetizationInterest: string;
+  setCustomMonetizationInterest: (val: string) => void;
   fieldErrors?: Record<string, string>;
 }
 
 export const Section3PersonalBranding: React.FC<Section3PersonalBrandingProps> = ({
-  pbImportance,
-  setPbImportance,
-  learningTopics,
-  toggleLearningTopic,
-  customLearningTopic,
-  setCustomLearningTopic,
+  skillsToMaster,
+  setSkillsToMaster,
+  customSkillsToMaster,
+  setCustomSkillsToMaster,
   roleModel,
   setRoleModel,
+  monetizationInterest,
+  setMonetizationInterest,
+  customMonetizationInterest,
+  setCustomMonetizationInterest,
   fieldErrors = {},
 }) => {
   return (
     <div className="space-y-5 animate-fade-in">
       <div className="mt-10">
-        <ScaleSelectorLine
-          id="pbImportance"
-          label="SEBERAPA PENTING MENURUTMU PERSONAL BRANDING UNTUK MENUNJANG KARIRMU? *"
-          min={1}
-          max={5}
-          value={pbImportance}
-          onChange={setPbImportance}
-          minLabel="1 (SANGAT TIDAK PENTING)"
-          maxLabel="5 (SANGAT PENTING)"
-          error={fieldErrors.pbImportance}
-        />
-      </div>
-
-      <div className="mt-10">
-        <MultiSelectLine
-          id="learningTopics"
-          label="TOPIK APA YANG PALING INGIN KAMU PELAJARI LEBIH DALAM? *"
-          options={LEARNING_TOPIC_OPTIONS}
-          selected={learningTopics}
-          onToggle={toggleLearningTopic}
-          customValue={customLearningTopic}
-          onCustomChange={setCustomLearningTopic}
-          customPlaceholder="Tuliskan topik lainnya..."
-          error={fieldErrors.learningTopics}
+        <RadioGroupLine
+          id="skillsToMaster"
+          label="SKILL APA YANG PALING INGIN KAMU KUASAI SAAT INI? *"
+          options={SKILLS_TO_MASTER_OPTIONS}
+          value={skillsToMaster}
+          onValueChange={setSkillsToMaster}
+          customValue={customSkillsToMaster}
+          onCustomChange={setCustomSkillsToMaster}
+          customPlaceholder="Tuliskan skill lainnya..."
+          idPrefix="stm"
+          error={fieldErrors.skillsToMaster}
         />
       </div>
 
@@ -61,11 +51,26 @@ export const Section3PersonalBranding: React.FC<Section3PersonalBrandingProps> =
         <InputLine
           id="roleModel"
           name="roleModel"
-          label="SIAPA SOSOK PUBLIC SPEAKER ATAU CREATOR YANG JADI PANUTAN KAMU SAAT INI? *"
+          label="SIAPA SOSOK PUBLIC SPEAKER ATAU CONTENT CREATOR YANG JADI PANUTAN KAMU SAAT INI? *"
           placeholder="Contoh: Raditya Dika, Merry Riana, GaryVee, dll."
           value={roleModel}
           onChange={(e) => setRoleModel(e.target.value)}
           error={fieldErrors.roleModel}
+        />
+      </div>
+
+      <div className="mt-10">
+        <RadioGroupLine
+          id="monetizationInterest"
+          label="JALUR MONETISASI APA YANG PALING KAMU MINATI? *"
+          options={MONETIZATION_OPTIONS}
+          value={monetizationInterest}
+          onValueChange={setMonetizationInterest}
+          customValue={customMonetizationInterest}
+          onCustomChange={setCustomMonetizationInterest}
+          customPlaceholder="Tuliskan jalur monetisasi lainnya..."
+          idPrefix="mi"
+          error={fieldErrors.monetizationInterest}
         />
       </div>
     </div>

@@ -1,14 +1,17 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { MemberProfile } from "@/lib/types/member";
-import { Globe } from "lucide-react";
+import { Globe, Copy, Check, Lock } from "lucide-react";
+import { toast } from "sonner";
+import ChangePasswordModal from "@/components/member/ChangePasswordModal";
 
 interface ProfileSidebarProps {
   member: MemberProfile;
   onSignout: () => void;
   onLinkClick?: () => void;
+  isLoggingOut?: boolean;
 }
 
 // Clean Monochrome Brand Icons
@@ -46,7 +49,18 @@ function LinkedInIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
   );
 }
 
-export default function ProfileSidebar({ member, onSignout, onLinkClick }: ProfileSidebarProps) {
+export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggingOut }: ProfileSidebarProps) {
+  const [copied, setCopied] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+  const handleCopyReferral = () => {
+    if (!member.affiliate_code) return;
+    const link = `${window.location.origin}/form/member-priority?ref=${member.affiliate_code}`;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    toast.success("Link referral berhasil disalin ke clipboard!");
+    setTimeout(() => setCopied(false), 2500);
+  };
   const initials = (member.stage_name || member.full_name || "M")
     .substring(0, 2)
     .toUpperCase();
@@ -65,29 +79,31 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick }: Profi
     return trimmed !== "" && trimmed !== "-" && trimmed !== "none" && trimmed !== "null" && trimmed !== "undefined";
   };
 
+  const socialMedia = member.social_media || {};
+
   const socialLinks = [
-    isValidVal(member.instagram_username) && {
+    isValidVal(socialMedia.instagram) && {
       label: "Instagram",
       icon: InstagramIcon,
-      url: `https://instagram.com/${member.instagram_username!.replace("@", "").trim()}`,
-      text: `@${member.instagram_username!.replace("@", "").trim()}`,
+      url: `https://instagram.com/${socialMedia.instagram!.replace("@", "").trim()}`,
+      text: `@${socialMedia.instagram!.replace("@", "").trim()}`,
     },
-    isValidVal(member.tiktok_username) && {
+    isValidVal(socialMedia.tiktok) && {
       label: "TikTok",
       icon: TikTokIcon,
-      url: `https://tiktok.com/@${member.tiktok_username!.replace("@", "").trim()}`,
-      text: `@${member.tiktok_username!.replace("@", "").trim()}`,
+      url: `https://tiktok.com/@${socialMedia.tiktok!.replace("@", "").trim()}`,
+      text: `@${socialMedia.tiktok!.replace("@", "").trim()}`,
     },
-    isValidVal(member.youtube_url) && {
+    isValidVal(socialMedia.youtube) && {
       label: "YouTube",
       icon: YouTubeIcon,
-      url: member.youtube_url!.startsWith("http") ? member.youtube_url! : `https://${member.youtube_url!}`,
+      url: socialMedia.youtube!.startsWith("http") ? socialMedia.youtube! : `https://${socialMedia.youtube!}`,
       text: "Channel",
     },
-    isValidVal(member.linkedin_url) && {
+    isValidVal(socialMedia.linkedin) && {
       label: "LinkedIn",
       icon: LinkedInIcon,
-      url: member.linkedin_url!.startsWith("http") ? member.linkedin_url! : `https://${member.linkedin_url!}`,
+      url: socialMedia.linkedin!.startsWith("http") ? socialMedia.linkedin! : `https://${socialMedia.linkedin!}`,
       text: "Profil",
     },
     isValidVal(member.portfolio_url) && {
@@ -98,6 +114,10 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick }: Profi
     },
   ].filter(Boolean) as { label: string; icon: React.ElementType; url: string; text: string }[];
 
+  const age = member.birth_date
+    ? new Date().getFullYear() - new Date(member.birth_date).getFullYear()
+    : null;
+
   return (
     <div className="bg-transparent border-0 p-0 flex flex-col items-center text-center shadow-none relative overflow-hidden rounded-none w-full">
       {/* CARD TOP LABEL */}
@@ -105,9 +125,9 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick }: Profi
         PROFIL MEMBER
       </span>
 
-      {/* AVATAR PHOTO / INITIALS (CIRCLE & NO BORDER) */}
-      <div className="relative my-4 flex items-center justify-center w-full">
-        <div className="w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-900 flex-shrink-0">
+      {/* AVATAR PHOTO / INITIALS (COMPACT PROPORTIONS) */}
+      <div className="relative my-2 sm:my-3 flex items-center justify-center w-full">
+        <div className="w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-900 flex-shrink-0 border border-neutral-200 dark:border-neutral-800">
           {member.avatar_url ? (
             <img
               src={member.avatar_url}
@@ -115,7 +135,7 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick }: Profi
               className="w-full h-full object-cover transition-all duration-500"
             />
           ) : (
-            <div className="w-full h-full bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 flex items-center justify-center text-4xl font-bold font-mono">
+            <div className="w-full h-full bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 flex items-center justify-center text-2xl font-bold font-mono">
               {initials}
             </div>
           )}
@@ -148,6 +168,12 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick }: Profi
         {member.city && (
           <span className="px-3 py-1 text-[10px] font-mono uppercase tracking-widest border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400">
             {member.city}
+          </span>
+        )}
+
+        {age !== null && (
+          <span className="px-3 py-1 text-[10px] font-mono uppercase tracking-widest border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400">
+            {age} THN
           </span>
         )}
 
@@ -186,8 +212,33 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick }: Profi
         </div>
       )}
 
-      {/* ACTION BUTTONS (EDIT PROFIL & LOGOUT) - NO ICONS */}
-      <div className="w-full space-y-2.5 pt-5">
+      {/* REFERRAL QUICK COPY BADGE */}
+      {member.affiliate_code && (
+        <div className="w-full pt-4">
+          <button
+            type="button"
+            onClick={handleCopyReferral}
+            className="w-full py-2 px-3 bg-neutral-100 dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors flex items-center justify-between text-left group cursor-pointer"
+          >
+            <div className="min-w-0">
+              <span className="text-[9px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block">
+                KODE REFERRAL
+              </span>
+              <span className="text-xs font-mono font-bold text-neutral-900 dark:text-white truncate block">
+                {member.affiliate_code}
+              </span>
+            </div>
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 ml-2" />
+            ) : (
+              <Copy className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white shrink-0 ml-2 transition-colors" />
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* ACTION BUTTONS (EDIT PROFIL, GANTI PASSWORD & LOGOUT) */}
+      <div className="w-full space-y-2.5 pt-4">
         <Link
           href="/myprofile/edit"
           onClick={onLinkClick}
@@ -197,12 +248,42 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick }: Profi
         </Link>
 
         <button
-          onClick={onSignout}
-          className="w-full py-2.5 px-4 bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 font-mono text-xs uppercase tracking-widest transition-colors cursor-pointer block text-center"
+          onClick={() => {
+            setIsChangePasswordOpen(true);
+            if (onLinkClick) onLinkClick();
+          }}
+          className="w-full py-2.5 px-4 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700 font-mono text-xs uppercase tracking-widest transition-colors cursor-pointer block text-center"
         >
-          Logout
+          Ganti Password
+        </button>
+
+        <button
+          onClick={onSignout}
+          disabled={isLoggingOut}
+          className="w-full py-2.5 px-4 bg-transparent hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40 font-mono text-xs uppercase tracking-widest transition-colors cursor-pointer block text-center disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoggingOut ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="animate-spin h-3.5 w-3.5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <span>Logging out...</span>
+            </span>
+          ) : (
+            "Logout"
+          )}
         </button>
       </div>
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
 
       {/* JOIN DATE */}
       <div className="pt-4 mt-4 border-t border-neutral-200 dark:border-neutral-800 w-full text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">

@@ -6,12 +6,13 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get("code");
+    const next = searchParams.get("next") || "/myprofile";
     const redirectTo = origin;
 
     if (!code) {
-        return NextResponse.redirect(
-            `${redirectTo}/login?error=No authorization code provided`
-        );
+        // Jika tidak ada code (misal alur implicit/hash URL dari Supabase recovery link),
+        // tetap arahkan ke halaman `next` agar client-side SDK dapat membaca #access_token dari URL
+        return NextResponse.redirect(`${redirectTo}${next}`);
     }
 
     const cookieStore = await cookies();
@@ -42,6 +43,6 @@ export async function GET(request: Request) {
         );
     }
 
-    // Redirect ke profil di domain yang benar
-    return NextResponse.redirect(`${redirectTo}/myprofile`);
+    // Redirect ke halaman tujuan (next) di domain yang benar
+    return NextResponse.redirect(`${redirectTo}${next}`);
 }

@@ -121,7 +121,7 @@ export default function AttendanceTracker({ memberId }: AttendanceTrackerProps) 
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
           <h3 className="text-base font-bold font-sans text-neutral-900 dark:text-white">
-            <span className="highlight-stabilo">Riwayat Kehadiran Event Komunitas</span>
+            Riwayat Kehadiran <span className="highlight-stabilo">Event Komunitas</span>
           </h3>
           <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
             [ {records.length} EVENT RECORDED ]

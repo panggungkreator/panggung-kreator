@@ -19,12 +19,13 @@ import {
   Mail,
   Send,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Modal, ModalSection } from "@/components/ui/Modal";
 import { toast } from "sonner";
-import { sendMemberCredentialsAction } from "./actions";
+import { sendMemberCredentialsAction, deleteMemberAction } from "./actions";
 
 type Member = {
   id: string;
@@ -123,6 +124,29 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
   const [inputUsername, setInputUsername] = useState("");
   const [inputPassword, setInputPassword] = useState("");
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
+
+  // Delete modal state
+  const [deleteModalMember, setDeleteModalMember] = useState<Member | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteMember = async () => {
+    if (!deleteModalMember) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteMemberAction(deleteModalMember.id);
+      if (res.success) {
+        toast.success(res.message || "Member berhasil dihapus.");
+        setMembers((prev) => prev.filter((m) => m.id !== deleteModalMember.id));
+        setDeleteModalMember(null);
+      } else {
+        toast.error(res.error || "Gagal menghapus member.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat menghapus member.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const openCredentialModal = (member: Member) => {
     setCredentialMember(member);
@@ -511,7 +535,7 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                   return (
                     <tr
                       key={m.id}
-                      className={`hover:bg-bg-well/30 transition-colors ${m.membership_tier === "priority" ? "bg-red-500/[0.02]" : ""
+                      className={`group hover:bg-bg-well/30 transition-colors ${m.membership_tier === "priority" ? "bg-red-500/[0.02]" : ""
                         }`}
                     >
                       <td className="p-4">
@@ -572,6 +596,13 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                             title="Edit Status"
                           >
                             <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteModalMember(m)}
+                            className="p-1.5 rounded hover:bg-red-500/10 text-red-500 hover:text-red-600 dark:hover:text-red-400 cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200"
+                            title="Hapus Member"
+                          >
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -848,11 +879,35 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                   )}
 
                   {(detailMember.interests as any).ai_analysis && (
-                    <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
-                      <span className="text-zinc-500 font-medium text-[10px] block mb-1">AI Mentoring Insights:</span>
-                      <div className="p-2.5 bg-zinc-100/60 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60 rounded-md text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line">
-                        {(detailMember.interests as any).ai_analysis}
-                      </div>
+                    <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-2">
+                      <span className="text-zinc-500 font-medium text-[10px] uppercase tracking-wider block">AI Mentoring Insights:</span>
+                      {typeof (detailMember.interests as any).ai_analysis === 'object' && !(detailMember.interests as any).ai_analysis.legacy ? (
+                        <div className="grid grid-cols-1 gap-2 max-h-72 overflow-y-auto pr-1">
+                          {([
+                            { key: 'ringkasan', label: 'Ringkasan Profil' },
+                            { key: 'diagnosis_ps', label: 'Diagnosis Public Speaking' },
+                            { key: 'potensi_konten', label: 'Potensi Konten & Monetisasi' },
+                            { key: 'roadmap', label: 'Roadmap Kreator' },
+                            { key: 'insight_mentor', label: 'Insight untuk Mentor' },
+                            { key: 'rekomendasi_ekosistem', label: 'Rekomendasi Course & Ekosistem' },
+                          ] as const).map(({ key, label }) => {
+                            const val = (detailMember.interests as any).ai_analysis[key];
+                            if (!val) return null;
+                            return (
+                              <div key={key} className="p-2 bg-zinc-100/60 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60 rounded-md">
+                                <span className="text-[10px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider block mb-0.5">{label}</span>
+                                <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed">{val}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-2.5 bg-zinc-100/60 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60 rounded-md text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line">
+                          {typeof (detailMember.interests as any).ai_analysis === 'object'
+                            ? (detailMember.interests as any).ai_analysis.legacy
+                            : (detailMember.interests as any).ai_analysis}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -971,6 +1026,62 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
             </div>
           </form>
         )}
+      </Modal>
+
+      {/* Modal Konfirmasi Hapus Member */}
+      <Modal
+        isOpen={!!deleteModalMember}
+        onClose={() => !isDeleting && setDeleteModalMember(null)}
+        title="Konfirmasi Hapus Member"
+      >
+        <div className="space-y-4 pt-1">
+          <div className="p-3.5 bg-red-50 dark:bg-red-950/40 border border-red-200/80 dark:border-red-900/60 rounded-xl flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-red-900 dark:text-red-200 space-y-1">
+              <p className="font-bold">Peringatan: Tindakan ini permanen!</p>
+              <p className="leading-relaxed">
+                Menghapus member ini akan menghapus seluruh data relasi terkait di database (minat, portofolio, absensi event, transaksi, serta akun login autentikasi).
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+            Apakah Anda yakin ingin menghapus member{" "}
+            <strong className="text-zinc-900 dark:text-white">
+              {deleteModalMember?.stage_name || deleteModalMember?.full_name}
+            </strong>{" "}
+            ({deleteModalMember?.email || deleteModalMember?.whatsapp_number})?
+          </p>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-zinc-150 dark:border-zinc-800/80">
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => setDeleteModalMember(null)}
+              className="px-4 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={handleDeleteMember}
+              className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {isDeleting ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Menghapus...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Ya, Hapus Permanen</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
 
     </div>

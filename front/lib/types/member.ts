@@ -6,6 +6,16 @@ export type Pillar = 'public_speaking' | 'content_creation' | 'personal_branding
 export type ItemType = 'video' | 'image' | 'article' | 'link' | 'achievement'
 export type MediaSource = 'youtube' | 'instagram' | 'tiktok' | 'storage' | 'external'
 
+export interface AiAnalysis {
+  ringkasan: string;
+  diagnosis_ps: string;
+  potensi_konten: string;
+  roadmap: string;
+  insight_mentor: string;
+  rekomendasi_ekosistem: string;
+  legacy?: string;
+}
+
 export interface MemberInterests {
   id: string
   member_id: string
@@ -15,8 +25,18 @@ export interface MemberInterests {
   content_topics: string[]
   availability: string | null
   learning_preference: string[]
-  referral_source: string | null
-  ai_analysis: string | null
+  ai_analysis: AiAnalysis | string | null
+  skills_to_master: string | null
+  monetization_interest: string | null
+  active_communities: string | null
+  career_obstacle: string | null
+  ps_challenges: string[]
+  confidence_scale: number | null
+  nervous_trigger: string | null
+  role_model: string | null
+  target_audience: string | null
+  expert_desire: string | null
+  time_commitment: string | null
   created_at: string
   updated_at: string
 }
@@ -39,6 +59,15 @@ export interface PortfolioItem {
   updated_at: string
 }
 
+export interface SocialMedia {
+  instagram?: string | null;
+  tiktok?: string | null;
+  twitter?: string | null;
+  youtube?: string | null;
+  linkedin?: string | null;
+  spotify?: string | null;
+}
+
 export interface MemberProfile {
   id: string
   full_name: string
@@ -49,12 +78,11 @@ export interface MemberProfile {
   occupation: string | null
   description: string | null
   city: string | null
+  birth_date: string | null
+  address: string | null
+  social_media: SocialMedia | null
   avatar_url: string | null
-  youtube_url: string | null
-  linkedin_url: string | null
   portfolio_url: string | null
-  instagram_username: string | null
-  tiktok_username: string | null
   community: Community
   membership_tier: MembershipTier
   subscribed_newsletter: boolean

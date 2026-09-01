@@ -1,38 +1,64 @@
-export const OCCUPATION_OPTIONS = [
-  "Pelajar",
-  "Mahasiswa",
-  "Karyawan Swasta",
-  "Wirausaha / Pengusaha",
-  "Content Creator / Influencer",
-  "Freelancer",
-  "Professional Speaker / Trainer",
-  "Lainnya",
-];
-
 export const PS_CHALLENGE_OPTIONS = [
-  "Gugup / nge-blank saat melihat audiens",
-  "Bingung menyusun materi dan alur pembicaraan yang menarik",
-  "Artikulasi dan intonasi kurang jelas (belibet)",
-  "Kurang percaya diri dengan suara atau penampilan fisik",
-  "Sulit berinteraksi and menguasai suasana panggung",
+  "Rasa gugup/cemas yang berlebihan (Mental)",
+  "Bingung menyusun urutan materi (Struktur)",
+  "Tidak tahu cara membuka/menutup pembicaraan (Teknis)",
+  "Suara gemetar atau nafas pendek (Teknis/Vokal)",
+  "Takut dihakimi atau dinilai salah oleh audiens (Psikologi)",
+  "Bingung menggerakkan tangan atau posisi berdiri (Body Language)",
+];
+
+export const NERVOUS_TRIGGER_OPTIONS = [
+  "Bicara tatap muka langsung di depan orang banyak",
+  "Bicara di depan kamera untuk konten (IG/tiktok dll)",
+];
+
+export const SKILLS_TO_MASTER_OPTIONS = [
+  "Speaking Skill",
+  "Content Creation",
+  "Pitching / Presentation",
+  "Personal Branding",
+  "Storytelling",
   "Lainnya",
 ];
 
-export const LEARNING_TOPIC_OPTIONS = [
-  "Teknik Vokal & Artikulasi (Voice Over/MC)",
-  "Storytelling & Cara Menyusun Presentasi",
-  "Gestur & Bahasa Tubuh (Body Language)",
-  "Content Creation & Pembuatan Script Video Pendek",
-  "Cara Melatih Kepercayaan Diri & Mengatasi Gugup",
+export const MONETIZATION_OPTIONS = [
+  "Endorsement/Sponsorship",
+  "Adsense/Views",
+  "Affiliate",
+  "Jualan Produk Digital (ebook / ecourse)",
+  "Jasa Freelance",
+  "Talent (Public Speaker, Trainer, Mentor, MC)",
   "Lainnya",
 ];
 
 export const MAIN_TOPIC_OPTIONS = [
-  "Edukasi Bisnis, Karir & Keuangan",
-  "Pengembangan Diri & Kesehatan Mental (Self-Development)",
-  "Hiburan, Komedi & Lifestyle",
-  "Opini Isu Sosial & Berita Terkini",
-  "Review Teknologi, Seni & Hobi",
+  "Bisnis & Pemasaran (Marketing)",
+  "Keuangan & Investasi (Personal Finance)",
+  "Karir & Produktivitas",
+  "Pengembangan Diri (Self-Improvement)",
+  "Bahasa & Sastra",
+  "Ilmu Pengetahuan & Teknologi (Sains)",
+  "Kuliner (Review Makanan, Resep, Mukbang)",
+  "Traveling & Liburan",
+  "Parenting & Kehidupan Keluarga",
+  "Vlog Keseharian (Daily Vlog)",
+  "Olahraga, Kebugaran & Kesehatan Mental",
+  "Komedi & Sketsa",
+  "Gaming & E-Sports",
+  "Musik (Cover, Produksi, Review)",
+  "Review Film, Series, & Buku",
+  "Budaya Populer (K-Pop, Anime, Cosplay)",
+  "Fotografi & Videografi",
+  "Desain Grafis & Ilustrasi",
+  "Animasi & 3D (Motion Graphics)",
+  "Makeup & Skincare",
+  "Fashion & OOTD (Outfit of the Day)",
+  "Perawatan Tubuh (Bodycare/Haircare)",
+  "Review Gadget & Elektronik",
+  "Coding, Web, & Pemrograman",
+  "Otomotif (Modifikasi, Review Mobil/Motor)",
+  "Sosial, Relawan, & Lingkungan",
+  "Spiritualitas & Religi",
   "Lainnya",
 ];
 
@@ -42,34 +68,19 @@ export const EXPERT_DESIRE_OPTIONS = [
   "Belum Tahu (Masih dalam tahap eksplorasi)",
 ];
 
-export const OBSTACLE_OPTIONS = [
-  "Tidak tahu harus mulai dari mana (Butuh panduan/mentor)",
-  "Sibuk bekerja/kuliah (Tidak punya waktu luang)",
-  "Kurang alat tempur (Kamera, Mic, Laptop, dll)",
-  "Takut di-judge atau dikomentari teman sendiri (Insecure)",
-  "Lainnya",
-];
-
 export const TIME_COMMITMENT_OPTIONS = [
-  "Cuman bisa ikutan 1 - 2 Jam",
-  "Siap ikutan kelas rutin seminggu sekali/sebulan dua kali",
-  "Fleksibel (Menyesuaikan jadwal)",
-];
-
-export const INVESTMENT_OPTIONS = [
-  "Siap investasi berapapun untuk program yang terbukti berdampak",
-  "Siap investasi dengan budget menengah (Rp100.000 - Rp500.000)",
-  "Siap investasi asalkan harganya sangat terjangkau (Di bawah Rp100.000)",
-  "Saat ini hanya bisa mengikuti program yang 100% gratis",
+  "Ikut Mentoring Panggung Kreator Sebulan Empat Kali (Seminggu Sekali)",
+  "Ikut Mentoring Panggung Kreator Sebulan Dua Kali (Dua Minggu Sekali)",
+  "Ikut Mentoring Panggung Kreator Sebulan Sekali",
 ];
 
 export const SECTION_TITLES = [
   "Bagian 1: Profil Singkat",
   "Bagian 2: Tantangan & Kendala (Public Speaking)",
-  "Bagian 3: Minat Belajar (Personal Branding)",
+  "Bagian 3: Minat Belajar",
   "Bagian 4: Visi & Karier",
   "Bagian 5: Eksplorasi Topik & Pesan Utama",
-  "Bagian 6: Komitmen, Waktu, & Investasi",
+  "Bagian 6: Komitmen & Waktu",
 ];
 
 export const FALLBACK_CITIES = [

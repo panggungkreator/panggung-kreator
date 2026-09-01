@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, memo } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,6 +10,8 @@ interface DatePickerProps {
   onChange?: (value: string) => void;
   placeholder?: string;
   className?: string;
+  maxDate?: Date | string;
+  minDate?: Date | string;
 }
 
 const MONTH_NAMES = [
@@ -19,15 +21,16 @@ const MONTH_NAMES = [
 
 const WEEKDAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
-export function DatePicker({
+export const DatePicker = memo(function DatePicker({
   value,
   onChange,
   placeholder = "Pilih tanggal",
   className,
+  maxDate,
+  minDate,
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<"calendar" | "year-month">("calendar");
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Parse initial date value
   const initialDate = value ? new Date(value) : null;
@@ -53,34 +56,77 @@ export function DatePicker({
     }
   }, [value]);
 
-  // Handle clicking outside to close
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-        setView("calendar"); // reset view to calendar when closed
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const parseDate = (d?: Date | string) => {
+    if (!d) return null;
+    const parsed = typeof d === "string" ? new Date(d) : d;
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const maxDateObj = useMemo(() => parseDate(maxDate), [maxDate]);
+  const minDateObj = useMemo(() => parseDate(minDate), [minDate]);
+
+  const isDateAfterMax = (date: Date) => {
+    if (!maxDateObj) return false;
+    const dYear = date.getFullYear();
+    const dMonth = date.getMonth();
+    const dDay = date.getDate();
+
+    const mYear = maxDateObj.getFullYear();
+    const mMonth = maxDateObj.getMonth();
+    const mDay = maxDateObj.getDate();
+
+    if (dYear > mYear) return true;
+    if (dYear < mYear) return false;
+    if (dMonth > mMonth) return true;
+    if (dMonth < mMonth) return false;
+    return dDay > mDay;
+  };
+
+  const isDateBeforeMin = (date: Date) => {
+    if (!minDateObj) return false;
+    const dYear = date.getFullYear();
+    const dMonth = date.getMonth();
+    const dDay = date.getDate();
+
+    const mYear = minDateObj.getFullYear();
+    const mMonth = minDateObj.getMonth();
+    const mDay = minDateObj.getDate();
+
+    if (dYear < mYear) return true;
+    if (dYear > mYear) return false;
+    if (dMonth < mMonth) return true;
+    if (dMonth > mMonth) return false;
+    return dDay < mDay;
+  };
+
+  const isNextMonthDisabled = maxDateObj
+    ? currentMonth.getFullYear() > maxDateObj.getFullYear() ||
+      (currentMonth.getFullYear() === maxDateObj.getFullYear() &&
+        currentMonth.getMonth() >= maxDateObj.getMonth())
+    : false;
+
+  const isPrevMonthDisabled = minDateObj
+    ? currentMonth.getFullYear() < minDateObj.getFullYear() ||
+      (currentMonth.getFullYear() === minDateObj.getFullYear() &&
+        currentMonth.getMonth() <= minDateObj.getMonth())
+    : false;
 
   const handlePrevMonth = () => {
+    if (isPrevMonthDisabled) return;
     setCurrentMonth(
       new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
     );
   };
 
   const handleNextMonth = () => {
+    if (isNextMonthDisabled) return;
     setCurrentMonth(
       new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
     );
   };
 
   const handleDaySelect = (date: Date) => {
+    if (isDateAfterMax(date) || isDateBeforeMin(date)) return;
     setSelectedDate(date);
     const formatted = formatDateToYYYYMMDD(date);
     if (onChange) {
@@ -117,17 +163,12 @@ export function DatePicker({
   };
 
   // Compute days grid
-  const getDaysGrid = () => {
+  const daysGrid = useMemo(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
 
-    // Index of the first day of the month (0 = Sunday, 1 = Monday, etc.)
     const firstDayIndex = new Date(year, month, 1).getDay();
-
-    // Number of days in current month
     const totalDays = new Date(year, month + 1, 0).getDate();
-
-    // Number of days in previous month
     const prevTotalDays = new Date(year, month, 0).getDate();
 
     const cells: { date: Date; isCurrentMonth: boolean }[] = [];
@@ -149,7 +190,7 @@ export function DatePicker({
     }
 
     // Next month padding to complete grid rows
-    const totalCellsNeeded = 42; // standard 6-row grid
+    const totalCellsNeeded = 42;
     const nextMonthDaysToAdd = totalCellsNeeded - cells.length;
     for (let i = 1; i <= nextMonthDaysToAdd; i++) {
       cells.push({
@@ -159,16 +200,16 @@ export function DatePicker({
     }
 
     return cells;
-  };
+  }, [currentMonth]);
 
-  const daysGrid = getDaysGrid();
-
-  // Generate years list (e.g., from current year back to 1930)
-  const currentYear = new Date().getFullYear();
-  const years = Array.from(
-    { length: currentYear - 1930 + 1 },
-    (_, i) => currentYear - i
-  );
+  // Generate years list
+  const years = useMemo(() => {
+    const cYear = new Date().getFullYear();
+    return Array.from(
+      { length: cYear - 1930 + 1 },
+      (_, i) => cYear - i
+    );
+  }, []);
 
   const isToday = (date: Date) => {
     const today = new Date();
@@ -213,8 +254,12 @@ export function DatePicker({
             <div className="flex items-center justify-between mb-4">
               <button
                 type="button"
+                disabled={isPrevMonthDisabled}
                 onClick={handlePrevMonth}
-                className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                className={cn(
+                  "p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white",
+                  isPrevMonthDisabled && "opacity-30 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent"
+                )}
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
@@ -227,8 +272,12 @@ export function DatePicker({
               </button>
               <button
                 type="button"
+                disabled={isNextMonthDisabled}
                 onClick={handleNextMonth}
-                className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                className={cn(
+                  "p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white",
+                  isNextMonthDisabled && "opacity-30 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent"
+                )}
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
@@ -248,18 +297,22 @@ export function DatePicker({
               {daysGrid.map((cell, idx) => {
                 const dayIsSelected = isSelected(cell.date);
                 const dayIsToday = isToday(cell.date);
+                const isDisabled =
+                  isDateAfterMax(cell.date) || isDateBeforeMin(cell.date);
 
                 return (
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => handleDaySelect(cell.date)}
+                    disabled={isDisabled}
+                    onClick={() => !isDisabled && handleDaySelect(cell.date)}
                     className={cn(
                       "h-9 w-9 mx-auto flex items-center justify-center rounded-full text-sm font-medium transition-all focus:outline-none",
-                      // Base colors depending on whether day belongs to current month
-                      cell.isCurrentMonth
+                      isDisabled
+                        ? "text-gray-300 dark:text-neutral-700 cursor-not-allowed opacity-40 hover:bg-transparent"
+                        : cell.isCurrentMonth
                         ? "text-gray-900 dark:text-neutral-100 hover:bg-gray-100 dark:hover:bg-neutral-800 cursor-pointer"
-                        : "text-gray-300 dark:text-neutral-600 hover:bg-gray-50/50 dark:hover:bg-neutral-805/50 cursor-pointer",
+                        : "text-gray-300 dark:text-neutral-600 hover:bg-gray-50/50 dark:hover:bg-neutral-800/50 cursor-pointer",
                       // Today's style (not selected)
                       dayIsToday && !dayIsSelected
                         ? "border border-gray-950 dark:border-white font-bold"
@@ -301,16 +354,28 @@ export function DatePicker({
                 <div className="flex flex-col gap-1">
                   {MONTH_NAMES.map((name, idx) => {
                     const isCurrent = currentMonth.getMonth() === idx;
+                    const year = currentMonth.getFullYear();
+                    const isMonthDisabled =
+                      (maxDateObj &&
+                        (year > maxDateObj.getFullYear() ||
+                          (year === maxDateObj.getFullYear() && idx > maxDateObj.getMonth()))) ||
+                      (minDateObj &&
+                        (year < minDateObj.getFullYear() ||
+                          (year === minDateObj.getFullYear() && idx < minDateObj.getMonth())));
+
                     return (
                       <button
                         key={name}
                         type="button"
-                        onClick={() => handleMonthSelect(idx)}
+                        disabled={Boolean(isMonthDisabled)}
+                        onClick={() => !isMonthDisabled && handleMonthSelect(idx)}
                         className={cn(
                           "py-1.5 px-2 text-xs font-semibold rounded-md text-left transition-colors",
-                          isCurrent
+                          isMonthDisabled
+                            ? "text-gray-300 dark:text-neutral-700 cursor-not-allowed opacity-40 hover:bg-transparent"
+                            : isCurrent
                             ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                            : "text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-805"
+                            : "text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                         )}
                       >
                         {name}
@@ -328,14 +393,21 @@ export function DatePicker({
                 <div className="flex flex-col gap-1 max-h-[190px] overflow-y-auto pr-1">
                   {years.map((year) => {
                     const isCurrent = currentMonth.getFullYear() === year;
+                    const isYearDisabled =
+                      (maxDateObj && year > maxDateObj.getFullYear()) ||
+                      (minDateObj && year < minDateObj.getFullYear());
+
                     return (
                       <button
                         key={year}
                         type="button"
-                        onClick={() => handleYearSelect(year)}
+                        disabled={Boolean(isYearDisabled)}
+                        onClick={() => !isYearDisabled && handleYearSelect(year)}
                         className={cn(
                           "py-1.5 px-2 text-xs font-semibold rounded-md text-center transition-colors",
-                          isCurrent
+                          isYearDisabled
+                            ? "text-gray-300 dark:text-neutral-700 cursor-not-allowed opacity-40 hover:bg-transparent"
+                            : isCurrent
                             ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
                             : "text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                         )}
@@ -352,4 +424,7 @@ export function DatePicker({
       </PopoverContent>
     </Popover>
   );
-}
+});
+
+DatePicker.displayName = "DatePicker";
+

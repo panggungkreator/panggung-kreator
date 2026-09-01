@@ -16,6 +16,8 @@ import AttendanceTracker from "./components/AttendanceTracker";
 import AffiliatePanel from "./components/AffiliatePanel";
 import { Loader2 } from "lucide-react";
 import { getReferredMembersAction } from "@/lib/actions/referral-actions";
+import { getTabVisibilitySettingsAction, TabVisibilitySettings } from "@/lib/actions/settings-actions";
+import UnderConstruction from "./components/UnderConstruction";
 
 export default function MyProfilePage() {
   const router = useRouter();
@@ -25,6 +27,11 @@ export default function MyProfilePage() {
   const [attendanceCount, setAttendanceCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
+  const [tabSettings, setTabSettings] = useState<TabVisibilitySettings>({
+    tab_attendance_enabled: true,
+    tab_portfolio_enabled: true,
+    tab_affiliate_enabled: true,
+  });
 
   const fetchMemberData = useCallback(async () => {
     setIsLoading(true);
@@ -40,7 +47,7 @@ export default function MyProfilePage() {
       }
 
       // Parallel fetching initial data
-      const [profileRes, attendanceCountRes, referralRes, ledgerRes] = await Promise.all([
+      const [profileRes, attendanceCountRes, referralRes, ledgerRes, tabVisRes] = await Promise.all([
         // 1. Profile & interests
         supabase
           .from("members")
@@ -64,6 +71,9 @@ export default function MyProfilePage() {
           .select("*")
           .eq("member_id", user.id)
           .order("created_at", { ascending: false }),
+
+        // 5. System tab visibility settings
+        getTabVisibilitySettingsAction(),
       ]);
 
       if (profileRes.error) throw profileRes.error;
@@ -72,6 +82,7 @@ export default function MyProfilePage() {
       setAttendanceCount(attendanceCountRes.count ?? 0);
       setReferrals((referralRes as any)?.data || []);
       setLedger((ledgerRes.data as any[]) || []);
+      if (tabVisRes) setTabSettings(tabVisRes);
     } catch (err: any) {
       console.error("Error loading profile:", err);
       toast.error("Gagal memuat profil. \n Coba reload kembali.");
@@ -84,8 +95,18 @@ export default function MyProfilePage() {
     fetchMemberData();
   }, [fetchMemberData]);
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const handleSignout = async () => {
-    await signout();
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await signout();
+      router.push("/");
+    } catch (err) {
+      console.error("Signout error:", err);
+      setIsLoggingOut(false);
+    }
   };
 
   if (isLoading) {
@@ -105,6 +126,12 @@ export default function MyProfilePage() {
   const isAffiliateActive =
     !!member.affiliate_code || (member.commission_balance || 0) > 0;
 
+  const disabledTabs = {
+    attendance: !tabSettings.tab_attendance_enabled,
+    portfolio: !tabSettings.tab_portfolio_enabled,
+    affiliate: !tabSettings.tab_affiliate_enabled,
+  };
+
   return (
     <ProfileLayout
       member={member}
@@ -113,10 +140,11 @@ export default function MyProfilePage() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           isAffiliateActive={isAffiliateActive}
+          disabledTabs={disabledTabs}
         />
       }
       sidebar={
-        <ProfileSidebar member={member} onSignout={handleSignout} />
+        <ProfileSidebar member={member} onSignout={handleSignout} isLoggingOut={isLoggingOut} />
       }
     >
       {activeTab === "overview" && (
@@ -128,17 +156,41 @@ export default function MyProfilePage() {
       )}
 
       {activeTab === "attendance" && (
-        <AttendanceTracker memberId={member.id} />
+        disabledTabs.attendance ? (
+          <UnderConstruction
+            title="Absensi Event"
+            description="Fitur Absensi Event sedang dalam peningkatan performa sistem. Terima kasih atas kesabaran Anda."
+            onBackToOverview={() => setActiveTab("overview")}
+          />
+        ) : (
+          <AttendanceTracker memberId={member.id} />
+        )
       )}
 
       {activeTab === "portfolio" && (
-        <div className="bg-transparent border-0 p-0 shadow-none">
-          <PortfolioManager memberId={member.id} />
-        </div>
+        disabledTabs.portfolio ? (
+          <UnderConstruction
+            title="Portofolio Kreator"
+            description="Fitur manajemen portofolio karya sedang dalam pengembangan."
+            onBackToOverview={() => setActiveTab("overview")}
+          />
+        ) : (
+          <div className="bg-transparent border-0 p-0 shadow-none">
+            <PortfolioManager memberId={member.id} />
+          </div>
+        )
       )}
 
       {activeTab === "affiliate" && isAffiliateActive && (
-        <AffiliatePanel member={member} referrals={referrals} ledger={ledger} />
+        disabledTabs.affiliate ? (
+          <UnderConstruction
+            title="Program Affiliate"
+            description="Panel Affiliate sedang menjalani penyesuaian sistem komisi. Silakan hubungi admin untuk info lebih lanjut."
+            onBackToOverview={() => setActiveTab("overview")}
+          />
+        ) : (
+          <AffiliatePanel member={member} referrals={referrals} ledger={ledger} />
+        )
       )}
     </ProfileLayout>
   );

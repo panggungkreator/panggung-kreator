@@ -198,46 +198,80 @@ html.lenis body {
   pointer-events: none;
 }
 
-/* Stabilo (Highlighter) Effect Class with sliding animation */
+/* Stabilo (Highlighter Pen) Effect Class with multiline clone support */
 .highlight-stabilo {
-  background: linear-gradient(180deg, transparent 40%, #ffe78a 40%, #ffe78a 85%, transparent 85%);
+  background-image: linear-gradient(180deg, transparent 58%, #ffe78a 58%, #ffe78a 92%, transparent 92%);
   background-size: 0% 100%;
   background-repeat: no-repeat;
   background-position: left center;
-  padding: 0 6px;
+  padding: 0 3px;
   display: inline;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
   border-radius: 2px;
-  animation: draw-stabilo 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: 0.8s;
-  /* Wait for headline fadeUp to start */
+  animation: draw-stabilo 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.2s;
 }
 
 @keyframes draw-stabilo {
   to {
     background-size: 100% 100%;
-    color: #000000 !important;
-    /* Transition to readable black text */
+    color: inherit;
   }
 }
 
 /* Dark Mode Override for Stabilo */
 .dark .highlight-stabilo {
-  background: linear-gradient(180deg, transparent 40%, #ffe78a 40%, #ffe78a 85%, transparent 85%);
-  animation: draw-stabilo-dark 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: 0.8s;
+  background-image: linear-gradient(180deg, transparent 58%, rgba(253, 224, 71, 0.75) 58%, rgba(253, 224, 71, 0.75) 92%, transparent 92%);
+  animation: draw-stabilo-dark 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.2s;
 }
 
 @keyframes draw-stabilo-dark {
   to {
     background-size: 100% 100%;
-    color: #000000 !important;
-    /* Transition to readable black text on yellow background */
+    color: inherit;
   }
 }
 
 /* Sidebar Active Nav Highlighter Override (Immediate Drawing) */
 .highlight-stabilo-nav {
   animation-delay: 0s !important;
+}
+
+/* Global & Custom Ultra-Thin Auto-Hiding Scrollbar (3px) */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background-color 0.3s ease;
+}
+
+:hover::-webkit-scrollbar-thumb,
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(140, 140, 140, 0.35);
+}
+
+.dark :hover::-webkit-scrollbar-thumb,
+.dark .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.custom-scrollbar:hover {
+  scrollbar-color: rgba(140, 140, 140, 0.35) transparent;
 }
 
 /* Standard Shadcn UI Dialog Animation classes mapping */

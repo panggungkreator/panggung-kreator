@@ -14,13 +14,17 @@ import {
   saveAttendanceEmailSettingAction,
   getReferralCommissionSettingsAction,
   saveReferralCommissionSettingsAction,
+  getTabVisibilitySettingsAction,
+  saveTabVisibilitySettingsAction,
   ReferralCommissionSettings,
+  TabVisibilitySettings,
 } from "@/lib/actions/settings-actions";
 import SettingsSidebar, { TabId } from "./SettingsSidebar";
 import UnsavedChangesBar from "./UnsavedChangesBar";
 import GeneralPanel from "./panels/GeneralPanel";
 import AbsensiPanel from "./panels/AbsensiPanel";
 import ReferralPanel from "./panels/ReferralPanel";
+import MyProfilePanel from "./panels/MyProfilePanel";
 
 export default function SettingsClient() {
   const [activeTab, setActiveTab] = useState<TabId>("general");
@@ -37,6 +41,11 @@ export default function SettingsClient() {
     flatAmount: "10000",
     percentage: "10",
   });
+  const [savedTabVis, setSavedTabVis] = useState<TabVisibilitySettings>({
+    tab_attendance_enabled: true,
+    tab_portfolio_enabled: true,
+    tab_affiliate_enabled: true,
+  });
 
   // Current Working States (Form)
   const [currentEmailEnabled, setCurrentEmailEnabled] = useState(true);
@@ -45,15 +54,21 @@ export default function SettingsClient() {
     flatAmount: "10000",
     percentage: "10",
   });
+  const [currentTabVis, setCurrentTabVis] = useState<TabVisibilitySettings>({
+    tab_attendance_enabled: true,
+    tab_portfolio_enabled: true,
+    tab_affiliate_enabled: true,
+  });
 
   // Fetch initial settings from DB
   useEffect(() => {
     async function loadAllSettings() {
       setIsLoading(true);
       try {
-        const [emailVal, referralVal] = await Promise.all([
+        const [emailVal, referralVal, tabVisVal] = await Promise.all([
           getAttendanceEmailSettingAction(),
           getReferralCommissionSettingsAction(),
+          getTabVisibilitySettingsAction(),
         ]);
 
         setSavedEmailEnabled(emailVal);
@@ -61,6 +76,9 @@ export default function SettingsClient() {
 
         setSavedReferral(referralVal);
         setCurrentReferral(referralVal);
+
+        setSavedTabVis(tabVisVal);
+        setCurrentTabVis(tabVisVal);
       } catch (err) {
         console.error("Error loading settings:", err);
         toast.error("Gagal memuat beberapa pengaturan sistem.");
@@ -78,13 +96,18 @@ export default function SettingsClient() {
       currentReferral.mode !== savedReferral.mode ||
       currentReferral.flatAmount !== savedReferral.flatAmount ||
       currentReferral.percentage !== savedReferral.percentage;
+    const isMyprofileUnsaved =
+      currentTabVis.tab_attendance_enabled !== savedTabVis.tab_attendance_enabled ||
+      currentTabVis.tab_portfolio_enabled !== savedTabVis.tab_portfolio_enabled ||
+      currentTabVis.tab_affiliate_enabled !== savedTabVis.tab_affiliate_enabled;
 
     return {
       general: false,
       absensi: isAbsensiUnsaved,
       referral: isReferralUnsaved,
+      myprofile: isMyprofileUnsaved,
     };
-  }, [currentEmailEnabled, savedEmailEnabled, currentReferral, savedReferral]);
+  }, [currentEmailEnabled, savedEmailEnabled, currentReferral, savedReferral, currentTabVis, savedTabVis]);
 
   // Current active tab has unsaved changes?
   const hasActiveTabUnsaved = unsavedTabs[activeTab];
@@ -106,6 +129,8 @@ export default function SettingsClient() {
       setCurrentEmailEnabled(savedEmailEnabled);
     } else if (activeTab === "referral") {
       setCurrentReferral(savedReferral);
+    } else if (activeTab === "myprofile") {
+      setCurrentTabVis(savedTabVis);
     }
 
     if (pendingTab) {
@@ -122,6 +147,9 @@ export default function SettingsClient() {
     } else if (activeTab === "referral") {
       setCurrentReferral(savedReferral);
       toast.info("Perubahan pengaturan Referral dibuang.");
+    } else if (activeTab === "myprofile") {
+      setCurrentTabVis(savedTabVis);
+      toast.info("Perubahan pengaturan MyProfile dibuang.");
     }
   };
 
@@ -148,6 +176,14 @@ export default function SettingsClient() {
           toast.success("Pengaturan komisi referral global berhasil disimpan!");
         } else {
           toast.error(res.error || "Gagal menyimpan pengaturan referral.");
+        }
+      } else if (activeTab === "myprofile") {
+        const res = await saveTabVisibilitySettingsAction(currentTabVis);
+        if (res.success) {
+          setSavedTabVis(currentTabVis);
+          toast.success("Pengaturan visibilitas tab MyProfile berhasil disimpan!");
+        } else {
+          toast.error(res.error || "Gagal menyimpan pengaturan visibilitas tab MyProfile.");
         }
       }
     } catch (err: any) {
@@ -180,7 +216,7 @@ export default function SettingsClient() {
               Pengaturan Sistem & Notifikasi
             </h1>
             <p className="text-xs text-text-secondary mt-1">
-              Kelola pengaturan aplikasi, absensi, dan skema referral
+              Kelola pengaturan aplikasi, absensi, skema referral, dan visibilitas tab member
             </p>
           </div>
         </div>
@@ -232,6 +268,13 @@ export default function SettingsClient() {
               <ReferralPanel
                 value={currentReferral}
                 onChange={setCurrentReferral}
+              />
+            )}
+
+            {activeTab === "myprofile" && (
+              <MyProfilePanel
+                value={currentTabVis}
+                onChange={setCurrentTabVis}
               />
             )}
           </div>

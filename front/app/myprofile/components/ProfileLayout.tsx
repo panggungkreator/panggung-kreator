@@ -82,8 +82,8 @@ export default function ProfileLayout({
       <div className="max-w-6xl w-full mx-auto pt-14 lg:pt-8 pb-16 px-4 sm:px-6 lg:px-8 flex-1">
         {/* MAIN TWO-COLUMN SPLIT LAYOUT */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-start">
-          {/* LEFT COLUMN: IDENTITY SIDEBAR (DESKTOP ONLY) */}
-          <aside className="hidden lg:block lg:col-span-3 w-full sticky top-8">{sidebar}</aside>
+          {/* LEFT COLUMN: IDENTITY SIDEBAR (DESKTOP ONLY WITH THIN AUTO-HIDE SCROLL) */}
+          <aside className="hidden lg:block lg:col-span-3 w-full sticky top-8 max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar pr-2">{sidebar}</aside>
 
           {/* RIGHT COLUMN: TAB NAVIGATION & DATA DETAILS */}
           <main className="lg:col-span-9 w-full space-y-6">

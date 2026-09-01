@@ -7,5 +7,13 @@ export function hasPermission(
   pageSlug: string,
   action: string
 ): boolean {
+  if (!permMap) return false;
+  if (
+    permMap["*"]?.includes("*") ||
+    permMap["*"]?.includes(action) ||
+    permMap[pageSlug]?.includes("*")
+  ) {
+    return true;
+  }
   return permMap[pageSlug]?.includes(action) ?? false;
 }

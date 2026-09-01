@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { Settings2, QrCode, Gift, LucideIcon } from "lucide-react";
+import { Settings2, QrCode, Gift, LayoutDashboard, LucideIcon } from "lucide-react";
 
-export type TabId = "general" | "absensi" | "referral";
+export type TabId = "general" | "absensi" | "referral" | "myprofile";
 
 export interface TabItem {
   id: TabId;
@@ -30,6 +30,12 @@ export const SETTINGS_TABS: TabItem[] = [
     label: "Referral Code",
     description: "Pengaturan komisi & reward global",
     icon: Gift,
+  },
+  {
+    id: "myprofile",
+    label: "Fitur MyProfile",
+    description: "Toggle visibilitas tab member",
+    icon: LayoutDashboard,
   },
 ];
 

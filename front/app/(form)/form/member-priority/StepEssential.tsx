@@ -25,7 +25,7 @@ export default function StepEssential({
   isLoading,
   initialReferralCode,
 }: StepEssentialProps) {
-  const state = usePriorityFormState(onSuccess, setErrorMsg, isLoading);
+  const state = usePriorityFormState(onSuccess, setErrorMsg, isLoading, errorMsg);
   const { currentSection, handleNextSection, handlePrevSection, handleSubmit } = state;
 
   useEffect(() => {
@@ -53,6 +53,10 @@ export default function StepEssential({
         <Section1Profile
           fullName={state.fullName}
           setFullName={state.setFullName}
+          birthDate={state.birthDate}
+          setBirthDate={state.setBirthDate}
+          address={state.address}
+          setAddress={state.setAddress}
           whatsappNumber={state.whatsappNumber}
           setWhatsappNumber={state.setWhatsappNumber}
           email={state.email}
@@ -65,13 +69,8 @@ export default function StepEssential({
           setYoutubeUrl={state.setYoutubeUrl}
           linkedinUrl={state.linkedinUrl}
           setLinkedinUrl={state.setLinkedinUrl}
-          city={state.city}
-          setCity={state.setCity}
-          citiesList={state.citiesList}
           occupation={state.occupation}
           setOccupation={state.setOccupation}
-          customOccupation={state.customOccupation}
-          setCustomOccupation={state.setCustomOccupation}
           fieldErrors={state.fieldErrors}
           handleFieldChange={state.handleFieldChange}
         />
@@ -81,28 +80,26 @@ export default function StepEssential({
         <Section2PublicSpeaking
           psChallenges={state.psChallenges}
           togglePsChallenge={state.togglePsChallenge}
-          customPsChallenge={state.customPsChallenge}
-          setCustomPsChallenge={state.setCustomPsChallenge}
           confidenceScale={state.confidenceScale}
           setConfidenceScale={state.setConfidenceScale}
           nervousTrigger={state.nervousTrigger}
           setNervousTrigger={state.setNervousTrigger}
-          blunderStory={state.blunderStory}
-          setBlunderStory={state.setBlunderStory}
           fieldErrors={state.fieldErrors}
         />
       )}
 
       {currentSection === 3 && (
         <Section3PersonalBranding
-          pbImportance={state.pbImportance}
-          setPbImportance={state.setPbImportance}
-          learningTopics={state.learningTopics}
-          toggleLearningTopic={state.toggleLearningTopic}
-          customLearningTopic={state.customLearningTopic}
-          setCustomLearningTopic={state.setCustomLearningTopic}
+          skillsToMaster={state.skillsToMaster}
+          setSkillsToMaster={state.setSkillsToMaster}
+          customSkillsToMaster={state.customSkillsToMaster}
+          setCustomSkillsToMaster={state.setCustomSkillsToMaster}
           roleModel={state.roleModel}
           setRoleModel={state.setRoleModel}
+          monetizationInterest={state.monetizationInterest}
+          setMonetizationInterest={state.setMonetizationInterest}
+          customMonetizationInterest={state.customMonetizationInterest}
+          setCustomMonetizationInterest={state.setCustomMonetizationInterest}
           fieldErrors={state.fieldErrors}
         />
       )}
@@ -135,14 +132,12 @@ export default function StepEssential({
 
       {currentSection === 6 && (
         <Section6Commitment
-          pbObstacle={state.pbObstacle}
-          setPbObstacle={state.setPbObstacle}
-          customPbObstacle={state.customPbObstacle}
-          setCustomPbObstacle={state.setCustomPbObstacle}
+          activeCommunities={state.activeCommunities}
+          setActiveCommunities={state.setActiveCommunities}
+          careerObstacle={state.careerObstacle}
+          setCareerObstacle={state.setCareerObstacle}
           timeCommitment={state.timeCommitment}
           setTimeCommitment={state.setTimeCommitment}
-          investmentBudget={state.investmentBudget}
-          setInvestmentBudget={state.setInvestmentBudget}
           fieldErrors={state.fieldErrors}
         />
       )}

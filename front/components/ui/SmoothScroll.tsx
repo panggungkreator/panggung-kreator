@@ -43,27 +43,37 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     ScrollTrigger.refresh();
 
     // --- Intercept ALL anchor-link clicks for smooth scroll ---
+    // Only simple #id hashes are valid CSS selectors for querySelector.
+    // Supabase auth redirects use hashes like #access_token=eyJ... which are NOT valid selectors.
+    function isSimpleHashSelector(hash: string): boolean {
+      return /^#[a-zA-Z][a-zA-Z0-9_-]*$/.test(hash);
+    }
+
     function handleAnchorClick(e: MouseEvent) {
       const target = (e.target as HTMLElement).closest("a[href^='#']") as HTMLAnchorElement | null;
       if (!target) return;
 
       const hash = target.getAttribute("href");
-      if (!hash || hash === "#") return;
+      if (!hash || hash === "#" || !isSimpleHashSelector(hash)) return;
 
-      const el = document.querySelector(hash);
-      if (!el) return;
+      try {
+        const el = document.querySelector(hash);
+        if (!el) return;
 
-      e.preventDefault();
+        e.preventDefault();
 
-      // Use Lenis for silky smooth scroll to the target element
-      lenis.scrollTo(el as HTMLElement, {
-        offset: -90, // offset for fixed header height
-        duration: 1.8,
-        easing: (t) => 1 - Math.pow(1 - t, 4), // quartic ease-out — very smooth deceleration
-      });
+        // Use Lenis for silky smooth scroll to the target element
+        lenis.scrollTo(el as HTMLElement, {
+          offset: -90, // offset for fixed header height
+          duration: 1.8,
+          easing: (t) => 1 - Math.pow(1 - t, 4), // quartic ease-out — very smooth deceleration
+        });
 
-      // Update URL hash without jumping
-      window.history.pushState(null, "", hash);
+        // Update URL hash without jumping
+        window.history.pushState(null, "", hash);
+      } catch {
+        // Silently ignore invalid selectors
+      }
     }
 
     document.addEventListener("click", handleAnchorClick, { capture: true });
@@ -71,19 +81,23 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     // --- Handle direct hash on page load (e.g. user visits /#gabung) ---
     function handleInitialHash() {
       const hash = window.location.hash;
-      if (!hash) return;
+      if (!hash || !isSimpleHashSelector(hash)) return;
 
-      const el = document.querySelector(hash);
-      if (!el) return;
+      try {
+        const el = document.querySelector(hash);
+        if (!el) return;
 
-      // Small delay to let layout settle before scrolling
-      setTimeout(() => {
-        lenis.scrollTo(el as HTMLElement, {
-          offset: -90,
-          duration: 2.0,
-          easing: (t) => 1 - Math.pow(1 - t, 4),
-        });
-      }, 300);
+        // Small delay to let layout settle before scrolling
+        setTimeout(() => {
+          lenis.scrollTo(el as HTMLElement, {
+            offset: -90,
+            duration: 2.0,
+            easing: (t) => 1 - Math.pow(1 - t, 4),
+          });
+        }, 300);
+      } catch {
+        // Silently ignore invalid selectors
+      }
     }
 
     handleInitialHash();

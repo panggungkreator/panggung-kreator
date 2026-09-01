@@ -32,7 +32,7 @@ export default function AffiliatePanel({ member, referrals, ledger = [] }: Affil
       <div className="space-y-2 border-b border-neutral-200 dark:border-neutral-800 pb-4">
         <h3 className="text-lg font-bold font-sans text-neutral-900 dark:text-white flex items-center gap-2">
           <Gift className="w-5 h-5 text-[#bc151b]" />
-          <span className="highlight-stabilo">Program Referral & Affiliate Panggung Kreator</span>
+          <span>Program Referral & <span className="highlight-stabilo">Affiliate</span> Panggung Kreator</span>
         </h3>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-2xl font-sans">
           Bagikan tautan referral unik Anda. Dapatkan komisi saldo setelah teman atau member baru melakukan pembayaran pendaftaran Akademi dan berhasil diverifikasi oleh Admin.
@@ -46,7 +46,7 @@ export default function AffiliatePanel({ member, referrals, ledger = [] }: Affil
             [ SALDO KOMISI ANDA ]
           </span>
           <span className="text-xl font-bold font-sans text-neutral-900 dark:text-white">
-            <span className="highlight-stabilo">Rp {(member.commission_balance || 0).toLocaleString("id-ID")}</span>
+            Rp {(member.commission_balance || 0).toLocaleString("id-ID")}
           </span>
         </div>
         <div>
@@ -54,7 +54,7 @@ export default function AffiliatePanel({ member, referrals, ledger = [] }: Affil
             [ TOTAL TEMAN BERGABUNG ]
           </span>
           <span className="text-xl font-bold font-sans text-neutral-900 dark:text-white">
-            <span className="highlight-stabilo">{referrals.length} TEMAN</span>
+            {referrals.length} TEMAN
           </span>
         </div>
       </div>

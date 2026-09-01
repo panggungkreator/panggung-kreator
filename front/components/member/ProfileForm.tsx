@@ -2,13 +2,28 @@
 
 import React, { useState } from "react";
 import ImageUploader from "./ImageUploader";
+import ChangePasswordModal from "./ChangePasswordModal";
 import { MemberProfile, PrimaryInterest } from "@/lib/types/member";
 import { createClient } from "@/lib/supabase/client";
 import { compressImageForTarget } from "@/lib/utils/image-compress";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner"; // sonner is used for toasts
-import { Award, Briefcase, Camera, Check, Globe, Link as LinkIcon, Lock, Sparkles, User, Video } from "lucide-react";
+import { Lock, Check } from "lucide-react";
+import { DateBirthLine } from "@/components/ui/style-line/DateBirthLine";
+import { MultiSelectLine } from "@/components/ui/style-line/MultiSelectLine";
+import { ScaleSelectorLine } from "@/components/ui/style-line/ScaleSelectorLine";
+import { RadioGroupLine } from "@/components/ui/style-line/RadioGroupLine";
+import { InputLine } from "@/components/ui/style-line/InputLine";
+import { TextareaLine } from "@/components/ui/style-line/TextareaLine";
+import {
+  PS_CHALLENGE_OPTIONS,
+  NERVOUS_TRIGGER_OPTIONS,
+  SKILLS_TO_MASTER_OPTIONS,
+  MONETIZATION_OPTIONS,
+  EXPERT_DESIRE_OPTIONS,
+  TIME_COMMITMENT_OPTIONS,
+} from "@/app/(form)/form/member-priority/constants";
 
 interface ProfileFormProps {
   member: MemberProfile;
@@ -39,27 +54,59 @@ const OCCUPATION_OPTIONS = [
   { value: "other", label: "Lainnya" },
 ];
 
+const GOAL_OPTIONS = [
+  { value: 'self_learning', label: '🌱 Mengembangkan Diri & Belajar Skill Baru' },
+  { value: 'professional_career', label: '🎤 Membangun Karier Profesional / Public Speaker' },
+  { value: 'business', label: '📈 Mendukung Bisnis & Penjualan yang Sedang Berjalan' },
+  { value: 'social_media', label: '🎬 Membuat Konten Media Sosial & Personal Brand' },
+  { value: 'monetization', label: '💰 Mengakselerasi Monetisasi (Affiliate / Endorse / Digital)' },
+  { value: 'networking', label: '🤝 Membangun Jejaring & Kolaborasi Sesama Kreator' },
+];
+
+const TOPIC_PRESETS = [
+  "Bisnis & Pemasaran",
+  "Pengembangan Diri",
+  "Karir & Produktivitas",
+  "Keuangan & Investasi",
+  "Sains & Teknologi",
+  "Edukasi & Bahasa",
+  "Seni, Musik & Hiburan",
+  "Lifestyle & Daily Vlog",
+  "Kesehatan & Olahraga",
+  "Spiritualitas & Religi",
+];
+
+const LEARNING_PREFERENCE_OPTIONS = [
+  { value: "live_class", label: "💻 Live Interactive Class (Zoom/GMeet)" },
+  { value: "mentoring_1on1", label: "🎯 Mentoring & Feedback 1-on-1" },
+  { value: "practical_workshop", label: "🎤 Workshop & Latihan Praktik Direct" },
+  { value: "content_review", label: "🎬 Bedah Konten & Review Portofolio" },
+  { value: "community_sharing", label: "👥 Sharing Session & Diskusi Komunitas" },
+];
+
 export default function ProfileForm({ member, onSave }: ProfileFormProps) {
-  const [activeTab, setActiveTab] = useState<"bio" | "social" | "goals">("bio");
+  const [activeTab, setActiveTab] = useState<"bio" | "social" | "goals" | "persona">("bio");
   const [isLoading, setIsLoading] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // --- FORM STATES ---
   // Section A: Bio & Data Diri
   const [fullName, setFullName] = useState(member.full_name || "");
   const [stageName, setStageName] = useState(member.stage_name || "");
   const [whatsappNumber, setWhatsappNumber] = useState(member.whatsapp_number || "");
-  const [city, setCity] = useState(member.city || "");
-  const [occupation, setOccupation] = useState(member.occupation || "other");
+  const [birthDate, setBirthDate] = useState(member.birth_date || "");
+  const [address, setAddress] = useState(member.address || "");
+  const [occupation, setOccupation] = useState(member.occupation || "");
   const [description, setDescription] = useState(member.description || "");
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url || "");
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [isAvatarRemoved, setIsAvatarRemoved] = useState(false);
 
   // Section B: Sosial Media & Tautan
-  const [instagramUsername, setInstagramUsername] = useState(member.instagram_username || "");
-  const [tiktokUsername, setTiktokUsername] = useState(member.tiktok_username || "");
-  const [youtubeUrl, setYoutubeUrl] = useState(member.youtube_url || "");
-  const [linkedinUrl, setLinkedinUrl] = useState(member.linkedin_url || "");
+  const [instagramUsername, setInstagramUsername] = useState(member.social_media?.instagram || "");
+  const [tiktokUsername, setTiktokUsername] = useState(member.social_media?.tiktok || "");
+  const [youtubeUrl, setYoutubeUrl] = useState(member.social_media?.youtube || "");
+  const [linkedinUrl, setLinkedinUrl] = useState(member.social_media?.linkedin || "");
   const [portfolioUrl, setPortfolioUrl] = useState(member.portfolio_url || "");
 
   // Section C: Minat & Goals Lanjutan
@@ -70,6 +117,43 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
   const [availability, setAvailability] = useState<string>(member.interests?.availability || "flexible");
   const [learningPreference, setLearningPreference] = useState<string[]>(member.interests?.learning_preference || []);
   const [subscribedNewsletter, setSubscribedNewsletter] = useState(member.subscribed_newsletter ?? true);
+
+  // Section D: Public Speaking & Persona
+  const initialStm = member.interests?.skills_to_master || "";
+  const isStmInOptions = SKILLS_TO_MASTER_OPTIONS.includes(initialStm);
+
+  const initialMi = member.interests?.monetization_interest || "";
+  const isMiInOptions = MONETIZATION_OPTIONS.includes(initialMi);
+
+  const [psChallenges, setPsChallenges] = useState<string[]>(member.interests?.ps_challenges || []);
+  const [confidenceScale, setConfidenceScale] = useState<number | null>(member.interests?.confidence_scale ?? 5);
+  const [nervousTrigger, setNervousTrigger] = useState<string>(member.interests?.nervous_trigger || "");
+  const [skillsToMaster, setSkillsToMaster] = useState<string>(
+    initialStm ? (isStmInOptions ? initialStm : "Lainnya") : ""
+  );
+  const [customSkillsToMaster, setCustomSkillsToMaster] = useState<string>(
+    initialStm && !isStmInOptions ? initialStm : ""
+  );
+  const [roleModel, setRoleModel] = useState<string>(member.interests?.role_model || "");
+  const [monetizationInterest, setMonetizationInterest] = useState<string>(
+    initialMi ? (isMiInOptions ? initialMi : "Lainnya") : ""
+  );
+  const [customMonetizationInterest, setCustomMonetizationInterest] = useState<string>(
+    initialMi && !isMiInOptions ? initialMi : ""
+  );
+  const [targetAudience, setTargetAudience] = useState<string>(member.interests?.target_audience || "");
+  const [expertDesire, setExpertDesire] = useState<string>(member.interests?.expert_desire || "");
+  const [careerObstacle, setCareerObstacle] = useState<string>(member.interests?.career_obstacle || "");
+  const [activeCommunities, setActiveCommunities] = useState<string>(member.interests?.active_communities || "");
+  const [timeCommitment, setTimeCommitment] = useState<string>(member.interests?.time_commitment || "");
+
+  const togglePsChallenge = (val: string) => {
+    setPsChallenges((prev) => {
+      if (prev.includes(val)) return prev.filter((item) => item !== val);
+      if (prev.length >= 3) return prev;
+      return [...prev, val];
+    });
+  };
 
   const toggleInterest = (val: string) => {
     setSelectedInterests((prev) =>
@@ -220,14 +304,17 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
             full_name: fullName,
             stage_name: stageName,
             whatsapp_number: whatsappNumber,
-            city,
+            birth_date: birthDate || null,
+            address: address || null,
             occupation,
             description,
             avatar_url: finalAvatarUrl,
-            instagram_username: instagramUsername,
-            tiktok_username: tiktokUsername,
-            youtube_url: cleanYoutube,
-            linkedin_url: cleanLinkedin,
+            social_media: {
+              instagram: instagramUsername || null,
+              tiktok: tiktokUsername || null,
+              youtube: cleanYoutube,
+              linkedin: cleanLinkedin,
+            },
             portfolio_url: cleanPortfolio,
             subscribed_newsletter: subscribedNewsletter,
           },
@@ -238,6 +325,17 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
             content_topics: contentTopics,
             availability,
             learning_preference: learningPreference,
+            ps_challenges: psChallenges,
+            confidence_scale: confidenceScale,
+            nervous_trigger: nervousTrigger || null,
+            skills_to_master: skillsToMaster === "Lainnya" ? (customSkillsToMaster || "Lainnya") : (skillsToMaster || null),
+            role_model: roleModel || null,
+            monetization_interest: monetizationInterest === "Lainnya" ? (customMonetizationInterest || "Lainnya") : (monetizationInterest || null),
+            target_audience: targetAudience || null,
+            expert_desire: expertDesire || null,
+            career_obstacle: careerObstacle || null,
+            active_communities: activeCommunities || null,
+            time_commitment: timeCommitment || null,
           }
         }),
       });
@@ -332,6 +430,60 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
               </div>
             </div>
 
+            {/* READ-ONLY ACCOUNT & SECURITY PANEL */}
+            <div className="p-4 border border-zinc-200 dark:border-zinc-800 bg-neutral-50/70 dark:bg-zinc-900/40 space-y-4">
+              <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3">
+                <Lock className="w-4 h-4 text-zinc-500" />
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-black dark:text-white">
+                  Data Akun & Keamanan (Read-Only)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                {/* EMAIL */}
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
+                    EMAIL AKUN
+                  </span>
+                  <p className="font-mono font-medium text-black dark:text-white truncate">
+                    {member.email || "-"}
+                  </p>
+                  <span className="text-[9px] text-zinc-400 block">Dikelola oleh sistem otentikasi.</span>
+                </div>
+
+                {/* USERNAME */}
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
+                    USERNAME
+                  </span>
+                  <p className="font-mono font-medium text-black dark:text-white truncate">
+                    @{member.username || "-"}
+                  </p>
+                  <span className="text-[9px] text-zinc-400 block">Hubungi admin untuk perubahan username.</span>
+                </div>
+
+                {/* MEMBERSHIP TIER */}
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
+                    MEMBERSHIP TIER
+                  </span>
+                  <span className="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-mono font-bold uppercase border border-neutral-900 dark:border-white bg-neutral-900 dark:bg-white text-white dark:text-neutral-900">
+                    {member.membership_tier?.toUpperCase() || "FREE"}
+                  </span>
+                </div>
+
+                {/* KODE REFERRAL */}
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
+                    KODE REFERRAL / AFILIASI
+                  </span>
+                  <p className="font-mono font-bold text-black dark:text-white">
+                    {member.affiliate_code || "-"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
@@ -376,12 +528,13 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
 
               <div>
                 <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  KOTA DOMISILI
+                  PROFESI UTAMA
                 </label>
                 <input
                   type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  placeholder="Content Creator, Mahasiswa, Pengusaha..."
                   className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
                 />
               </div>
@@ -389,22 +542,26 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  PROFESI UTAMA *
-                </label>
-                <Select value={occupation} onValueChange={setOccupation}>
-                  <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1.5 px-0 h-auto text-sm font-normal rounded-none focus:outline-none focus:ring-0 focus:border-black dark:focus:border-white transition-colors">
-                    <SelectValue placeholder="Pilih Profesi" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 dark:text-white rounded-none p-1">
-                    {OCCUPATION_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value} className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DateBirthLine
+                  label="TANGGAL LAHIR"
+                  value={birthDate}
+                  onChange={setBirthDate}
+                  placeholder="Pilih Tanggal Lahir"
+                />
               </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
+                ALAMAT LENGKAP
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Alamat tempat tinggal / jalan, kecamatan, kabupaten..."
+                className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+              />
             </div>
 
             <div>
@@ -428,10 +585,11 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
         {/* TAB 2: SOSIAL & TAUTAN PORTFOLIO */}
         {activeTab === "social" && (
           <div className="space-y-6 animate-fade-in">
+            {/* Instagram & TikTok */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  USERNAME INSTAGRAM
+                  INSTAGRAM
                 </label>
                 <div className="relative">
                   <span className="absolute left-0 top-1.5 text-xs text-zinc-400">@</span>
@@ -447,7 +605,7 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
 
               <div>
                 <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  USERNAME TIKTOK
+                  TIKTOK
                 </label>
                 <div className="relative">
                   <span className="absolute left-0 top-1.5 text-xs text-zinc-400">@</span>
@@ -462,37 +620,39 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
               </div>
             </div>
 
+            {/* YouTube & LinkedIn */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  LINK CHANNEL YOUTUBE
+                  YOUTUBE
                 </label>
                 <input
                   type="text"
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
-                  placeholder="https://youtube.com/c/yourchannel"
+                  placeholder="Channel / @handle"
                   className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
                 />
               </div>
 
               <div>
                 <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  LINK PROFILE LINKEDIN
+                  LINKEDIN
                 </label>
                 <input
                   type="text"
                   value={linkedinUrl}
                   onChange={(e) => setLinkedinUrl(e.target.value)}
-                  placeholder="https://linkedin.com/in/username"
+                  placeholder="linkedin.com/in/username"
                   className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
                 />
               </div>
             </div>
 
+            {/* Portfolio / Website */}
             <div>
               <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                TAUTAN WEBSITE LAIN / PORTFOLIO UTAMA
+                TAUTAN WEBSITE / PORTFOLIO UTAMA
               </label>
               <input
                 type="text"
@@ -507,13 +667,13 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
 
         {/* TAB 3: MINAT & GOALS */}
         {activeTab === "goals" && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Minat Utama */}
-            <div className="space-y-2">
+          <div className="space-y-8 animate-fade-in">
+            {/* 01. Minat Utama */}
+            <div className="space-y-3">
               <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                PILIH MINAT UTAMAMU * (Bisa pilih lebih dari 1)
+                01. PILIH MINAT & PILAR UTAMAMU * (Bisa pilih lebih dari 1)
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {INTEREST_OPTIONS.map((item) => {
                   const isSelected = selectedInterests.includes(item.value);
                   return (
@@ -521,7 +681,7 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                       key={item.value}
                       type="button"
                       onClick={() => toggleInterest(item.value)}
-                      className={`relative flex items-center space-x-2 px-3 py-2 border text-[11px] uppercase font-mono tracking-wider transition-all outline-none rounded-none cursor-pointer ${isSelected
+                      className={`relative flex items-center space-x-2 px-3 py-2.5 border text-[11px] uppercase font-mono tracking-wider transition-all outline-none rounded-none cursor-pointer ${isSelected
                         ? "bg-[#0A0A0A] dark:bg-white text-white dark:text-black border-black dark:border-white font-bold"
                         : "bg-transparent border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
                         }`}
@@ -537,12 +697,12 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
               </div>
             </div>
 
-            {/* Tingkat Pengalaman */}
-            <div className="space-y-2">
+            {/* 02. Tingkat Pengalaman */}
+            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                TINGKAT PENGALAMAN *
+                02. TINGKAT PENGALAMAN & KEMATANGAN *
               </label>
-              <div className="flex flex-col sm:flex-row gap-4 pt-1">
+              <div className="flex flex-col sm:flex-row gap-3">
                 {EXPERIENCE_OPTIONS.map((opt) => {
                   const isSelected = experienceLevel === opt.value;
                   return (
@@ -550,31 +710,26 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                       key={opt.value}
                       type="button"
                       onClick={() => setExperienceLevel(opt.value)}
-                      className={`flex-1 p-3 border text-left rounded-none transition-all cursor-pointer ${isSelected
-                        ? "border-black dark:border-white bg-[#0A0A0A]/5 dark:bg-white/5"
+                      className={`flex-1 p-3.5 border text-left rounded-none transition-all cursor-pointer ${isSelected
+                        ? "border-black dark:border-white bg-[#0A0A0A]/5 dark:bg-white/5 font-bold"
                         : "border-zinc-300 dark:border-zinc-800 hover:border-black dark:hover:border-white"
                         }`}
                     >
-                      <span className="text-xs font-bold block">{opt.label}</span>
-                      <span className="text-[9px] text-zinc-500 dark:text-zinc-450 leading-tight block mt-1">{opt.desc}</span>
+                      <span className="text-xs font-mono uppercase block">{opt.label}</span>
+                      <span className="text-[10px] text-zinc-500 dark:text-zinc-450 leading-tight block mt-1">{opt.desc}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Goal Utama */}
-            <div className="space-y-2">
+            {/* 03. Goal Utama */}
+            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                APA GOAL UTAMAMU BERGABUNG?
+                03. APA GOAL UTAMAMU BERGABUNG DI PANGGUNG KREATOR?
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {[
-                  { value: 'self_learning', label: 'Mengembangkan Diri / Belajar Hal Baru' },
-                  { value: 'professional_career', label: 'Membangun Karier Profesional' },
-                  { value: 'business', label: 'Mendukung Bisnis yang Sedang Berjalan' },
-                  { value: 'social_media', label: 'Membuat Konten Media Sosial secara Serius' }
-                ].map((g) => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {GOAL_OPTIONS.map((g) => {
                   const isSelected = goals.includes(g.value);
                   return (
                     <button
@@ -586,31 +741,277 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                         : "border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
                         }`}
                     >
-                      <span>{g.label}</span>
-                      {isSelected && <Check size={14} />}
+                      <span className="leading-snug">{g.label}</span>
+                      {isSelected && <Check size={14} className="flex-shrink-0 ml-2" />}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Ketersediaan Sesi Mentoring */}
-            <div className="space-y-2 max-w-sm">
-              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                KAPAN WAKTU LUANG TERBAIKMU UNTUK SESI KELAS?
+            {/* 04. Topik Konten Favorit */}
+            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
+                04. TOPIK KONTEN & PEMINATAN BAHASAN
               </label>
-              <Select value={availability} onValueChange={setAvailability}>
-                <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1.5 px-0 h-auto text-xs font-normal rounded-none focus:outline-none focus:ring-0 focus:border-black dark:focus:border-white transition-colors">
-                  <SelectValue placeholder="Pilih Waktu" />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none p-1">
-                  <SelectItem value="morning" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Pagi Hari</SelectItem>
-                  <SelectItem value="afternoon" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Siang Hari</SelectItem>
-                  <SelectItem value="evening" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Sore Hari</SelectItem>
-                  <SelectItem value="night" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Malam Hari</SelectItem>
-                  <SelectItem value="flexible" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Fleksibel (Kapan Saja)</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-2">
+                {TOPIC_PRESETS.map((topic) => {
+                  const isSelected = contentTopics.includes(topic);
+                  return (
+                    <button
+                      key={topic}
+                      type="button"
+                      onClick={() => toggleTopic(topic)}
+                      className={`px-3 py-1.5 border text-xs font-mono uppercase tracking-wider transition-all rounded-none cursor-pointer ${isSelected
+                        ? "bg-black dark:bg-white text-white dark:text-black border-black dark:border-white font-bold"
+                        : "bg-transparent border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-black dark:hover:border-white"
+                        }`}
+                    >
+                      {isSelected ? `✓ ${topic}` : topic}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 05. Preferensi Metode Belajar */}
+            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
+                05. PREFERENSI & METODE BELAJAR
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {LEARNING_PREFERENCE_OPTIONS.map((pref) => {
+                  const isSelected = learningPreference.includes(pref.value);
+                  return (
+                    <button
+                      key={pref.value}
+                      type="button"
+                      onClick={() => togglePreference(pref.value)}
+                      className={`flex items-center justify-between p-3 border text-left text-xs rounded-none transition-all cursor-pointer ${isSelected
+                        ? "border-black dark:border-white bg-neutral-100 dark:bg-zinc-800/50 font-bold"
+                        : "border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
+                        }`}
+                    >
+                      <span>{pref.label}</span>
+                      {isSelected && <Check size={14} className="flex-shrink-0 ml-2" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 06. Skill Fokus & Target Audiens */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <RadioGroupLine
+                id="skillsToMaster"
+                label="SKILL FOKUS YANG INGIN DIKUASAI"
+                options={SKILLS_TO_MASTER_OPTIONS}
+                value={skillsToMaster}
+                onValueChange={setSkillsToMaster}
+                customValue={customSkillsToMaster}
+                onCustomChange={setCustomSkillsToMaster}
+                customPlaceholder="Tuliskan skill lainnya..."
+                idPrefix="stm_t3"
+              />
+
+              <InputLine
+                id="targetAudience"
+                name="targetAudience"
+                label="TARGET AUDIENS UTAMA KREATOR"
+                placeholder="Contoh: Mahasiswa, Gen Z, Professional..."
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+              />
+            </div>
+
+            {/* 07. Jalur Monetisasi & Ketersediaan Waktu */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <RadioGroupLine
+                id="monetizationInterest"
+                label="JALUR MONETISASI YANG DIMINATI"
+                options={MONETIZATION_OPTIONS}
+                value={monetizationInterest}
+                onValueChange={setMonetizationInterest}
+                customValue={customMonetizationInterest}
+                onCustomChange={setCustomMonetizationInterest}
+                customPlaceholder="Tuliskan jalur monetisasi..."
+                idPrefix="mi_t3"
+              />
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
+                  KAPAN WAKTU LUANG TERBAIKMU UNTUK SESI KELAS?
+                </label>
+                <Select value={availability} onValueChange={setAvailability}>
+                  <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1.5 px-0 h-auto text-xs font-normal rounded-none focus:outline-none focus:ring-0 focus:border-black dark:focus:border-white transition-colors">
+                    <SelectValue placeholder="Pilih Waktu" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none p-1">
+                    <SelectItem value="morning" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Pagi Hari</SelectItem>
+                    <SelectItem value="afternoon" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Siang Hari</SelectItem>
+                    <SelectItem value="evening" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Sore Hari</SelectItem>
+                    <SelectItem value="night" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Malam Hari</SelectItem>
+                    <SelectItem value="flexible" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Fleksibel (Kapan Saja)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: PUBLIC SPEAKING & PERSONA */}
+        {activeTab === "persona" && (
+          <div className="space-y-8 animate-fade-in">
+            {/* SUB-SEKSI 1: TANTANGAN & DIAGNOSIS PUBLIC SPEAKING */}
+            <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+              <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
+                [ 01. TANTANGAN & DIAGNOSIS PUBLIC SPEAKING ]
+              </span>
+
+              <MultiSelectLine
+                id="psChallenges"
+                label="APA KENDALA TERBESAR YANG KAMU RASAKAN SAAT HARUS BICARA DI DEPAN UMUM? (PILIH MAKSIMAL 3)"
+                options={PS_CHALLENGE_OPTIONS}
+                selected={psChallenges}
+                onToggle={togglePsChallenge}
+                maxSelect={3}
+                showRemaining
+              />
+
+              <div className="pt-4">
+                <ScaleSelectorLine
+                  id="confidenceScale"
+                  label="DALAM SKALA 1-10, SEBERAPA PERCAYA DIRI KAMU SAAT INI JIKA DIMINTA BICARA MENDADAK?"
+                  min={1}
+                  max={10}
+                  value={confidenceScale}
+                  onChange={setConfidenceScale}
+                  minLabel="1 (SANGAT RAGU)"
+                  maxLabel="10 (SANGAT YAKIN)"
+                />
+              </div>
+
+              <div className="pt-4">
+                <RadioGroupLine
+                  id="nervousTrigger"
+                  label="MANA YANG LEBIH BIKIN KAMU GEMETAR BAIK SEBELUM TAMPIL MAUPUN PADA SAAT TAMPIL?"
+                  options={NERVOUS_TRIGGER_OPTIONS}
+                  value={nervousTrigger}
+                  onValueChange={setNervousTrigger}
+                  idPrefix="nt_pf"
+                />
+              </div>
+            </div>
+
+            {/* SUB-SEKSI 2: PERSONAL BRANDING & MONETISASI */}
+            <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+              <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
+                [ 02. PERSONAL BRANDING & MONETISASI ]
+              </span>
+
+              <RadioGroupLine
+                id="skillsToMaster"
+                label="SKILL APA YANG PALING INGIN KAMU KUASAI SAAT INI?"
+                options={SKILLS_TO_MASTER_OPTIONS}
+                value={skillsToMaster}
+                onValueChange={setSkillsToMaster}
+                customValue={customSkillsToMaster}
+                onCustomChange={setCustomSkillsToMaster}
+                customPlaceholder="Tuliskan skill lainnya..."
+                idPrefix="stm_pf"
+              />
+
+              <div className="pt-4">
+                <InputLine
+                  id="roleModel"
+                  name="roleModel"
+                  label="SIAPA SOSOK PUBLIC SPEAKER ATAU CONTENT CREATOR YANG JADI PANUTAN KAMU SAAT INI?"
+                  placeholder="Contoh: Raditya Dika, Merry Riana, GaryVee, dll."
+                  value={roleModel}
+                  onChange={(e) => setRoleModel(e.target.value)}
+                />
+              </div>
+
+              <div className="pt-4">
+                <RadioGroupLine
+                  id="monetizationInterest"
+                  label="JALUR MONETISASI APA YANG PALING KAMU MINATI?"
+                  options={MONETIZATION_OPTIONS}
+                  value={monetizationInterest}
+                  onValueChange={setMonetizationInterest}
+                  customValue={customMonetizationInterest}
+                  onCustomChange={setCustomMonetizationInterest}
+                  customPlaceholder="Tuliskan jalur monetisasi lainnya..."
+                  idPrefix="mi_pf"
+                />
+              </div>
+            </div>
+
+            {/* SUB-SEKSI 3: EKSPLORASI TOPIK & AUDIENS */}
+            <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+              <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
+                [ 03. EKSPLORASI TOPIK & AUDIENS ]
+              </span>
+
+              <InputLine
+                id="targetAudience"
+                name="targetAudience"
+                label="SIAPA TARGET AUDIENS YANG PALING INGIN KAMU SAPA MELALUI KONTEN ATAU BICARAMU?"
+                placeholder="Contoh: Mahasiswa tingkat akhir, Ibu rumah tangga berbisnis, Gen Z, dll."
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+              />
+
+              <div className="pt-4">
+                <RadioGroupLine
+                  id="expertDesire"
+                  label="SEBERAPA BESAR KEINGINANMU UNTUK DIKENAL SEBAGAI 'AHLI' DI BIDANG TERSEBUT?"
+                  options={EXPERT_DESIRE_OPTIONS}
+                  value={expertDesire}
+                  onValueChange={setExpertDesire}
+                  idPrefix="ed_pf"
+                />
+              </div>
+            </div>
+
+            {/* SUB-SEKSI 4: KOMITMEN & KOMUNITAS */}
+            <div className="space-y-6">
+              <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
+                [ 04. KOMITMEN & KOMUNITAS ]
+              </span>
+
+              <TextareaLine
+                id="activeCommunities"
+                name="activeCommunities"
+                label="KOMUNITAS APA SAJA YANG KAMU IKUTI SECARA AKTIF SELAIN DI PANGGUNG KREATOR?"
+                rows={2}
+                placeholder="Tuliskan nama komunitas..."
+                value={activeCommunities}
+                onChange={(e) => setActiveCommunities(e.target.value)}
+              />
+
+              <div className="pt-4">
+                <TextareaLine
+                  id="careerObstacle"
+                  name="careerObstacle"
+                  label="APA KENDALA TERBESAR KAMU SAAT INI DALAM BERKARYA/MEMBANGUN KARIR TERMASUK MEWUJUDKAN IMPIAN?"
+                  rows={2}
+                  placeholder="Ceritakan kendala terbesarmu saat ini..."
+                  value={careerObstacle}
+                  onChange={(e) => setCareerObstacle(e.target.value)}
+                />
+              </div>
+
+              <div className="pt-4">
+                <RadioGroupLine
+                  id="timeCommitment"
+                  label="KALAU PANGGUNG KREATOR MENGADAKAN SESI MENTORING ATAU SHARING INTENSIF BUAT BAHAS SEMUA KENDALA KAMU, SEBERAPA BESAR WAKTU YANG SIAP KAMU LUANGKAN?"
+                  options={TIME_COMMITMENT_OPTIONS}
+                  value={timeCommitment}
+                  onValueChange={setTimeCommitment}
+                  idPrefix="tc_pf"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -633,6 +1034,12 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
           </button>
         </div>
       </form>
+
+      {/* CHANGE PASSWORD MODAL */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
     </div>
   );
 }

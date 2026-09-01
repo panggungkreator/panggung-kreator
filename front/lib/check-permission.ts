@@ -95,9 +95,42 @@ export async function checkPermission(
  * Hasilnya berupa Record (plain object) untuk Next.js serialization compatibility.
  */
 export async function getPermissionMap(
-  adminRoleId: string
+  adminRoleId?: string
 ): Promise<Record<string, string[]>> {
   const supabase = await createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session) {
+    const { data: member } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    const { data: adminRole } = await supabase
+      .from("admin_roles")
+      .select("id, status, color, is_super_admin")
+      .eq("member_id", session.user.id)
+      .maybeSingle();
+
+    if (
+      isSuperAdmin({
+        email: session.user.email,
+        memberRole: member?.role,
+        adminRoleColor: adminRole?.color,
+        adminRoleStatus: adminRole?.status,
+        isSuperAdminFlag: adminRole?.is_super_admin,
+      }) ||
+      member?.role === "admin"
+    ) {
+      return { "*": ["*"] };
+    }
+  }
+
+  if (!adminRoleId) return {};
 
   const { data: perms } = await supabase
     .from("admin_role_permissions")

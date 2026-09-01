@@ -152,24 +152,27 @@ function MemberPriorityRegisterInner() {
 
           {/* Step 3: Success Screen */}
           {step === 3 && (
-            <div className="w-full space-y-6 py-6 animate-fade-in text-zinc-900 dark:text-white">
-              <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-mono text-[11px] uppercase tracking-wider">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Priority Registration Success</span>
+            <div className="w-full space-y-6 py-4 animate-fade-in text-zinc-900 dark:text-white">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>You&apos;re In! Registrasi Sukses 🎉</span>
               </div>
 
-              <h2 className="text-3xl lg:text-4xl font-serif italic tracking-tight leading-tight mb-3">
-                UYEAH
+              <h2 className="text-3xl lg:text-4xl font-serif italic tracking-tight leading-tight text-zinc-900 dark:text-white">
+                Halo, Teman Sepanggung! <br />
+                <span className="not-italic font-sans font-black tracking-wide text-zinc-800 dark:text-zinc-200 text-xl lg:text-sm uppercase block mt-1">
+                  Selamat Datang di Member Priority
+                </span>
               </h2>
 
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 font-sans tracking-wide leading-relaxed max-w-md">
-                Selamat! Data pendaftaran Anda sebagai Member Priority telah berhasil disimpan. Akun login Anda akan segera dikirimkan oleh Admin melalui email.
+              <p className="text-sm text-zinc-600 dark:text-zinc-400 font-sans leading-relaxed max-w-md">
+                Formulirmu sudah tersimpan aman. Detailnya cek email kamu ya. Kamu akan mendapatkan update keseruan, info event & program terbaru Panggung Kreator.
               </p>
 
               <div className="pt-2">
                 <Link
                   href="/"
-                  className="px-8 py-3 bg-black dark:bg-white text-white dark:text-black hover:bg-[#bc151b] dark:hover:bg-[#bc151b] hover:text-white dark:hover:text-white font-bold text-[11px] uppercase tracking-wider rounded-none transition-colors cursor-pointer inline-block"
+                  className="px-8 py-3.5 bg-black dark:bg-white text-white dark:text-black hover:bg-[#bc151b] dark:hover:bg-[#bc151b] hover:text-white dark:hover:text-white font-bold text-[11px] uppercase tracking-widest transition-all cursor-pointer inline-flex items-center gap-2"
                 >
                   &larr; Kembali ke Beranda
                 </Link>

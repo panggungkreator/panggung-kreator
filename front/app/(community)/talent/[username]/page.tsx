@@ -168,12 +168,12 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
             <div className="space-y-2 border-t border-zinc-100 dark:border-zinc-900 pt-4">
               <span className="text-[9px] font-mono text-zinc-450 uppercase block">[ HUBUNGI TALENT ]</span>
               <div className="flex flex-wrap gap-2">
-                {isValidSocialVal(member.instagram_username) && (
+                {isValidSocialVal(member.social_media?.instagram) && (
                   <a
                     href={
-                      member.instagram_username.startsWith("http")
-                        ? member.instagram_username
-                        : `https://instagram.com/${member.instagram_username.replace("@", "")}`
+                      member.social_media!.instagram!.startsWith("http")
+                        ? member.social_media!.instagram!
+                        : `https://instagram.com/${member.social_media!.instagram!.replace("@", "")}`
                     }
                     target="_blank"
                     rel="noopener noreferrer"
@@ -183,9 +183,9 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                     <span className="text-[10px] font-bold font-mono">IG</span>
                   </a>
                 )}
-                {isValidSocialVal(member.tiktok_username) && (
+                {isValidSocialVal(member.social_media?.tiktok) && (
                   <a
-                    href={`https://tiktok.com/@${member.tiktok_username}`}
+                    href={`https://tiktok.com/@${member.social_media!.tiktok!.replace("@", "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 border border-zinc-200 dark:border-zinc-800 hover:border-black dark:hover:border-white transition-colors text-zinc-500 dark:text-zinc-450"
@@ -194,9 +194,9 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                     <span className="text-[10px] font-bold font-mono">TK</span>
                   </a>
                 )}
-                {isValidSocialVal(member.youtube_url) && (
+                {isValidSocialVal(member.social_media?.youtube) && (
                   <a
-                    href={member.youtube_url}
+                    href={member.social_media!.youtube!}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 border border-zinc-200 dark:border-zinc-800 hover:border-black dark:hover:border-white transition-colors text-zinc-500 dark:text-zinc-400"
@@ -205,9 +205,9 @@ export default function TalentDetailPage({ params }: TalentDetailPageProps) {
                     <Video size={14} />
                   </a>
                 )}
-                {isValidSocialVal(member.linkedin_url) && (
+                {isValidSocialVal(member.social_media?.linkedin) && (
                   <a
-                    href={member.linkedin_url}
+                    href={member.social_media!.linkedin!}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 border border-zinc-200 dark:border-zinc-800 hover:border-black dark:hover:border-white transition-colors text-zinc-500 dark:text-zinc-400"

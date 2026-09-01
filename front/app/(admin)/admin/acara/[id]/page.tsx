@@ -37,6 +37,8 @@ export default async function AcaraDetailPage({
   let permMap: Record<string, string[]> = {};
   if (adminRole && adminRole.status === "active") {
     permMap = await getPermissionMap(adminRole.id);
+  } else {
+    permMap = await getPermissionMap();
   }
 
   // Verify that the user is an admin

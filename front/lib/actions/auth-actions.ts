@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import nodemailer from "nodemailer";
 
 export async function signout() {
   const supabase = await createClient();
@@ -115,6 +116,12 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
   });
 
   if (error) {
+    if (error.code === "invalid_credentials" || error.message?.toLowerCase().includes("invalid login credentials")) {
+      return {
+        success: false,
+        error: "Email/Username atau Password tidak sesuai.",
+      };
+    }
     console.error("Login error:", error);
     return { success: false, error: `Supabase Auth Error: ${formatSupabaseError(error)}` };
   }
@@ -219,7 +226,29 @@ export async function checkEmailExistsAction(email: string) {
   return false;
 }
 
+export async function checkWhatsappExistsAction(whatsappNumber: string) {
+  if (!whatsappNumber || !whatsappNumber.trim()) return false;
+  const cleanPhone = whatsappNumber.trim();
+
+  const serviceClient = createServiceRoleClient();
+
+  const { data: memberData, error } = await serviceClient
+    .from("members")
+    .select("id")
+    .eq("whatsapp_number", cleanPhone)
+    .maybeSingle();
+
+  if (error) {
+    console.error("WhatsApp check error in members table:", error);
+  }
+
+  return !!memberData;
+}
+
 export async function registerPriorityMemberAction(onboardingData: any) {
+  let createdAuthUserId: string | null = null;
+  let isNewAuthUserCreated = false;
+
   try {
     const supabaseAdmin = createServiceRoleClient();
     const { profile, interests } = onboardingData;
@@ -237,6 +266,23 @@ export async function registerPriorityMemberAction(onboardingData: any) {
         success: false,
         error: "Email ini sudah terdaftar di sistem. Silakan login atau gunakan email lain.",
       };
+    }
+
+    // 1b. Check if whatsapp_number is already in public.members
+    const cleanPhone = profile.whatsapp_number ? profile.whatsapp_number.trim() : "";
+    if (cleanPhone) {
+      const { data: existingPhone } = await supabaseAdmin
+        .from("members")
+        .select("id")
+        .eq("whatsapp_number", cleanPhone)
+        .maybeSingle();
+
+      if (existingPhone) {
+        return {
+          success: false,
+          error: "No. WhatsApp ini sudah terdaftar di sistem. Silakan login atau gunakan nomor lain.",
+        };
+      }
     }
 
     // 2. Generate Username & Password
@@ -285,6 +331,10 @@ export async function registerPriorityMemberAction(onboardingData: any) {
       }
     } else {
       user = authData?.user;
+      if (user) {
+        createdAuthUserId = user.id;
+        isNewAuthUserCreated = true;
+      }
     }
 
     if (!user) {
@@ -300,11 +350,9 @@ export async function registerPriorityMemberAction(onboardingData: any) {
         stage_name: profile.full_name,
         whatsapp_number: profile.whatsapp_number,
         email: cleanEmail,
-        instagram_username: profile.instagram_username || "",
-        tiktok_username: profile.tiktok_username || "",
-        youtube_url: profile.youtube_url || null,
-        linkedin_url: profile.linkedin_url || null,
-        city: profile.city || null,
+        birth_date: profile.birth_date || null,
+        address: profile.address || null,
+        social_media: profile.social_media || {},
         occupation: profile.occupation || null,
         subscribed_newsletter: profile.subscribed_newsletter ?? true,
         username: generatedUsername,
@@ -314,7 +362,33 @@ export async function registerPriorityMemberAction(onboardingData: any) {
       }, { onConflict: "id" });
 
     if (memberError) {
-      console.error("Member insert error:", memberError);
+      console.error("Member insert error (triggering ROLLBACK):", memberError);
+
+      // ROLLBACK STEP: Delete newly created auth user if members table insertion failed!
+      if (isNewAuthUserCreated && createdAuthUserId) {
+        await supabaseAdmin.auth.admin.deleteUser(createdAuthUserId).catch((delErr) => {
+          console.error("Failed to delete auth user during rollback:", delErr);
+        });
+      }
+
+      if (
+        memberError.message?.includes("members_whatsapp_number_key") ||
+        memberError.message?.includes("whatsapp_number")
+      ) {
+        return {
+          success: false,
+          error: "No. WhatsApp ini sudah terdaftar di sistem. Silakan login atau gunakan nomor lain.",
+        };
+      }
+      if (
+        memberError.message?.includes("members_email_key") ||
+        memberError.message?.includes("email")
+      ) {
+        return {
+          success: false,
+          error: "Email ini sudah terdaftar di sistem. Silakan login atau gunakan email lain.",
+        };
+      }
       return { success: false, error: memberError.message };
     }
 
@@ -336,12 +410,37 @@ export async function registerPriorityMemberAction(onboardingData: any) {
         goals: goalsList,
         content_topics: topicsList,
         availability: null,
-        learning_preference: interests.learning_topics || [],
-        referral_source: null,
+        learning_preference: interests.skills_to_master ? [interests.skills_to_master] : [],
+        skills_to_master: interests.skills_to_master || null,
+        monetization_interest: interests.monetization_interest || null,
+        active_communities: interests.active_communities || null,
+        career_obstacle: interests.career_obstacle || null,
+        ps_challenges: interests.ps_challenges || [],
+        confidence_scale: interests.confidence_scale ?? null,
+        nervous_trigger: interests.nervous_trigger || null,
+        role_model: interests.role_model || null,
+        target_audience: interests.target_audience || null,
+        expert_desire: interests.expert_desire || null,
+        time_commitment: interests.time_commitment || null,
       }, { onConflict: "member_id" });
 
     if (interestError) {
-      console.error("Interest insert error:", interestError);
+      console.error("Interest insert error (triggering ROLLBACK):", interestError);
+
+      // ROLLBACK STEP: Roll back members row and newly created auth user!
+      try {
+        await supabaseAdmin.from("members").delete().eq("id", user.id);
+      } catch (delMemErr) {
+        console.error("Failed to delete member during rollback:", delMemErr);
+      }
+
+      if (isNewAuthUserCreated && createdAuthUserId) {
+        await supabaseAdmin.auth.admin.deleteUser(createdAuthUserId).catch((delErr) => {
+          console.error("Failed to delete auth user during rollback:", delErr);
+        });
+      }
+
+      return { success: false, error: "Gagal menyimpan minat member. Pendaftaran dibatalkan." };
     }
 
     // Panggil AI Analysis secara asinkron di latar belakang
@@ -356,10 +455,261 @@ export async function registerPriorityMemberAction(onboardingData: any) {
       console.error("Failed to trigger AI analysis:", aiErr);
     }
 
+    // Kirim Email Kredensial Langsung ke Member via Nodemailer SMTP
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || "smtp.gmail.com",
+          port: parseInt(process.env.SMTP_PORT || "465"),
+          secure: process.env.SMTP_SECURE === "false" ? false : true,
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const memberName = profile.full_name || "Kreator";
+
+        await transporter.sendMail({
+          from: `"Panggung Kreator" <${process.env.SMTP_USER}>`,
+          to: cleanEmail,
+          subject: "Selamat Datang di Member Priority - Panggung Kreator",
+          html: `
+            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; background-color: #f8fafc; padding: 20px;">
+              <div style="background-color: #18181b; color: #ffffff; padding: 28px 24px; text-align: center; border-radius: 12px 12px 0 0;">
+                <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; text-transform: uppercase;">
+                  Panggung Kreator
+                </h1>
+                <p style="margin: 6px 0 0 0; font-size: 13px; color: #a1a1aa;">
+                  Kredensial Akses Akun Member Priority
+                </p>
+              </div>
+
+              <div style="background-color: #ffffff; padding: 28px 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+                <p style="margin-top: 0; font-size: 15px; color: #334155;">
+                  Halo <strong>${memberName}</strong>,
+                </p>
+                
+                <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+                  Selamat! Pendaftaran Anda sebagai <strong>Member Priority Panggung Kreator</strong> telah berhasil dikonfirmasi. Berikut adalah informasi kredensial untuk login ke platform:
+                </p>
+
+                <!-- CREDENTIAL BOX -->
+                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; margin: 24px 0;">
+                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
+                    🔑 KREDENSIAL LOGIN ANDA
+                  </div>
+                  <table style="width: 100%; border-collapse: collapse; font-family: monospace; font-size: 14px;">
+                    <tr>
+                      <td style="width: 100px; color: #64748b; padding: 6px 0; font-weight: 600;">Email:</td>
+                      <td style="color: #0f172a; padding: 6px 0; font-weight: 700;">${cleanEmail}</td>
+                    </tr>
+                    <tr>
+                      <td style="width: 100px; color: #64748b; padding: 6px 0; font-weight: 600;">Username:</td>
+                      <td style="color: #0f172a; padding: 6px 0; font-weight: 700;">${generatedUsername}</td>
+                    </tr>
+                    <tr>
+                      <td style="color: #64748b; padding: 6px 0; font-weight: 600;">Password:</td>
+                      <td style="color: #0f172a; padding: 6px 0; font-weight: 700;">${generatedPassword}</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <!-- LOGIN BUTTON -->
+                <div style="margin: 28px 0; text-align: center;">
+                  <a href="${appUrl}/login" 
+                     style="background-color: #18181b; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    Login ke Dashboard Member
+                  </a>
+                </div>
+
+                <div style="background-color: #fff1f2; border: 1px solid #fecdd3; padding: 12px 16px; border-radius: 8px; margin-top: 20px;">
+                  <p style="margin: 0; font-size: 12px; color: #9f1239; line-height: 1.5;">
+                    💡 <strong>Tips Keamanan:</strong> Demi keamanan akun Anda, silakan ubah password sementara ini melalui halaman profil setelah pertama kali berhasil login.
+                  </p>
+                </div>
+
+                <p style="margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 18px; font-size: 13px; color: #64748b; line-height: 1.5;">
+                  Salam hangat,<br />
+                  <strong style="color: #0f172a;">Tim Panggung Kreator</strong><br />
+                  <span style="font-size: 11px; color: #94a3b8;">#OneStageOneProgress</span>
+                </p>
+              </div>
+            </div>
+          `,
+        });
+      } catch (emailErr) {
+        console.error("Failed to send welcome email via SMTP:", emailErr);
+      }
+    }
+
     return { success: true };
   } catch (err: any) {
-    console.error("registerPriorityMemberAction error:", err);
+    console.error("registerPriorityMemberAction error (triggering EMERGENCY ROLLBACK):", err);
+
+    // EMERGENCY ROLLBACK
+    if (isNewAuthUserCreated && createdAuthUserId) {
+      try {
+        const supabaseAdmin = createServiceRoleClient();
+        await supabaseAdmin.from("members").delete().eq("id", createdAuthUserId);
+        await supabaseAdmin.auth.admin.deleteUser(createdAuthUserId);
+      } catch (rollbackErr) {
+        console.error("Emergency rollback failed:", rollbackErr);
+      }
+    }
+
     return { success: false, error: err.message || "Terjadi kesalahan internal server." };
   }
+}
+
+export async function requestPasswordResetAction(emailOrUsername: string) {
+  if (!emailOrUsername || !emailOrUsername.trim()) {
+    return { success: false, error: "Email atau Username wajib diisi." };
+  }
+
+  const inputStr = emailOrUsername.trim();
+  const supabaseAdmin = createServiceRoleClient();
+
+  let targetEmail = inputStr.toLowerCase();
+
+  // Jika input bukan email (tidak ada '@'), cari email dari username
+  if (!targetEmail.includes("@")) {
+    const { data: memberData, error: searchError } = await supabaseAdmin
+      .from("members")
+      .select("email")
+      .eq("username", targetEmail)
+      .maybeSingle();
+
+    if (searchError || !memberData?.email) {
+      return { success: false, error: `Username "${inputStr}" tidak ditemukan.` };
+    }
+    targetEmail = memberData.email.toLowerCase();
+  } else {
+    // Pastikan email terdaftar di tabel members
+    const { data: memberData } = await supabaseAdmin
+      .from("members")
+      .select("id")
+      .eq("email", targetEmail)
+      .maybeSingle();
+
+    if (!memberData) {
+      // Jangan bocorkan bahwa email tidak terdaftar (pencegahan email enumeration)
+      return { success: true, email: targetEmail };
+    }
+  }
+
+  const headersList = await headers();
+  const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  // Generate link recovery menggunakan Supabase Admin API
+  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    type: "recovery",
+    email: targetEmail,
+    options: {
+      redirectTo: `${origin}/auth/confirm?next=/reset-password`,
+    },
+  });
+
+  if (linkError) {
+    console.error("Generate recovery link error:", linkError);
+    return { success: false, error: `Gagal membuat link reset password: ${linkError.message}` };
+  }
+
+  const hashedToken = linkData?.properties?.hashed_token;
+  const actionLink = hashedToken
+    ? `${origin}/auth/confirm?token_hash=${hashedToken}&type=recovery&next=/reset-password`
+    : linkData?.properties?.action_link;
+
+  if (!actionLink) {
+    return { success: false, error: "Gagal membuat link verifikasi reset password." };
+  }
+
+  // Kirim email notifikasi via Nodemailer SMTP
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || "smtp.gmail.com",
+        port: parseInt(process.env.SMTP_PORT || "465"),
+        secure: process.env.SMTP_SECURE === "false" ? false : true,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+
+      const changeTime = new Date().toLocaleString("id-ID", {
+        dateStyle: "full",
+        timeStyle: "short",
+        timeZone: "Asia/Jakarta",
+      });
+
+      await transporter.sendMail({
+        from: `"Panggung Kreator Security" <${process.env.SMTP_USER}>`,
+        to: targetEmail,
+        subject: "🔑 Permintaan Reset Password - Panggung Kreator",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #111; background-color: #ffffff; border: 1px solid #e5e7eb;">
+            <div style="border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 20px;">
+              <span style="font-size: 11px; color: #6b7280; font-family: monospace;">PERMINTAAN RESET PASSWORD</span>
+            </div>
+
+            <h3 style="color: #111; font-size: 16px; margin-top: 0;">Reset Password Akun Anda</h3>
+            
+            <p style="font-size: 12px; line-height: 1.6; color: #374151;">
+              Kami menerima permintaan untuk mereset kata sandi (password) akun <strong>${targetEmail}</strong>.
+            </p>
+
+            <div style="margin: 28px 0; text-align: center;">
+              <a href="${actionLink}" 
+                 style="background-color: #000000; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 0px; font-weight: 700; font-size: 13px; font-family: monospace; letter-spacing: 1px; text-transform: uppercase; display: inline-block;">
+                RESET PASSWORD SAYA &rarr;
+              </a>
+            </div>
+
+            <div style="background-color: #fffbe6; border: 1px solid #fde68a; padding: 12px 16px; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;">
+                ⏰ <strong>Masa Kedaluwarsa:</strong> Link verifikasi di atas berlaku terbatas. Jika Anda tidak merasa melakukan permintaan ini, abaikan email ini dan password Anda akan tetap aman.
+              </p>
+            </div>
+
+            <p style="font-size: 11px; color: #9ca3af; margin-top: 30px; border-top: 1px solid #f3f4f6; padding-top: 16px; font-family: monospace;">
+              Jika tombol di atas tidak dapat diklik, salin & tempel link berikut di browser Anda:<br />
+              <a href="${actionLink}" style="color: #4b5563; word-break: break-all;">${actionLink}</a>
+            </p>
+          </div>
+        `,
+      });
+    } catch (emailErr) {
+      console.error("Gagal mengirim email reset password via SMTP:", emailErr);
+    }
+  }
+
+  return { success: true, email: targetEmail };
+}
+
+export async function resetPasswordAction(newPassword: string) {
+  if (!newPassword || newPassword.length < 8) {
+    return { success: false, error: "Password baru minimal 8 karakter." };
+  }
+
+  const supabase = await createClient();
+
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (updateError) {
+    return { success: false, error: `Gagal memperbarui password: ${updateError.message}` };
+  }
+
+  // Global Sign-Out untuk keamanan
+  try {
+    await supabase.auth.signOut({ scope: "global" });
+  } catch (soErr) {
+    console.warn("Global signout error during reset password:", soErr);
+  }
+
+  return { success: true };
 }
 

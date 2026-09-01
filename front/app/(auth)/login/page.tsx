@@ -12,6 +12,8 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectToParam = searchParams.get("redirectTo");
+  const messageParam = searchParams.get("message");
+  const errorParam = searchParams.get("error");
 
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -97,7 +99,7 @@ function LoginPageContent() {
         </div>
 
         {/* Branding & Form Area */}
-        <div className="mt-12 md:mt-20 mb-auto max-w-sm w-full mx-auto md:mx-0 py-2">
+        <div className="my-auto max-w-sm w-full mx-auto md:mx-0 py-6">
           {/* Heading & Welcome Text */}
           <h2 className="text-3xl lg:text-4xl font-serif italic tracking-tight leading-tight mb-4 text-[#0A0A0A] dark:text-white">
             One Stage, <br />
@@ -106,7 +108,19 @@ function LoginPageContent() {
             </span>
           </h2>
 
-          {error && (
+          {messageParam && (
+            <div className="my-4 p-3 bg-emerald-50 dark:bg-emerald-950/20 border-l-4 border-emerald-500 text-[11px] text-emerald-800 dark:text-emerald-300 font-mono flex items-start gap-2 rounded-none animate-fade-in">
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓</span>
+              <div className="flex-1">
+                <span className="font-bold block uppercase tracking-wider text-[9px] mb-0.5">
+                  SUCCESS
+                </span>
+                {messageParam}
+              </div>
+            </div>
+          )}
+
+          {(error || errorParam) && (
             <div className="my-4 p-3 bg-red-50 dark:bg-red-950/20 border-l-4 border-[#bc151b] text-[11px] text-[#bc151b] dark:text-red-400 font-mono flex items-start gap-2 rounded-none animate-fade-in">
               <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path
@@ -119,7 +133,7 @@ function LoginPageContent() {
                 <span className="font-bold block uppercase tracking-wider text-[9px] mb-0.5">
                   ERROR_DETECTED
                 </span>
-                {error}
+                {error || errorParam}
               </div>
             </div>
           )}
@@ -167,18 +181,14 @@ function LoginPageContent() {
               </div>
             </div>
 
-            {/* <div className="flex items-center justify-between pt-1 text-[9px] font-mono tracking-wider uppercase text-zinc-400">
+            <div className="flex items-center justify-between pt-1 text-[9px] font-mono tracking-wider uppercase text-zinc-400">
               <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  className="w-3 h-3 rounded-none text-black border-zinc-300 dark:border-zinc-700 focus:ring-black dark:focus:ring-white bg-transparent cursor-pointer"
-                />
-                <span>INGAT SAYA</span>
+                <span></span>
               </label>
-              <Link href="#" className="hover:text-black dark:hover:text-white transition-colors">
+              <Link href="/forgot-password" className="hover:text-black dark:hover:text-white transition-colors">
                 LUPA PASSWORD?
               </Link>
-            </div> */}
+            </div>
 
             <div className="pt-2 flex flex-col gap-3">
               <button

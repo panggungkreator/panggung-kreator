@@ -36,13 +36,13 @@ export const Section5Topic: React.FC<Section5TopicProps> = ({
       <div className="mt-10">
         <RadioGroupLine
           id="mainTopic"
-          label="JIKA HARI INI KAMU DIBERI PANGGUNG SELAMA 15 MENIT ATAU KESEMPATAN MEMBUAT 1 VIDEO VIRAL, TOPIK BESAR APA YANG AKAN KAMU BAHAS? *"
+          label="KALAU DISURUH BIKIN KONTEN SETIAP HARI, KAMU PALING BETAH BAHAS TOPIK APA? *"
           options={MAIN_TOPIC_OPTIONS}
           value={mainTopic}
           onValueChange={setMainTopic}
           customValue={customMainTopic}
           onCustomChange={setCustomMainTopic}
-          customPlaceholder="Tuliskan topik besar lainnya..."
+          customPlaceholder="Tuliskan topik lainnya..."
           idPrefix="mt"
           error={fieldErrors.mainTopic}
         />
@@ -52,8 +52,8 @@ export const Section5Topic: React.FC<Section5TopicProps> = ({
         <TextareaLine
           id="mainMessage"
           name="mainMessage"
-          label="APA &quot;PESAN UTAMA&quot; YANG INGIN KAMU TANAMKAN DI PIKIRAN AUDIENSMU? *"
-          hint='Contoh: "Saya ingin orang tahu bahwa mulai bisnis itu tidak harus modal besar"'
+          label="LEBIH SPESIFIK LAGI, APA &quot;PESAN UTAMA&quot; YANG INGIN KAMU TANAMKAN DI PIKIRAN AUDIENSMU? *"
+          hint='Contoh: "Saya ingin orang tahu bahwa mulai bisnis itu tidak harus modal besar" atau "Saya ingin orang peduli pada kesehatan mental"'
           rows={3}
           placeholder="Tuliskan pesan utamamu..."
           value={mainMessage}
