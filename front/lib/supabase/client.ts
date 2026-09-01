@@ -62,16 +62,26 @@ export function createClient() {
     });
 
     // Tangani error refresh token yang tidak bisa di-catch melalui onAuthStateChange
-    // dengan mendengarkan auth state dari client secara periodik (failsafe)
     supabaseBrowserInstance.auth.getSession().then(({ error }: { error: Error | null }) => {
       if (
         error &&
         (error.message?.includes("Refresh Token Not Found") ||
           error.message?.includes("Invalid Refresh Token"))
       ) {
-        supabaseBrowserInstance?.auth.signOut().finally(() => {
+        // Jangan panggil auth.signOut() otomatis jika sedang berada di halaman reset-password / auth confirm
+        // karena panggilan signOut() akan menghapus cookie sesi recovery yang baru saja di-set.
+        const isAuthFlow =
+          typeof window !== "undefined" &&
+          (window.location.pathname.includes("/reset-password") ||
+            window.location.pathname.includes("/auth/"));
+
+        if (!isAuthFlow) {
+          supabaseBrowserInstance?.auth.signOut().catch(console.warn).finally(() => {
+            supabaseBrowserInstance = null;
+          });
+        } else {
           supabaseBrowserInstance = null;
-        });
+        }
       }
     });
   }
