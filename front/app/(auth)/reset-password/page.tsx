@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { clearStaleAuthStorage } from "@/lib/utils/url";
-import { resetPasswordAction } from "@/lib/actions/auth-actions";
+import { resetPasswordAction, checkRecoverySessionAction } from "@/lib/actions/auth-actions";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -40,30 +40,36 @@ function ResetPasswordContent() {
         }
       }
 
-      // 2. Cek apakah ada sesi aktif di cookie / client (user / session)
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: { session } } = await supabase.auth.getSession();
+      // 2. Cek apakah ada cookie recovery mode atau token hash di URL
+      const hasCookieRecovery = typeof document !== "undefined" && document.cookie.includes("sb-recovery-mode=1");
       const hasHash = typeof window !== "undefined" && (
         window.location.hash.includes("access_token=") ||
         window.location.hash.includes("type=recovery")
       );
 
-      if (user || session || hasHash) {
+      if (hasCookieRecovery || hasHash) {
+        setHasRecoverySession(true);
+        return;
+      }
+
+      // 3. Verifikasi sesi melalui Server Action (membaca HTTP cookies server secara akurat)
+      try {
+        const serverSession = await checkRecoverySessionAction();
+        if (serverSession.hasSession) {
+          setHasRecoverySession(true);
+          return;
+        }
+      } catch (err) {
+        console.warn("Server recovery session check error:", err);
+      }
+
+      // 4. Fallback client-side check
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
         setHasRecoverySession(true);
       } else {
-        // Otomatis bersihkan stale local storage token yang korup dari sesi terdahulu
         clearStaleAuthStorage();
-
-        // Beri toleransi sebentar untuk penanganan event auth
-        setTimeout(async () => {
-          const { data: { user: delayedUser } } = await supabase.auth.getUser();
-          const { data: { session: delayedSession } } = await supabase.auth.getSession();
-          if (delayedUser || delayedSession) {
-            setHasRecoverySession(true);
-          } else {
-            setHasRecoverySession(false);
-          }
-        }, 1200);
+        setHasRecoverySession(false);
       }
     };
 

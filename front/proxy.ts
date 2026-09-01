@@ -92,31 +92,11 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // 5. Check Session — also capture auth error to detect stale/corrupted tokens
-  const {
-    data: { user },
-    error: getUserError,
-  } = await supabase.auth.getUser();
-
-  // Jika token di cookie tidak valid / sudah expired, sign out server-side agar
-  // browser menerima header Set-Cookie yang menghapus cookie korup secara otomatis.
-  // CATATAN: "Auth session missing!" adalah kondisi normal (belum login), bukan error korup.
-  // Hanya hapus cookie jika error spesifik tentang token yang tidak valid / expired.
-  const isStaleTokenError =
-    getUserError &&
-    (getUserError.message?.includes("Invalid Refresh Token") ||
-      getUserError.message?.includes("Refresh Token Not Found") ||
-      getUserError.message?.includes("Token expired") ||
-      getUserError.message?.includes("token is expired"));
-
-  if (isStaleTokenError) {
-    console.log(`[PROXY] Stale token detected (${getUserError!.message}), clearing session cookies...`);
-    await supabase.auth.signOut();
-  }
+  // 5. Check Recovery Mode & Session Protection
+  const isRecoveryMode = request.cookies.get("sb-recovery-mode")?.value === "1";
 
   // 5.1 SECURITY GUARD: Scoped Recovery Session Protection
   // Mencegah login tanpa password jika pengguna meninggalkan halaman /reset-password
-  const isRecoveryMode = request.cookies.get("sb-recovery-mode")?.value === "1";
   if (isRecoveryMode) {
     const isResetPasswordPath = pathname === "/reset-password";
     if (!isResetPasswordPath) {
@@ -128,6 +108,28 @@ export async function proxy(request: NextRequest) {
         headers: response.headers,
       });
     }
+  }
+
+  // 5.2 Check Session — capture auth error to detect stale/corrupted tokens for normal browsing
+  const {
+    data: { user },
+    error: getUserError,
+  } = await supabase.auth.getUser();
+
+  // Jika token di cookie tidak valid / sudah expired, sign out server-side agar
+  // browser menerima header Set-Cookie yang menghapus cookie korup secara otomatis.
+  // PENTING: JANGAN lakukan signOut jika sedang dalam recovery mode di /reset-password!
+  const isStaleTokenError =
+    !isRecoveryMode &&
+    getUserError &&
+    (getUserError.message?.includes("Invalid Refresh Token") ||
+      getUserError.message?.includes("Refresh Token Not Found") ||
+      getUserError.message?.includes("Token expired") ||
+      getUserError.message?.includes("token is expired"));
+
+  if (isStaleTokenError) {
+    console.log(`[PROXY] Stale token detected (${getUserError!.message}), clearing session cookies...`);
+    await supabase.auth.signOut();
   }
 
 

@@ -707,6 +707,19 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
   return { success: true, email: targetEmail };
 }
 
+export async function checkRecoverySessionAction() {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+      return { hasSession: false };
+    }
+    return { hasSession: true, email: user.email };
+  } catch (err) {
+    return { hasSession: false };
+  }
+}
+
 export async function resetPasswordAction(newPassword: string) {
   if (!newPassword || newPassword.length < 8) {
     return { success: false, error: "Password baru minimal 8 karakter." };
