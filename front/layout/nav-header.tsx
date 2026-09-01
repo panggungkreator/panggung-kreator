@@ -86,7 +86,7 @@ export default function NavHeader() {
   const handleSignOut = async () => {
     try {
       setUser(null);
-      await performCompleteSignOut("/login?message=Anda telah berhasil keluar.");
+      await performCompleteSignOut("/login");
     } catch (error) {
       console.error("Gagal keluar:", error);
     }

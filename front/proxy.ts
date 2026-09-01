@@ -124,10 +124,6 @@ export async function proxy(request: NextRequest) {
       await supabase.auth.signOut();
       response.cookies.set("sb-recovery-mode", "", { maxAge: 0, path: "/" });
       const loginRedirect = new URL("/login", request.url);
-      loginRedirect.searchParams.set(
-        "error",
-        "Sesi pemulihan dibatalkan karena Anda meninggalkan halaman reset password."
-      );
       return NextResponse.redirect(loginRedirect, {
         headers: response.headers,
       });

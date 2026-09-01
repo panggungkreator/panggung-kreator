@@ -43,7 +43,7 @@ export default function ProfileNavbar({ member }: ProfileNavbarProps) {
     setIsLoggingOut(true);
     try {
       setIsMenuOpen(false);
-      await performCompleteSignOut("/login?message=Anda telah berhasil keluar.");
+      await performCompleteSignOut("/login");
     } catch (err) {
       console.error("Signout error:", err);
       setIsLoggingOut(false);

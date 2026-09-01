@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { MemberProfile, ReferralMember } from "@/lib/types/member";
 import PortfolioManager from "@/components/member/PortfolioManager";
 import { toast } from "sonner";
-import { signout } from "@/lib/actions/auth-actions";
+import { performCompleteSignOut } from "@/lib/utils/auth-client";
 import ProfileLayout from "./components/ProfileLayout";
 import ProfileSidebar from "./components/ProfileSidebar";
 import ProfileOverviewContent from "./components/ProfileOverviewContent";
@@ -101,8 +101,7 @@ export default function MyProfilePage() {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
-      await signout();
-      router.push("/");
+      await performCompleteSignOut("/login");
     } catch (err) {
       console.error("Signout error:", err);
       setIsLoggingOut(false);

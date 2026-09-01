@@ -106,7 +106,7 @@ function ResetPasswordContent() {
         setIsSuccess(true);
         toast.success("Password baru berhasil disimpan!");
         setTimeout(() => {
-          window.location.href = "/login?message=Password berhasil diperbarui. Silakan login dengan password baru Anda.";
+          window.location.href = "/login";
         }, 1500);
         return;
       }
