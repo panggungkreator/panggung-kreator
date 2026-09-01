@@ -7,6 +7,7 @@ import Logo from "@/components/ui/Logo";
 import { Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 function ResetPasswordContent() {
@@ -37,29 +38,34 @@ function ResetPasswordContent() {
         }
       }
 
-      // 2. Cek apakah ada sesi aktif di cookie / client
+      // 2. Cek apakah ada sesi aktif di cookie / client (user / session)
+      const { data: { user } } = await supabase.auth.getUser();
       const { data: { session } } = await supabase.auth.getSession();
-      const hasHash = typeof window !== "undefined" && window.location.hash.includes("access_token=");
+      const hasHash = typeof window !== "undefined" && (
+        window.location.hash.includes("access_token=") ||
+        window.location.hash.includes("type=recovery")
+      );
 
-      if (session || hasHash) {
+      if (user || session || hasHash) {
         setHasRecoverySession(true);
       } else {
         // Beri toleransi sebentar untuk penanganan event auth
         setTimeout(async () => {
+          const { data: { user: delayedUser } } = await supabase.auth.getUser();
           const { data: { session: delayedSession } } = await supabase.auth.getSession();
-          if (delayedSession) {
+          if (delayedUser || delayedSession) {
             setHasRecoverySession(true);
           } else {
             setHasRecoverySession(false);
           }
-        }, 1000);
+        }, 1200);
       }
     };
 
     checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session) || (event === "TOKEN_REFRESHED" && session)) {
         setHasRecoverySession(true);
       }
     });

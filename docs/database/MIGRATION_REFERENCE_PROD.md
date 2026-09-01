@@ -7,7 +7,7 @@ Dokumen ini mencatat seluruh perubahan struktur database (*schema migration*) ya
 ## 📋 Informasi Supabase Project
 
 | Environment | Project Ref ID | Database Host | Status Migrasi |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Development** | `zpcsqidgedvuaqgrklgp` | `zpcsqidgedvuaqgrklgp.supabase.co` | ✅ Terpasang & Teruji |
 | **Production** | `wmuzvefmrbgffftkpdnx` | `wmuzvefmrbgffftkpdnx.supabase.co` | ✅ Terpasang & Identik (1 Sep 2026) |
 
