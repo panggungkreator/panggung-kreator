@@ -712,23 +712,51 @@ export async function resetPasswordAction(newPassword: string) {
     return { success: false, error: "Password baru minimal 8 karakter." };
   }
 
-  const supabase = await createClient();
-
-  const { error: updateError } = await supabase.auth.updateUser({
-    password: newPassword,
-  });
-
-  if (updateError) {
-    return { success: false, error: `Gagal memperbarui password: ${updateError.message}` };
-  }
-
-  // Global Sign-Out untuk keamanan
   try {
-    await supabase.auth.signOut({ scope: "global" });
-  } catch (soErr) {
-    console.warn("Global signout error during reset password:", soErr);
-  }
+    const supabase = await createClient();
 
-  return { success: true };
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      console.error("Reset password server error:", updateError);
+      return { success: false, error: updateError.message || "Gagal memperbarui password." };
+    }
+
+    // Global Sign-Out untuk keamanan
+    try {
+      await supabase.auth.signOut({ scope: "global" });
+    } catch (soErr) {
+      console.warn("Global signout error during reset password:", soErr);
+    }
+
+    // Bersihkan secara eksplisit seluruh cookie auth dan recovery mode dari header server
+    try {
+      const cookieStore = await cookies();
+      const allCookies = cookieStore.getAll();
+      allCookies.forEach((c) => {
+        if (
+          c.name.startsWith("sb-") ||
+          c.name.includes("auth") ||
+          c.name.includes("token") ||
+          c.name.includes("session") ||
+          c.name.includes("recovery")
+        ) {
+          cookieStore.set({
+            name: c.name,
+            value: "",
+            maxAge: 0,
+            path: "/",
+          });
+        }
+      });
+    } catch (_) {}
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("resetPasswordAction exception:", err);
+    return { success: false, error: err?.message || "Terjadi kesalahan pada server." };
+  }
 }
 

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { clearStaleAuthStorage } from "@/lib/utils/url";
+import { resetPasswordAction } from "@/lib/actions/auth-actions";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -96,16 +97,12 @@ function ResetPasswordContent() {
     setIsLoading(true);
 
     try {
-      const supabase = createClient();
+      // Panggil Server Action untuk mengupdate password menggunakan sesi HTTP server
+      const result = await resetPasswordAction(newPassword);
 
-      // Update password pengguna yang sedang memiliki sesi pemulihan aktif
-      const { error: clientUpdateErr } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (!clientUpdateErr) {
+      if (result.success) {
         document.cookie = "sb-recovery-mode=; path=/; max-age=0;";
-        await supabase.auth.signOut({ scope: "global" }).catch(console.warn);
+        clearStaleAuthStorage();
         setIsSuccess(true);
         toast.success("Password baru berhasil disimpan!");
         setTimeout(() => {
@@ -114,11 +111,11 @@ function ResetPasswordContent() {
         return;
       }
 
-      if (clientUpdateErr.message?.toLowerCase().includes("auth session missing")) {
+      if (result.error?.toLowerCase().includes("auth session missing")) {
         setError("Sesi reset password tidak ditemukan atau telah kedaluwarsa. Silakan minta link reset password baru.");
         setHasRecoverySession(false);
       } else {
-        setError(clientUpdateErr.message || "Gagal memperbarui password.");
+        setError(result.error || "Gagal memperbarui password.");
       }
     } catch (err: any) {
       console.error("Reset password client error:", err);
