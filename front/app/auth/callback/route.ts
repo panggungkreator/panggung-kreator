@@ -10,27 +10,39 @@ export async function GET(request: Request) {
     const next = searchParams.get("next") || "/myprofile";
     const redirectTo = getPublicOrigin(request);
 
+    const redirectUrl = `${redirectTo}${next}`;
+    const response = NextResponse.redirect(redirectUrl);
+
     if (!code) {
-        // Jika tidak ada code (misal alur implicit/hash URL dari Supabase recovery link),
-        // tetap arahkan ke halaman `next` agar client-side SDK dapat membaca #access_token dari URL
         return NextResponse.redirect(`${redirectTo}${next}`);
     }
 
-    const cookieStore = await cookies();
+    const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const cleanUrl = rawUrl.trim().replace(/\/+$/, "").replace(/^["']|["']$/g, "");
+    const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim().replace(/^["']|["']$/g, "");
 
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        cleanUrl,
+        anonKey,
         {
             cookies: {
-                get(name: string) {
-                    return cookieStore.get(name)?.value;
+                getAll() {
+                    const cookieHeader = request.headers.get("cookie") || "";
+                    return cookieHeader
+                        .split(";")
+                        .map((c) => {
+                            const [name, ...val] = c.trim().split("=");
+                            return { name, value: val.join("=") };
+                        })
+                        .filter((c) => c.name);
                 },
-                set(name: string, value: string, options) {
-                    cookieStore.set({ name, value, ...options });
-                },
-                remove(name: string, options) {
-                    cookieStore.set({ name, value: "", ...options });
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        response.cookies.set(name, value, {
+                            ...options,
+                            path: "/",
+                        });
+                    });
                 },
             },
         }
@@ -38,12 +50,10 @@ export async function GET(request: Request) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-        // Redirect kembali ke halaman login di domain yang benar jika ada error
         return NextResponse.redirect(
             `${redirectTo}/login?error=${encodeURIComponent(error.message)}`
         );
     }
 
-    // Redirect ke halaman tujuan (next) di domain yang benar
-    return NextResponse.redirect(`${redirectTo}${next}`);
+    return response;
 }
