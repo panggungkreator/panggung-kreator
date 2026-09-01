@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Logo from './Logo';
 import { Sun, Moon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { signout } from '@/lib/actions/auth-actions';
+import { performCompleteSignOut } from '@/lib/utils/auth-client';
 import { useRouter, usePathname } from 'next/navigation';
 
 export default function Header({ isFixed = false }: { isFixed?: boolean }) {
@@ -64,9 +64,8 @@ export default function Header({ isFixed = false }: { isFixed?: boolean }) {
 
   const handleSignOut = async () => {
     try {
-      await signout();
       setUser(null);
-      router.push('/');
+      await performCompleteSignOut('/login?message=Anda telah berhasil keluar.');
     } catch (error) {
       console.error("Gagal keluar:", error);
     }

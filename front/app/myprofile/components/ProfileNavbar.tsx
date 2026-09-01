@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { MemberProfile } from "@/lib/types/member";
-import { signout } from "@/lib/actions/auth-actions";
+import { performCompleteSignOut } from "@/lib/utils/auth-client";
 import { Sun, Moon, Menu, X, User, Edit3, Home, LogOut, ArrowLeft, Layers, Image as ImageIcon, Users } from "lucide-react";
 
 interface ProfileNavbarProps {
@@ -43,8 +43,7 @@ export default function ProfileNavbar({ member }: ProfileNavbarProps) {
     setIsLoggingOut(true);
     try {
       setIsMenuOpen(false);
-      await signout();
-      router.push("/");
+      await performCompleteSignOut("/login?message=Anda telah berhasil keluar.");
     } catch (err) {
       console.error("Signout error:", err);
       setIsLoggingOut(false);

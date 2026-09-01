@@ -1,6 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -8,15 +8,33 @@ import nodemailer from "nodemailer";
 import { getPublicOrigin } from "@/lib/utils/url";
 
 export async function signout() {
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signOut();
+  try {
+    const supabase = await createClient();
+    await supabase.auth.signOut({ scope: "global" }).catch(() => {});
+  } catch (_) {}
 
-  if (error) {
-    console.error("Error signing out:", error);
-    return { success: false, error: error.message };
-  }
+  // Bersihkan secara eksplisit seluruh cookie auth dari header server
+  try {
+    const cookieStore = await cookies();
+    const allCookies = cookieStore.getAll();
+    allCookies.forEach((c) => {
+      if (
+        c.name.startsWith("sb-") ||
+        c.name.includes("auth") ||
+        c.name.includes("token") ||
+        c.name.includes("session")
+      ) {
+        cookieStore.set({
+          name: c.name,
+          value: "",
+          maxAge: 0,
+          path: "/",
+        });
+      }
+    });
+  } catch (_) {}
 
-  redirect("/login");
+  return { success: true };
 }
 
 export async function signInWithGoogle() {

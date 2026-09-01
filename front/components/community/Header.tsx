@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Sun, Moon, Menu, X, LogOut, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { signout } from "@/lib/actions/auth-actions";
+import { performCompleteSignOut } from "@/lib/utils/auth-client";
 import { useRouter, usePathname } from "next/navigation";
 
 import ProfileSidebar from "@/app/myprofile/components/ProfileSidebar";
@@ -83,9 +83,8 @@ export default function Header() {
 
   const handleSignOut = async () => {
     try {
-      await signout();
       setUser(null);
-      router.push("/");
+      await performCompleteSignOut("/login?message=Anda telah berhasil keluar.");
     } catch (error) {
       console.error("Gagal keluar:", error);
     }
