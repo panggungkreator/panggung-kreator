@@ -5,7 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithPasswordAction, signInWithGoogle } from "@/lib/actions/auth-actions";
+import { createClient } from "@/lib/supabase/client";
 import { clearStaleAuthStorage } from "@/lib/utils/url";
+
 import Logo from "@/components/ui/Logo";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -92,14 +94,36 @@ function LoginPageContent() {
     setIsGoogleLoading(true);
     setError("");
     try {
-      await signInWithGoogle(redirectToParam || "/myprofile");
+      const supabase = createClient();
+      const origin = window.location.origin;
+      const callbackUrl = new URL(`${origin}/auth/callback`);
+      if (redirectToParam) {
+        callbackUrl.searchParams.set("next", redirectToParam);
+      }
+
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callbackUrl.toString(),
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account",
+          },
+        },
+      });
+
+      if (oauthError) throw oauthError;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
     } catch (err: any) {
       if (err?.message?.includes("NEXT_REDIRECT")) return;
       console.error("Google sign in error:", err);
-      setError("Gagal menghubungkan ke Google.");
+      setError(err?.message || "Gagal menghubungkan ke Google.");
       setIsGoogleLoading(false);
     }
   };
+
 
 
   return (

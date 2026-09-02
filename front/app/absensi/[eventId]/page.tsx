@@ -9,6 +9,8 @@ import {
   recordAttendanceAction,
 } from "@/lib/actions/attendance-actions";
 import { signInWithGoogle } from "@/lib/actions/auth-actions";
+import { createClient } from "@/lib/supabase/client";
+
 import {
   Calendar,
   Clock,
@@ -130,16 +132,36 @@ function AbsensiContent({ eventId }: { eventId: string }) {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
-      await signInWithGoogle(`/absensi/${eventId}?autoClaim=true`);
+      const supabase = createClient();
+      const origin = window.location.origin;
+      const callbackUrl = new URL(`${origin}/auth/callback`);
+      callbackUrl.searchParams.set("next", `/absensi/${eventId}?autoClaim=true`);
+
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callbackUrl.toString(),
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account",
+          },
+        },
+      });
+
+      if (oauthError) throw oauthError;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
     } catch (err: any) {
       if (err?.message?.includes("NEXT_REDIRECT")) {
         return;
       }
       console.error("Google sign in error:", err);
-      toast.error("Gagal menghubungkan ke Google.");
+      toast.error(err?.message || "Gagal menghubungkan ke Google.");
       setIsGoogleLoading(false);
     }
   };
+
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "-";
