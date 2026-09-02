@@ -107,10 +107,16 @@ export async function proxy(request: NextRequest) {
 
   if (isRecoveryMode && isProtectedPath) {
     console.log(`[PROXY SECURITY] Recovery session blocked from accessing protected route ${pathname}.`);
+    await supabase.auth.signOut().catch(() => {});
     const loginRedirect = new URL("/login", request.url);
-    return NextResponse.redirect(loginRedirect, {
+    const redirectResponse = NextResponse.redirect(loginRedirect, {
       headers: response.headers,
     });
+    redirectResponse.cookies.set("sb-recovery-mode", "", { maxAge: 0, path: "/" });
+    if (cookieDomain) {
+      redirectResponse.cookies.set("sb-recovery-mode", "", { maxAge: 0, path: "/", domain: cookieDomain });
+    }
+    return redirectResponse;
   }
 
   // 5.2 Check Session — capture auth error to detect stale/corrupted tokens for normal browsing

@@ -5,7 +5,48 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import nodemailer from "nodemailer";
-import { getPublicOrigin } from "@/lib/utils/url";
+import { getPublicOrigin, getCookieDomain } from "@/lib/utils/url";
+
+async function clearAllAuthCookies() {
+  try {
+    const cookieStore = await cookies();
+    const headersList = await headers();
+    const host = headersList.get("host") || "";
+    const cookieDomain = getCookieDomain(host);
+    const allCookies = cookieStore.getAll();
+
+    const targetNames = new Set([
+      ...allCookies.map((c) => c.name).filter((name) =>
+        name.startsWith("sb-") ||
+        name.includes("auth") ||
+        name.includes("token") ||
+        name.includes("session") ||
+        name.includes("recovery")
+      ),
+      "sb-recovery-mode",
+    ]);
+
+    targetNames.forEach((name) => {
+      // 1. Clear on Host level
+      cookieStore.set({
+        name,
+        value: "",
+        maxAge: 0,
+        path: "/",
+      });
+      // 2. Clear on Domain level (misal .panggungkreator.web.id)
+      if (cookieDomain) {
+        cookieStore.set({
+          name,
+          value: "",
+          maxAge: 0,
+          path: "/",
+          domain: cookieDomain,
+        });
+      }
+    });
+  } catch (_) {}
+}
 
 export async function signout() {
   try {
@@ -13,26 +54,8 @@ export async function signout() {
     await supabase.auth.signOut({ scope: "global" }).catch(() => {});
   } catch (_) {}
 
-  // Bersihkan secara eksplisit seluruh cookie auth dari header server
-  try {
-    const cookieStore = await cookies();
-    const allCookies = cookieStore.getAll();
-    allCookies.forEach((c) => {
-      if (
-        c.name.startsWith("sb-") ||
-        c.name.includes("auth") ||
-        c.name.includes("token") ||
-        c.name.includes("session")
-      ) {
-        cookieStore.set({
-          name: c.name,
-          value: "",
-          maxAge: 0,
-          path: "/",
-        });
-      }
-    });
-  } catch (_) {}
+  // Bersihkan secara menyeluruh seluruh cookie auth dan recovery mode (host & domain)
+  await clearAllAuthCookies();
 
   return { success: true };
 }
@@ -147,6 +170,19 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
 
   let isAdmin = false;
   if (authData?.user) {
+    // Bersihkan sb-recovery-mode agar login normal tidak terhalang oleh cookie recovery lama
+    try {
+      const cookieStore = await cookies();
+      const headersList = await headers();
+      const host = headersList.get("host") || "";
+      const cookieDomain = getCookieDomain(host);
+
+      cookieStore.set({ name: "sb-recovery-mode", value: "", maxAge: 0, path: "/" });
+      if (cookieDomain) {
+        cookieStore.set({ name: "sb-recovery-mode", value: "", maxAge: 0, path: "/", domain: cookieDomain });
+      }
+    } catch (_) {}
+
     const { data: member } = await supabase
       .from("members")
       .select("role")
@@ -768,26 +804,8 @@ export async function resetPasswordAction(newPassword: string) {
       console.warn("Global signout error during reset password:", soErr);
     }
 
-    // Bersihkan secara eksplisit seluruh cookie auth dan recovery mode dari header server
-    try {
-      const allCookies = cookieStore.getAll();
-      allCookies.forEach((c) => {
-        if (
-          c.name.startsWith("sb-") ||
-          c.name.includes("auth") ||
-          c.name.includes("token") ||
-          c.name.includes("session") ||
-          c.name.includes("recovery")
-        ) {
-          cookieStore.set({
-            name: c.name,
-            value: "",
-            maxAge: 0,
-            path: "/",
-          });
-        }
-      });
-    } catch (_) {}
+    // Bersihkan secara menyeluruh seluruh cookie auth dan recovery mode dari header server (host & domain)
+    await clearAllAuthCookies();
 
     return { success: true };
   } catch (err: any) {

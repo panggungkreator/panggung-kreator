@@ -110,6 +110,9 @@ function ResetPasswordContent() {
 
       if (result.success) {
         document.cookie = "sb-recovery-mode=; path=/; max-age=0;";
+        if (typeof window !== "undefined" && window.location.hostname.includes("panggungkreator.web.id")) {
+          document.cookie = "sb-recovery-mode=; path=/; max-age=0; domain=.panggungkreator.web.id;";
+        }
         clearStaleAuthStorage();
         setIsSuccess(true);
         toast.success("Password baru berhasil disimpan!");

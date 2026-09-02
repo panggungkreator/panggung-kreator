@@ -70,3 +70,23 @@ export function clearStaleAuthStorage() {
   }
 }
 
+/**
+ * Helper untuk mendapatkan cookie domain yang seragam di seluruh aplikasi.
+ */
+export function getCookieDomain(host?: string | null): string | undefined {
+  if (!host) return undefined;
+  const cleanHost = host.split(":")[0];
+  const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
+  if (isLocalhost) return undefined;
+
+  const parts = cleanHost.split(".");
+  if (parts.length >= 2) {
+    if (cleanHost.endsWith(".web.id") && parts.length >= 3) {
+      return `.${parts.slice(-3).join(".")}`;
+    } else {
+      return `.${parts.slice(-2).join(".")}`;
+    }
+  }
+  return undefined;
+}
+
