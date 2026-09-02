@@ -105,7 +105,9 @@ export function GoogleSignInButton({
           callback: handleCredentialResponse,
           auto_select: false,
           cancel_on_tap_outside: true,
+          use_fedcm_for_prompt: false,
         });
+
 
         const containerWidth = containerRef.current.offsetWidth || 320;
 
