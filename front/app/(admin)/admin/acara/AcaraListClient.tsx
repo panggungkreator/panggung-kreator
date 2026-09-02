@@ -329,102 +329,245 @@ export default function AcaraListClient({
         </div>
       )}
 
-      {/* List Sections */}
-      {filteredEvents.length === 0 ? (
-        <div className="p-12 text-center bg-bg-card border border-border-default/70 rounded-3xl space-y-3">
-          <Calendar className="w-10 h-10 text-text-muted mx-auto stroke-1" />
-          <p className="text-sm font-semibold text-text-primary">Tidak ada acara ditemukan</p>
-          <p className="text-xs text-text-muted max-w-sm mx-auto">
-            Coba sesuaikan kata kunci pencarian atau ubah filter untuk menemukan acara yang Anda cari.
-          </p>
+      {/* ═══ 1. DESKTOP VIEW: BOXED TABLE (hidden on mobile, visible on md/lg) ═══ */}
+      <div className="hidden md:block space-y-4">
+        {/* Desktop Filter Toolbar */}
+        <div className="flex items-center gap-3 py-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-text-secondary">Tipe:</span>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="text-xs bg-bg-well border border-border-default rounded-lg px-2.5 py-1.5 text-text-primary focus:outline-none"
+            >
+              <option value="all">Semua Tipe</option>
+              <option value="open_mic">Open Mic</option>
+              <option value="speech_practice">Speech Practice</option>
+              <option value="mc_practice">MC Practice</option>
+              <option value="networking">Networking</option>
+              <option value="content_class">Content Class</option>
+              <option value="lainnya">Lainnya</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-text-secondary">Status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="text-xs bg-bg-well border border-border-default rounded-lg px-2.5 py-1.5 text-text-primary focus:outline-none"
+            >
+              <option value="all">Semua Status</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-text-secondary">Urutan:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="text-xs bg-bg-well border border-border-default rounded-lg px-2.5 py-1.5 text-text-primary focus:outline-none"
+            >
+              <option value="newest">Tanggal Terbaru</option>
+              <option value="oldest">Tanggal Terlama</option>
+              <option value="attendees">Peserta Terbanyak</option>
+            </select>
+          </div>
         </div>
-      ) : (
-        <div className="space-y-8">
-          {/* Section 1: Acara Mendatang / Top Priority */}
-          {upcomingEvents.length > 0 && (
-            <div className="space-y-3">
-              {/* Section Header */}
-              <button
-                type="button"
-                onClick={() => setIsUpcomingOpen(!isUpcomingOpen)}
-                className="w-full flex items-center justify-between group cursor-pointer text-left select-none"
-              >
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-bold text-text-primary tracking-tight">
-                    Acara Mendatang
-                  </h2>
-                  <span className="text-[11px] font-mono text-text-muted px-2 py-0.5 rounded-full bg-bg-well border border-border-default/50 font-medium">
-                    {upcomingEvents.length} Acara
-                  </span>
-                </div>
-                <div className="p-1 rounded-full text-text-muted group-hover:text-text-primary transition-colors">
-                  {isUpcomingOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </div>
-              </button>
 
-              {/* Cards Grid */}
-              {isUpcomingOpen && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-                  {upcomingEvents.map((evt) => (
-                    <EventCard
-                      key={evt.id}
-                      event={evt}
-                      formatDate={formatDate}
-                      formatTime={formatTime}
-                      onTogglePublish={handleTogglePublish}
-                      onDelete={setEventToDelete}
-                    />
-                  ))}
-                </div>
+        {/* Desktop Table Container */}
+        <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden shadow-xs">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="text-zinc-650 dark:text-zinc-400 font-semibold border-b border-border-default bg-bg-well/50">
+                <th className="py-3.5 px-5 border-r border-border-default/60">Judul Acara</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60">Tipe</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60">Tanggal</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60">Waktu</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60">Lokasi / Venue</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60">Kapasitas & Absen</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60">Status Publish</th>
+                <th className="py-3.5 px-5 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-default/40">
+              {filteredEvents.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-text-muted font-medium">
+                    Tidak ada data jadwal acara ditemukan.
+                  </td>
+                </tr>
+              ) : (
+                filteredEvents.map((evt) => (
+                  <tr key={evt.id} className="hover:bg-bg-well/40 transition-colors">
+                    <td className="py-3.5 px-5 font-bold text-text-primary border-r border-border-default/40">
+                      <Link href={`/admin/acara/${evt.id}`} className="hover:underline">
+                        {evt.title}
+                      </Link>
+                    </td>
+                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-medium">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${EVENT_TYPE_MAP[evt.event_type]?.dotColor || "bg-zinc-400"}`}></span>
+                        {EVENT_TYPE_MAP[evt.event_type]?.label || evt.event_type}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-mono">
+                      {formatDate(evt.event_date)}
+                    </td>
+                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-mono">
+                      {formatTime(evt.start_time)}{evt.end_time ? ` - ${formatTime(evt.end_time)}` : " - Selesai"} WIB
+                    </td>
+                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 max-w-[180px] truncate" title={evt.location}>
+                      {evt.location}
+                    </td>
+                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40">
+                      <div className="flex items-center gap-1.5 font-mono">
+                        <span className="font-bold text-text-primary">{evt.present_count}</span>
+                        <span>/ {evt.capacity ? evt.capacity : "∞"}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40">
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePublish(evt.id, evt.is_published, evt.title)}
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${
+                          evt.is_published
+                            ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25"
+                            : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-300"
+                        }`}
+                      >
+                        {evt.is_published ? "Published" : "Draft"}
+                      </button>
+                    </td>
+                    <td className="py-3.5 px-5">
+                      <div className="flex items-center justify-center gap-2">
+                        <Link
+                          href={`/admin/acara/${evt.id}`}
+                          className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-well border border-border-default/60 rounded-lg transition-colors"
+                          title="Lihat Detail Acara"
+                        >
+                          <Eye size={14} />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setEventToDelete(evt)}
+                          className="p-1.5 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer transition-colors"
+                          title="Hapus Acara"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
-            </div>
-          )}
-
-          {/* Section 2: Riwayat Acara / Due Today or Past */}
-          {pastEvents.length > 0 && (
-            <div className="space-y-3">
-              {/* Section Header */}
-              <button
-                type="button"
-                onClick={() => setIsPastOpen(!isPastOpen)}
-                className="w-full flex items-center justify-between group cursor-pointer text-left select-none"
-              >
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-bold text-text-primary tracking-tight">
-                    Riwayat Acara Selesai
-                  </h2>
-                  <span className="text-[11px] font-mono text-text-muted px-2 py-0.5 rounded-full bg-bg-well border border-border-default/50 font-medium">
-                    {pastEvents.length} Acara
-                  </span>
-                </div>
-                <div className="p-1 rounded-full text-text-muted group-hover:text-text-primary transition-colors">
-                  {isPastOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </div>
-              </button>
-
-              {/* Cards Grid */}
-              {isPastOpen && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-                  {pastEvents.map((evt) => (
-                    <EventCard
-                      key={evt.id}
-                      event={evt}
-                      formatDate={formatDate}
-                      formatTime={formatTime}
-                      onTogglePublish={handleTogglePublish}
-                      onDelete={setEventToDelete}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
-      {/* Floating Bottom Action Bar (Sesuai Referensi Gambar) */}
-      <div className="fixed bottom-6 inset-x-0 z-40 pointer-events-none px-5 sm:px-8 max-w-2xl mx-auto">
+      {/* ═══ 2. MOBILE VIEW: MODERN CARDS (visible on mobile, hidden on md/lg) ═══ */}
+      <div className="block md:hidden space-y-6">
+        {filteredEvents.length === 0 ? (
+          <div className="p-12 text-center bg-bg-card border border-border-default/70 rounded-3xl space-y-3">
+            <Calendar className="w-10 h-10 text-text-muted mx-auto stroke-1" />
+            <p className="text-sm font-semibold text-text-primary">Tidak ada acara ditemukan</p>
+            <p className="text-xs text-text-muted max-w-sm mx-auto">
+              Coba sesuaikan kata kunci pencarian atau ubah filter untuk menemukan acara yang Anda cari.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Section 1: Acara Mendatang / Top Priority */}
+            {upcomingEvents.length > 0 && (
+              <div className="space-y-3">
+                {/* Section Header */}
+                <button
+                  type="button"
+                  onClick={() => setIsUpcomingOpen(!isUpcomingOpen)}
+                  className="w-full flex items-center justify-between group cursor-pointer text-left select-none"
+                >
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm sm:text-base font-bold text-text-primary tracking-tight">
+                      Acara Mendatang
+                    </h2>
+                    <span className="text-[11px] font-mono text-text-muted px-2 py-0.5 rounded-full bg-bg-well border border-border-default/50 font-medium">
+                      {upcomingEvents.length} Acara
+                    </span>
+                  </div>
+                  <div className="p-1 rounded-full text-text-muted group-hover:text-text-primary transition-colors">
+                    {isUpcomingOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </div>
+                </button>
+
+                {/* Cards Grid */}
+                {isUpcomingOpen && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                    {upcomingEvents.map((evt) => (
+                      <EventCard
+                        key={evt.id}
+                        event={evt}
+                        formatDate={formatDate}
+                        formatTime={formatTime}
+                        onTogglePublish={handleTogglePublish}
+                        onDelete={setEventToDelete}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Section 2: Riwayat Acara / Due Today or Past */}
+            {pastEvents.length > 0 && (
+              <div className="space-y-3">
+                {/* Section Header */}
+                <button
+                  type="button"
+                  onClick={() => setIsPastOpen(!isPastOpen)}
+                  className="w-full flex items-center justify-between group cursor-pointer text-left select-none"
+                >
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm sm:text-base font-bold text-text-primary tracking-tight">
+                      Riwayat Acara Selesai
+                    </h2>
+                    <span className="text-[11px] font-mono text-text-muted px-2 py-0.5 rounded-full bg-bg-well border border-border-default/50 font-medium">
+                      {pastEvents.length} Acara
+                    </span>
+                  </div>
+                  <div className="p-1 rounded-full text-text-muted group-hover:text-text-primary transition-colors">
+                    {isPastOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </div>
+                </button>
+
+                {/* Cards Grid */}
+                {isPastOpen && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                    {pastEvents.map((evt) => (
+                      <EventCard
+                        key={evt.id}
+                        event={evt}
+                        formatDate={formatDate}
+                        formatTime={formatTime}
+                        onTogglePublish={handleTogglePublish}
+                        onDelete={setEventToDelete}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+
+      {/* ═══ FLOATING BOTTOM CONTROLS (Only visible on mobile) ═══ */}
+      <div className="md:hidden fixed bottom-6 inset-x-0 z-40 pointer-events-none px-5 max-w-sm mx-auto">
         <div className="flex items-center justify-between pointer-events-auto">
+
           {/* Bottom Left: Sort and Filter Circular Buttons */}
           <div className="flex items-center gap-3">
             {/* 1. Sort Button */}

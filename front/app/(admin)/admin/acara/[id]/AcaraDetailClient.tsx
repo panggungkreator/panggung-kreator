@@ -427,10 +427,171 @@ export default function AcaraDetailClient({
         </div>
       </div>
 
-      {/* Main Content Layout: Card Design matching reference image */}
-      <div className="max-w-3xl mx-auto space-y-5">
-        {/* ═══ KARTU 1: DETAIL UTAMA EVENT (Persis Estetika Referensi) ═══ */}
-        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 sm:p-6 shadow-xs relative">
+      {/* ═══ 1. DESKTOP VIEW (hidden on mobile, visible on md/lg) ═══ */}
+      <div className="hidden md:block space-y-6">
+        {/* Desktop Event Details Card */}
+        <div className="bg-bg-card border border-border-default/70 rounded-xl p-5 shadow-xs">
+          <div className="grid grid-cols-3 gap-6 divide-x divide-border-default/40">
+            {/* Info 1: Date & Time */}
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
+                <Calendar className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Jadwal Acara</p>
+                <p className="text-xs font-bold text-text-primary mt-0.5">{formatDate(event.event_date)}</p>
+                <p className="text-[11px] text-text-secondary mt-0.5 font-mono">{formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB</p>
+              </div>
+            </div>
+
+            {/* Info 2: Location */}
+            <div className="flex items-start gap-3 pl-6">
+              <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Lokasi / Venue</p>
+                <p className="text-xs font-bold text-text-primary mt-0.5 truncate" title={event.location}>{event.location}</p>
+                <p className="text-[10px] text-text-muted uppercase font-medium mt-0.5">{event.event_type.replace("_", " ")}</p>
+              </div>
+            </div>
+
+            {/* Info 3: Kehadiran Live Stat */}
+            <div className="flex items-start gap-3 pl-6">
+              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                <Users className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Kehadiran Peserta</p>
+                <p className="text-xs font-bold text-text-primary mt-0.5">
+                  {stats.present} Peserta Hadir ({stats.percentage}%)
+                </p>
+                <p className="text-[10px] text-text-muted mt-0.5">
+                  Total tercatat: {stats.total} {event.capacity ? `/ ${event.capacity} Kuota` : ""}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Attendance Table Section */}
+        <div className="space-y-4">
+          {/* Table Toolbar */}
+          <div className="flex items-center justify-between gap-3 pb-3 border-b border-border-default/45">
+            {/* Search Bar */}
+            <div className="relative w-64">
+              <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
+                <Search className="w-3.5 h-3.5" />
+              </span>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari nama atau No. WA..."
+                className="bg-bg-well/70 border border-border-default rounded-lg h-9 pl-9 pr-3 text-xs w-full text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors"
+              />
+            </div>
+
+            {/* Action Buttons Group */}
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0 select-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Live Auto-Reload
+              </span>
+
+              {canCreate && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 text-zinc-900 rounded-lg transition-colors cursor-pointer shrink-0 border border-[#e5e19e] shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Tambah Peserta</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-bg-card hover:bg-bg-well text-text-primary rounded-lg border border-border-default transition-colors cursor-pointer shrink-0 shadow-xs"
+              >
+                <FileDown className="w-3.5 h-3.5 text-text-muted" />
+                <span>Ekspor CSV</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsQrModalOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>QR Code</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden shadow-xs">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="text-zinc-650 dark:text-zinc-400 font-semibold border-b border-border-default bg-bg-well/50">
+                  <th className="py-3.5 px-5 border-r border-border-default/60">Nama Peserta</th>
+                  <th className="py-3.5 px-5 border-r border-border-default/60">No. WhatsApp</th>
+                  <th className="py-3.5 px-5 border-r border-border-default/60">Metode Scan</th>
+                  <th className="py-3.5 px-5 border-r border-border-default/60">Waktu Hadir</th>
+                  <th className="py-3.5 px-5 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-default/40">
+                {filteredAttendances.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-text-muted font-medium">
+                      Tidak ada data absensi tercatat.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAttendances.map((att) => (
+                    <tr key={att.id} className="hover:bg-bg-well/40 transition-colors">
+                      <td className="py-3.5 px-5 font-bold text-text-primary border-r border-border-default/40">
+                        {att.member_name}
+                      </td>
+                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-medium">
+                        {att.member_wa || "-"}
+                      </td>
+                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-medium uppercase">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-bg-well border border-border-default/60">
+                          {att.is_present ? att.scan_method : "-"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-mono">
+                        {att.is_present ? formatDateTime(att.scanned_at) : "-"}
+                      </td>
+                      <td className="py-3.5 px-5 text-center">
+                        {canDelete ? (
+                          <button
+                            onClick={() => handleDeleteAttendance(att)}
+                            className="p-1.5 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer inline-flex items-center justify-center transition-colors"
+                            title="Hapus dari Daftar"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <span className="text-text-muted font-medium">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ 2. MOBILE VIEW (visible on mobile, hidden on md/lg) ═══ */}
+      <div className="block md:hidden max-w-3xl mx-auto space-y-5">
+        {/* KARTU 1: DETAIL UTAMA EVENT (Persis Estetika Referensi) */}
+        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 shadow-xs relative">
           {/* Baris Atas: Status Badge & Tipe Acara */}
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -456,7 +617,7 @@ export default function AcaraDetailClient({
 
           {/* Bagian Tengah: Judul & Jam Pelaksanaan */}
           <div className="my-4">
-            <h2 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-snug">
+            <h2 className="text-xl font-bold text-text-primary tracking-tight leading-snug">
               {event.title}
             </h2>
             <p className="text-xs text-text-muted mt-1 font-mono font-medium">
@@ -489,11 +650,11 @@ export default function AcaraDetailClient({
           </div>
         </div>
 
-        {/* ═══ KARTU 2: RINGKASAN PRESENSI & TRIGGER POPUP ═══ */}
-        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+        {/* KARTU 2: RINGKASAN PRESENSI & TRIGGER POPUP */}
+        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm sm:text-base font-bold text-text-primary tracking-tight">
+              <h3 className="text-sm font-bold text-text-primary tracking-tight">
                 Presensi Peserta
               </h3>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -507,18 +668,18 @@ export default function AcaraDetailClient({
           </div>
 
           {/* 3 Metric Mini Cards */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-3 text-center">
-              <span className="text-[10px] uppercase font-bold text-text-muted block">Hadir</span>
-              <p className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.present}</p>
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-2.5 text-center">
+              <span className="text-[9px] uppercase font-bold text-text-muted block">Hadir</span>
+              <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.present}</p>
             </div>
-            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-3 text-center">
-              <span className="text-[10px] uppercase font-bold text-text-muted block">Terdaftar</span>
-              <p className="text-base sm:text-xl font-black text-text-primary mt-0.5">{stats.total}</p>
+            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-2.5 text-center">
+              <span className="text-[9px] uppercase font-bold text-text-muted block">Terdaftar</span>
+              <p className="text-base font-black text-text-primary mt-0.5">{stats.total}</p>
             </div>
-            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-3 text-center">
-              <span className="text-[10px] uppercase font-bold text-text-muted block">Rasio</span>
-              <p className="text-base sm:text-xl font-black text-blue-600 dark:text-blue-400 mt-0.5">{stats.percentage}%</p>
+            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-2.5 text-center">
+              <span className="text-[9px] uppercase font-bold text-text-muted block">Rasio</span>
+              <p className="text-base font-black text-blue-600 dark:text-blue-400 mt-0.5">{stats.percentage}%</p>
             </div>
           </div>
 
@@ -570,8 +731,8 @@ export default function AcaraDetailClient({
           </button>
         </div>
 
-        {/* ═══ KARTU 3: TAUTAN & QR CODE PRESENSI PESERTA ═══ */}
-        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 sm:p-6 shadow-xs space-y-3">
+        {/* KARTU 3: TAUTAN & QR CODE PRESENSI PESERTA */}
+        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-text-primary tracking-tight">
               Tautan Presensi Peserta
@@ -620,6 +781,7 @@ export default function AcaraDetailClient({
           </button>
         </div>
       </div>
+
 
       {/* ═══ POPUP / MODAL: DAFTAR ABSENSI LENGKAP ═══ */}
       <Modal
@@ -739,9 +901,10 @@ export default function AcaraDetailClient({
         </div>
       </Modal>
 
-      {/* ═══ FLOATING ACTION CONTROLS (Sesuai Referensi Gambar) ═══ */}
-      <div className="fixed bottom-6 inset-x-0 z-40 pointer-events-none px-5 sm:px-8 max-w-2xl mx-auto">
+      {/* ═══ FLOATING ACTION CONTROLS (Only visible on mobile) ═══ */}
+      <div className="md:hidden fixed bottom-6 inset-x-0 z-40 pointer-events-none px-5 max-w-sm mx-auto">
         <div className="flex items-center justify-between pointer-events-auto">
+
           {/* Bottom Left: Circular Controls */}
           <div className="flex items-center gap-3">
             {/* Tombol QR Code */}
