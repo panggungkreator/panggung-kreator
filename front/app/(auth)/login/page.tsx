@@ -240,7 +240,7 @@ function LoginPageContent() {
             <div className="pt-2 flex flex-col gap-3">
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isGoogleLoading}
                 className="w-full md:w-full self-start px-8 py-3 bg-black dark:bg-white text-white dark:text-black hover:bg-[#bc151b] dark:hover:bg-[#bc151b] dark:hover:text-white font-bold text-[11px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isLoading ? (
@@ -272,10 +272,12 @@ function LoginPageContent() {
                 <GoogleSignInButton
                   redirectTo={redirectToParam || "/myprofile"}
                   onError={(err) => setError(err)}
+                  onLoadingChange={(loading) => setIsGoogleLoading(loading)}
                   text="continue_with"
                   theme="outline"
                 />
               </div>
+
 
 
 

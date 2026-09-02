@@ -9,6 +9,7 @@ interface GoogleSignInButtonProps {
   redirectTo?: string;
   onSuccess?: (user: any) => void;
   onError?: (error: string) => void;
+  onLoadingChange?: (loading: boolean) => void;
   className?: string;
   text?: "signin_with" | "signup_with" | "continue_with" | "signin";
   theme?: "outline" | "filled_black" | "filled_blue";
@@ -28,6 +29,7 @@ export function GoogleSignInButton({
   redirectTo,
   onSuccess,
   onError,
+  onLoadingChange,
   className = "",
   text = "continue_with",
   theme = "outline",
@@ -35,6 +37,7 @@ export function GoogleSignInButton({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [isButtonReady, setIsButtonReady] = useState(false);
 
   const handleCredentialResponse = async (response: any) => {
     if (!response?.credential) {
@@ -43,6 +46,8 @@ export function GoogleSignInButton({
     }
 
     setIsProcessing(true);
+    if (onLoadingChange) onLoadingChange(true);
+
     try {
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithIdToken({
@@ -94,6 +99,7 @@ export function GoogleSignInButton({
       console.error("[GOOGLE GIS ERROR]", err);
       if (onError) onError(err?.message || "Gagal masuk dengan Google.");
       setIsProcessing(false);
+      if (onLoadingChange) onLoadingChange(false);
     }
   };
 
@@ -108,7 +114,6 @@ export function GoogleSignInButton({
           use_fedcm_for_prompt: false,
         });
 
-
         const containerWidth = containerRef.current.offsetWidth || 320;
 
         window.google.accounts.id.renderButton(containerRef.current, {
@@ -120,6 +125,8 @@ export function GoogleSignInButton({
           logo_alignment: "left",
           width: Math.min(Math.max(containerWidth, 240), 400),
         });
+
+        setIsButtonReady(true);
 
         // Tampilkan One Tap popup jika diizinkan oleh Google
         window.google.accounts.id.prompt();
@@ -146,15 +153,25 @@ export function GoogleSignInButton({
       />
 
       {isProcessing ? (
-        <div className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center gap-2 border border-zinc-300 dark:border-zinc-700">
-          <Loader2 className="w-4 h-4 animate-spin text-zinc-600 dark:text-zinc-400" />
-          <span>Memverifikasi Akun Google...</span>
+        <div className="w-full py-3 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-3 border border-zinc-900 dark:border-white shadow-md">
+          <Loader2 className="w-4 h-4 animate-spin text-white dark:text-zinc-900" />
+          <span>Memverifikasi & Mengambil Data...</span>
         </div>
       ) : (
-        <div className="w-full flex justify-center">
-          <div ref={containerRef} className="w-full flex justify-center min-h-[44px]" />
+        <div className="w-full flex flex-col items-center justify-center">
+          {!isButtonReady && (
+            <div className="w-full py-2.5 px-4 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-mono text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 animate-pulse">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
+              <span>Memuat Google Sign-In...</span>
+            </div>
+          )}
+          <div
+            ref={containerRef}
+            className={`w-full flex justify-center min-h-[44px] ${!isButtonReady ? "hidden" : "block"}`}
+          />
         </div>
       )}
     </div>
   );
 }
+
