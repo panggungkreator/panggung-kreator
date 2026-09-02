@@ -608,11 +608,12 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
     // Pastikan email terdaftar di tabel members
     const { data: memberData } = await supabaseAdmin
       .from("members")
-      .select("id")
-      .eq("email", targetEmail)
+      .select("id, email")
+      .ilike("email", targetEmail)
       .maybeSingle();
 
     if (!memberData) {
+      console.warn(`[REQUEST RESET PWD] Email "${targetEmail}" tidak ditemukan di database members.`);
       // Jangan bocorkan bahwa email tidak terdaftar (pencegahan email enumeration)
       return { success: true, email: targetEmail };
     }
@@ -631,7 +632,7 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
   });
 
   if (linkError) {
-    console.error("Generate recovery link error:", linkError);
+    console.error("[REQUEST RESET PWD] Generate recovery link error:", linkError);
     return { success: false, error: `Gagal membuat link reset password: ${linkError.message}` };
   }
 
@@ -644,9 +645,12 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
     return { success: false, error: "Gagal membuat link verifikasi reset password." };
   }
 
+  console.log(`[REQUEST RESET PWD] Generated recovery link for ${targetEmail}: ${actionLink}`);
+
   // Kirim email notifikasi via Nodemailer SMTP
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     try {
+      console.log(`[REQUEST RESET PWD] Sending SMTP email to ${targetEmail} via ${process.env.SMTP_HOST || "smtp.gmail.com"}...`);
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || "smtp.gmail.com",
         port: parseInt(process.env.SMTP_PORT || "465"),
@@ -699,9 +703,12 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
           </div>
         `,
       });
+      console.log(`[REQUEST RESET PWD] Email sent successfully to ${targetEmail}`);
     } catch (emailErr) {
-      console.error("Gagal mengirim email reset password via SMTP:", emailErr);
+      console.error("[REQUEST RESET PWD] Gagal mengirim email reset password via SMTP:", emailErr);
     }
+  } else {
+    console.warn("[REQUEST RESET PWD] SMTP_USER or SMTP_PASS is missing in environment variables!");
   }
 
   return { success: true, email: targetEmail };
