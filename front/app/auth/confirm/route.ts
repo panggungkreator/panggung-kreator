@@ -18,6 +18,22 @@ export async function GET(request: Request) {
     const cleanUrl = rawUrl.trim().replace(/\/+$/, "").replace(/^["']|["']$/g, "");
     const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim().replace(/^["']|["']$/g, "");
 
+    const host = request.headers.get("host") || "";
+    const cleanHost = host.split(":")[0];
+    const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
+
+    let cookieDomain: string | undefined = undefined;
+    if (!isLocalhost) {
+      const parts = cleanHost.split(".");
+      if (parts.length >= 2) {
+        if (cleanHost.endsWith(".web.id") && parts.length >= 3) {
+          cookieDomain = `.${parts.slice(-3).join(".")}`;
+        } else {
+          cookieDomain = `.${parts.slice(-2).join(".")}`;
+        }
+      }
+    }
+
     const supabase = createServerClient(cleanUrl, anonKey, {
       cookies: {
         getAll() {
@@ -32,32 +48,41 @@ export async function GET(request: Request) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, {
+            const cookieOptions: any = {
               ...options,
               path: "/",
-            });
+            };
+            if (cookieDomain) {
+              cookieOptions.domain = cookieDomain;
+            }
+            response.cookies.set(name, value, cookieOptions);
           });
         },
       },
     });
 
-    const { error } = await supabase.auth.verifyOtp({
+    const { data: verifyData, error } = await supabase.auth.verifyOtp({
       type,
       token_hash,
     });
 
     if (!error) {
+      console.log(`[AUTH CONFIRM] verifyOtp success for user=${verifyData?.user?.email}, type=${type}, cookieDomain=${cookieDomain}`);
       if (type === "recovery") {
-        response.cookies.set("sb-recovery-mode", "1", {
+        const recoveryCookieOptions: any = {
           path: "/",
           httpOnly: false,
           sameSite: "lax",
           maxAge: 600, // 10 menit batas waktu reset password
-        });
+        };
+        if (cookieDomain) {
+          recoveryCookieOptions.domain = cookieDomain;
+        }
+        response.cookies.set("sb-recovery-mode", "1", recoveryCookieOptions);
       }
       return response;
     } else {
-      console.error("verifyOtp error:", error);
+      console.error("[AUTH CONFIRM] verifyOtp error:", error);
       return NextResponse.redirect(
         `${redirectTo}${next}?error=${encodeURIComponent("Link reset password kedaluwarsa atau tidak valid. Silakan minta link baru.")}`
       );

@@ -103,8 +103,10 @@ function ResetPasswordContent() {
     setIsLoading(true);
 
     try {
+      console.log("[RESET PWD CLIENT] Submitting new password via resetPasswordAction...");
       // Panggil Server Action untuk mengupdate password menggunakan sesi HTTP server
       const result = await resetPasswordAction(newPassword);
+      console.log("[RESET PWD CLIENT] resetPasswordAction result:", result);
 
       if (result.success) {
         document.cookie = "sb-recovery-mode=; path=/; max-age=0;";
@@ -117,15 +119,16 @@ function ResetPasswordContent() {
         return;
       }
 
+      console.error("[RESET PWD CLIENT] resetPasswordAction returned error:", result.error);
       if (result.error?.toLowerCase().includes("auth session missing")) {
-        setError("Sesi reset password tidak ditemukan atau telah kedaluwarsa. Silakan minta link reset password baru.");
+        setError(`Sesi reset password tidak ditemukan atau telah kedaluwarsa (${result.error}). Silakan minta link reset password baru.`);
         setHasRecoverySession(false);
       } else {
         setError(result.error || "Gagal memperbarui password.");
       }
     } catch (err: any) {
-      console.error("Reset password client error:", err);
-      setError("Terjadi kesalahan koneksi ke server.");
+      console.error("[RESET PWD CLIENT] Exception during reset password:", err);
+      setError(`Terjadi kesalahan koneksi ke server: ${err?.message || "Unknown error"}`);
     } finally {
       setIsLoading(false);
     }

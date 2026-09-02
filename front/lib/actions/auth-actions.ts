@@ -709,14 +709,21 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
 
 export async function checkRecoverySessionAction() {
   try {
+    const cookieStore = await cookies();
+    const cookieNames = cookieStore.getAll().map((c) => c.name);
+    console.log(`[CHECK RECOVERY ACTION] cookies present: ${cookieNames.join(", ") || "(none)"}`);
+
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
+    console.log(`[CHECK RECOVERY ACTION] getUser result: user=${user?.email || "null"}, error=${error?.message || "none"}`);
+
     if (error || !user) {
-      return { hasSession: false };
+      return { hasSession: false, error: error?.message };
     }
     return { hasSession: true, email: user.email };
-  } catch (err) {
-    return { hasSession: false };
+  } catch (err: any) {
+    console.error("[CHECK RECOVERY ACTION] exception:", err);
+    return { hasSession: false, error: err?.message };
   }
 }
 
@@ -726,14 +733,22 @@ export async function resetPasswordAction(newPassword: string) {
   }
 
   try {
-    const supabase = await createClient();
+    const cookieStore = await cookies();
+    const cookieNames = cookieStore.getAll().map((c) => c.name);
+    console.log(`[RESET PWD ACTION] cookies present: ${cookieNames.join(", ") || "(none)"}`);
 
-    const { error: updateError } = await supabase.auth.updateUser({
+    const supabase = await createClient();
+    const { data: { user }, error: getUserError } = await supabase.auth.getUser();
+    console.log(`[RESET PWD ACTION] current user: ${user?.email || "null"}, getUserError: ${getUserError?.message || "none"}`);
+
+    const { data: updateData, error: updateError } = await supabase.auth.updateUser({
       password: newPassword,
     });
 
+    console.log(`[RESET PWD ACTION] updateUser result: user=${updateData?.user?.email || "null"}, updateError=${updateError?.message || "none"}`);
+
     if (updateError) {
-      console.error("Reset password server error:", updateError);
+      console.error("[RESET PWD ACTION] updateUser error:", updateError);
       return { success: false, error: updateError.message || "Gagal memperbarui password." };
     }
 
@@ -746,7 +761,6 @@ export async function resetPasswordAction(newPassword: string) {
 
     // Bersihkan secara eksplisit seluruh cookie auth dan recovery mode dari header server
     try {
-      const cookieStore = await cookies();
       const allCookies = cookieStore.getAll();
       allCookies.forEach((c) => {
         if (
@@ -768,7 +782,7 @@ export async function resetPasswordAction(newPassword: string) {
 
     return { success: true };
   } catch (err: any) {
-    console.error("resetPasswordAction exception:", err);
+    console.error("[RESET PWD ACTION] exception:", err);
     return { success: false, error: err?.message || "Terjadi kesalahan pada server." };
   }
 }
