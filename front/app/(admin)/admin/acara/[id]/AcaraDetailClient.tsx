@@ -436,98 +436,109 @@ export default function AcaraDetailClient({
       </div>
 
       {/* Event Details Card */}
-      <div className="bg-bg-card  p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
-
-        {/* Left Section: Jadwal & Lokasi Group */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-12">
-
+      <div className="bg-bg-card border border-border-default/70 rounded-xl p-4 sm:p-5 shadow-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 divide-y sm:divide-y-0 sm:divide-x divide-border-default/40">
           {/* Info 1: Date & Time */}
-          <div className="flex gap-3 items-start">
-            <Calendar className="w-5 h-5 text-[#1a1a1a] dark:text-white shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
             <div>
-              <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Jadwal Acara</p>
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Jadwal Acara</p>
               <p className="text-xs font-bold text-text-primary mt-0.5">{formatDate(event.event_date)}</p>
-              <p className="text-[10px] text-text-secondary mt-0.5">{formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB</p>
+              <p className="text-[11px] text-text-secondary mt-0.5 font-mono">{formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB</p>
             </div>
           </div>
-
-          {/* Thin divider line (dash tipis) */}
-          <div className="hidden sm:block h-8 w-px bg-border-default/60" />
 
           {/* Info 2: Location */}
-          <div className="flex gap-3 items-start max-w-md">
-            <MapPin className="w-5 h-5 text-[#1a1a1a] dark:text-white shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 pt-3 sm:pt-0 sm:pl-6">
+            <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
+              <MapPin className="w-4 h-4" />
+            </div>
             <div className="min-w-0">
-              <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Lokasi / Venue</p>
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Lokasi / Venue</p>
               <p className="text-xs font-bold text-text-primary mt-0.5 truncate" title={event.location}>{event.location}</p>
-              <p className="text-[10px] text-text-secondary mt-0.5 uppercase font-medium">{event.event_type.replace("_", " ")}</p>
+              <p className="text-[10px] text-text-muted uppercase font-medium mt-0.5">{event.event_type.replace("_", " ")}</p>
             </div>
           </div>
 
+          {/* Info 3: Kehadiran Live Stat */}
+          <div className="hidden lg:flex items-start gap-3 pl-6">
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Kehadiran Peserta</p>
+              <p className="text-xs font-bold text-text-primary mt-0.5">
+                {stats.present} Peserta Hadir ({stats.percentage}%)
+              </p>
+              <p className="text-[10px] text-text-muted mt-0.5">
+                Total tercatat: {stats.total}
+              </p>
+            </div>
+          </div>
         </div>
-
       </div>
 
       {/* Main Grid: Attendance Table (Full width) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
 
         {/* Left Section: Attendance List table */}
-        <div className="lg:col-span-12 space-y-6">{/* Table toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-border-default/45">
-            <div className="relative w-full sm:w-[260px]">
+        <div className="lg:col-span-12 space-y-4">
+          {/* Table toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2 pb-3 border-b border-border-default/45">
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-64">
               <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
-                <Search className="w-4 h-4" />
+                <Search className="w-3.5 h-3.5" />
               </span>
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari nama atau No. WA..."
-                className="bg-bg-well border border-border-default rounded-full py-4 pl-11 pr-4 text-xs w-full text-text-primary focus:outline-none focus:border-text-primary transition-colors"
+                className="bg-bg-well/70 border border-border-default rounded-lg h-9 pl-9 pr-3 text-xs w-full text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors"
               />
             </div>
 
+            {/* Action Buttons Group */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center mr-1">
-                <span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs select-none">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Live Auto-Reload
-                </span>
-              </div>
-              {canCreate && (
+              <span className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0 select-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Live
+              </span>
 
+              {canCreate && (
                 <button
+                  type="button"
                   onClick={() => setIsAddModalOpen(true)}
-                  className="flex items-center justify-center gap-1.5 px-6 py-4 text-xs font-bold bg-[#F4F1BB] dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 rounded-full transition-all shadow-sm cursor-pointer tracking-wider flex-shrink-0 border-none"
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 text-zinc-900 rounded-lg transition-colors cursor-pointer shrink-0 border border-[#e5e19e] shadow-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Tambah Peserta
+                  <span>Tambah Peserta</span>
                 </button>
               )}
+
               <button
+                type="button"
                 onClick={handleExportCSV}
-                className="bg-[#107c41] text-white border border-[#107c41] rounded-full px-6 py-4 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-[#0e6c38] transition-colors cursor-pointer flex-shrink-0"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-bg-card hover:bg-bg-well text-text-primary rounded-lg border border-border-default transition-colors cursor-pointer shrink-0 shadow-xs"
               >
-                <FileDown className="w-3.5 h-3.5" />
-                Ekspor CSV
+                <FileDown className="w-3.5 h-3.5 text-text-muted" />
+                <span>Ekspor CSV</span>
               </button>
-              {/* Info 3: QR Code Button (Aligned to the far right with a premium design) */}
+
               <button
                 type="button"
                 onClick={() => setIsQrModalOpen(true)}
-                className="flex gap-4 items-center justify-between text-left bg-zinc-900 border border-border-default text-xs font-semibold rounded-xl py-2 px-3.5 transition-all duration-300 cursor-pointer group shrink-0 shadow-sm"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs"
               >
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-text-primary/5 text-white shrink-0 transition-transform duration-300">
-                    <QrCode className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-white">QR Code</p>
-                  </div>
-                </div>
+                <QrCode className="w-3.5 h-3.5" />
+                <span>QR Code</span>
               </button>
             </div>
           </div>
+
           <div className="bg-bg-card border border-border-default rounded-2xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
