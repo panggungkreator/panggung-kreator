@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-
 import {
   Calendar,
   Clock,
@@ -21,7 +20,9 @@ import {
   ChevronRight,
   Check,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Sparkles,
+  ListOrdered
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -68,6 +69,15 @@ interface AcaraDetailClientProps {
   permMap: Record<string, string[]>;
 }
 
+const EVENT_TYPE_MAP: Record<string, { label: string; dotColor: string }> = {
+  open_mic: { label: "Open Mic", dotColor: "bg-amber-500" },
+  speech_practice: { label: "Speech Practice", dotColor: "bg-blue-500" },
+  mc_practice: { label: "MC Practice", dotColor: "bg-purple-500" },
+  networking: { label: "Networking", dotColor: "bg-emerald-500" },
+  content_class: { label: "Content Class", dotColor: "bg-rose-500" },
+  lainnya: { label: "Acara Komunitas", dotColor: "bg-cyan-500" },
+};
+
 export default function AcaraDetailClient({
   event,
   initialAttendances,
@@ -88,8 +98,12 @@ export default function AcaraDetailClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isAttendanceListOpen, setIsAttendanceListOpen] = useState(false);
+
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -107,7 +121,7 @@ export default function AcaraDetailClient({
   });
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  // Dapatkan URL absensi yang selalu mengarah ke domain publik peserta (bukan admin subdomain)
+  // Dapatkan URL absensi publik peserta
   const getPublicAbsensiUrl = (eventId: string) => {
     if (typeof window === "undefined") {
       return `/absensi/${eventId}`;
@@ -128,7 +142,6 @@ export default function AcaraDetailClient({
       return `${protocol}//${host}/absensi/${eventId}`;
     }
 
-    // Di production: Hilangkan prefix admin. atau akademi. agar selalu mengarah ke domain publik panggungkreator.web.id
     const publicHost = host.replace(/^(admin\.|akademi\.)/i, "");
     return `https://${publicHost}/absensi/${eventId}`;
   };
@@ -140,7 +153,6 @@ export default function AcaraDetailClient({
   };
 
   const formatDate = (dateStr: string) => {
-
     return new Date(dateStr).toLocaleDateString("id-ID", {
       day: "2-digit",
       month: "short",
@@ -210,7 +222,6 @@ export default function AcaraDetailClient({
   useEffect(() => {
     const supabase = createClient();
 
-    // 1. Supabase Realtime Channel
     const channel = supabase
       .channel(`attendances_realtime_${event.id}`)
       .on(
@@ -227,7 +238,6 @@ export default function AcaraDetailClient({
       )
       .subscribe();
 
-    // 2. Polling interval setiap 3 detik untuk menjamin data selalu sinkron seketika
     const intervalId = setInterval(() => {
       refreshAttendances();
     }, 3000);
@@ -237,48 +247,6 @@ export default function AcaraDetailClient({
       clearInterval(intervalId);
     };
   }, [event.id]);
-
-
-  // Handle Toggle Checkbox Status Hadir
-  const handleToggleAttendance = async (attendanceId: string, currentStatus: boolean, memberName: string) => {
-    const confirmation = window.confirm(
-      `Ubah status kehadiran "${memberName}" menjadi ${!currentStatus ? "HADIR" : "TIDAK HADIR"}?`
-    );
-    if (!confirmation) return;
-
-    try {
-      const supabase = createClient();
-      const nextStatus = !currentStatus;
-      const { error: updateError } = await supabase
-        .from("attendances")
-        .update({
-          is_present: nextStatus,
-          scan_method: "manual",
-          scanned_at: nextStatus ? new Date().toISOString() : null
-        })
-        .eq("id", attendanceId);
-
-      if (updateError) {
-        alert("Gagal mengubah status: " + updateError.message);
-      } else {
-        setAttendances(prev =>
-          prev.map(a =>
-            a.id === attendanceId
-              ? {
-                ...a,
-                is_present: nextStatus,
-                scan_method: "manual",
-                scanned_at: nextStatus ? new Date().toISOString() : null
-              }
-              : a
-          )
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Terjadi kesalahan.");
-    }
-  };
 
   // Handle Adding Member to attendance list
   const handleAddMember = async (e: React.FormEvent) => {
@@ -301,7 +269,6 @@ export default function AcaraDetailClient({
         setSelectedMemberIds([]);
         await refreshAttendances();
 
-        // Close modal on success
         setTimeout(() => {
           setIsAddModalOpen(false);
           setSuccess("");
@@ -376,14 +343,14 @@ export default function AcaraDetailClient({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    const sanitizeTitle = event.title.toLowerCase().replace(/[^a-z0-span0-9]+/g, "-");
+    const sanitizeTitle = event.title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     link.setAttribute("download", `absensi-${sanitizeTitle}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Filtered dataset
+  // Filtered dataset for popup
   const filteredAttendances = useMemo(() => {
     return attendances.filter(a =>
       a.member_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -402,7 +369,7 @@ export default function AcaraDetailClient({
     };
   }, [attendances]);
 
-  // Dropdown list filter members not yet in attendance list
+  // Available members for adding
   const availableMembers = useMemo(() => {
     return members.filter(m => !attendances.some(a => a.member_id === m.id));
   }, [members, attendances]);
@@ -414,80 +381,263 @@ export default function AcaraDetailClient({
     );
   }, [availableMembers, comboboxSearch]);
 
+  const typeInfo = EVENT_TYPE_MAP[event.event_type] || EVENT_TYPE_MAP.lainnya;
+  const publicUrl = getPublicAbsensiUrl(event.id);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
+      {/* Top Header */}
+      <div className="flex items-center justify-between gap-3 pb-4 border-b border-border-default/60">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/acara"
+            className="p-2 border border-border-default hover:bg-bg-well rounded-full text-text-secondary hover:text-text-primary transition-colors cursor-pointer shrink-0"
+          >
+            <ArrowLeft size={16} />
+          </Link>
+          <div>
+            <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted block">
+              [ DETAIL ACARA KOMUNITAS ]
+            </span>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary mt-0.5">
+              {event.title}
+            </h1>
+          </div>
+        </div>
 
-      {/* Page Header */}
-      <div className="flex items-center gap-3 pb-4 border-b border-border-default">
-        <Link
-          href="/admin/acara"
-          className="p-2 border border-border-default hover:bg-bg-well rounded-full text-text-secondary hover:text-text-primary transition-colors cursor-pointer shrink-0"
-        >
-          <ArrowLeft size={14} />
-        </Link>
-        <div>
-          <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted block">
-            [ DETAIL ACARA KOMUNITAS ]
+        {/* Header Right Action Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsQrModalOpen(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-full transition-colors cursor-pointer shadow-xs"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>QR Code</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsAttendanceListOpen(true)}
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 text-zinc-900 rounded-full transition-colors cursor-pointer shadow-xs"
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Absensi ({stats.present})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content Layout: Card Design matching reference image */}
+      <div className="max-w-3xl mx-auto space-y-5">
+        {/* ═══ KARTU 1: DETAIL UTAMA EVENT (Persis Estetika Referensi) ═══ */}
+        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 sm:p-6 shadow-xs relative">
+          {/* Baris Atas: Status Badge & Tipe Acara */}
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              {event.is_published ? (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-[#d9f99d] text-[#365314] dark:bg-lime-950/60 dark:text-lime-300 border border-[#bef264]/60">
+                  Published
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium tracking-wide bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                  Draft
+                </span>
+              )}
+            </div>
+
+            {/* Dot Indicator (• Tipe Acara) */}
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${typeInfo.dotColor} shrink-0`}></span>
+              <span className="text-xs font-semibold text-text-primary tracking-tight">
+                {typeInfo.label}
+              </span>
+            </div>
+          </div>
+
+          {/* Bagian Tengah: Judul & Jam Pelaksanaan */}
+          <div className="my-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-snug">
+              {event.title}
+            </h2>
+            <p className="text-xs text-text-muted mt-1 font-mono font-medium">
+              {formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB
+            </p>
+            {event.description && (
+              <p className="text-xs text-text-secondary mt-3 leading-relaxed border-t border-border-default/40 pt-3">
+                {event.description}
+              </p>
+            )}
+          </div>
+
+          {/* Baris Bawah: Tanggal, Lokasi, dan Info Kapasitas */}
+          <div className="pt-3 border-t border-border-default/40 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-text-secondary">
+                Tanggal: {formatDate(event.event_date)}
+              </p>
+              <p className="text-xs text-text-muted flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 shrink-0 text-text-muted" />
+                <span>{event.location}</span>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-text-primary bg-bg-well border border-border-default/60 px-3 py-1 rounded-full">
+                {stats.present} / {event.capacity ? `${event.capacity} Kuota` : "Tak Terbatas"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ KARTU 2: RINGKASAN PRESENSI & TRIGGER POPUP ═══ */}
+        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-text-primary tracking-tight">
+                Presensi Peserta
+              </h3>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Live
+              </span>
+            </div>
+            <span className="text-xs font-mono font-bold text-text-muted">
+              {stats.present} Hadir ({stats.percentage}%)
+            </span>
+          </div>
+
+          {/* 3 Metric Mini Cards */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-3 text-center">
+              <span className="text-[10px] uppercase font-bold text-text-muted block">Hadir</span>
+              <p className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.present}</p>
+            </div>
+            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-3 text-center">
+              <span className="text-[10px] uppercase font-bold text-text-muted block">Terdaftar</span>
+              <p className="text-base sm:text-xl font-black text-text-primary mt-0.5">{stats.total}</p>
+            </div>
+            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-3 text-center">
+              <span className="text-[10px] uppercase font-bold text-text-muted block">Rasio</span>
+              <p className="text-base sm:text-xl font-black text-blue-600 dark:text-blue-400 mt-0.5">{stats.percentage}%</p>
+            </div>
+          </div>
+
+          {/* Recent Attendees Mini Preview */}
+          {attendances.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">
+                Peserta Terbaru yang Hadir
+              </span>
+              <div className="space-y-1.5">
+                {attendances.slice(0, 3).map((att) => (
+                  <div
+                    key={att.id}
+                    className="flex items-center justify-between py-2 px-3 bg-bg-well/40 border border-border-default/40 rounded-xl text-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-800 text-[10px] font-bold flex items-center justify-center text-text-secondary shrink-0">
+                        {att.member_name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="font-semibold text-text-primary truncate">
+                        {att.member_name}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-text-muted shrink-0">
+                      {formatDateTime(att.scanned_at)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tombol Utama: Buka Popup Daftar Absensi */}
+          <button
+            type="button"
+            onClick={() => setIsAttendanceListOpen(true)}
+            className="w-full flex items-center justify-between p-3.5 bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 text-zinc-900 rounded-2xl transition-all shadow-xs cursor-pointer text-left font-bold"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-zinc-900 text-white dark:bg-zinc-900 dark:text-white flex items-center justify-center shrink-0">
+                <ListOrdered className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold tracking-tight">Buka Daftar Lengkap Absensi</p>
+                <p className="text-[10px] opacity-75 font-medium">Kelola data kehadiran, pencarian & hapus peserta</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 shrink-0" />
+          </button>
+        </div>
+
+        {/* ═══ KARTU 3: TAUTAN & QR CODE PRESENSI PESERTA ═══ */}
+        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 sm:p-6 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-text-primary tracking-tight">
+              Tautan Presensi Peserta
+            </span>
+            <button
+              type="button"
+              onClick={() => handleCopyUrl(publicUrl)}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-primary hover:text-emerald-600 transition-colors cursor-pointer"
+            >
+              {copiedUrl ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-emerald-600 font-bold">Tersalin</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Salin Link</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 bg-bg-well border border-border-default/60 rounded-xl px-3 py-2">
+            <p className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
+              {publicUrl}
+            </p>
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-text-muted hover:text-text-primary p-1 transition-colors shrink-0"
+              title="Buka Link di Tab Baru"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsQrModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-bg-well hover:bg-bg-well/80 border border-border-default/70 rounded-xl text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+          >
+            <QrCode className="w-4 h-4" />
+            <span>Tampilkan QR Code Layar Penuh</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ═══ POPUP / MODAL: DAFTAR ABSENSI LENGKAP ═══ */}
+      <Modal
+        isOpen={isAttendanceListOpen}
+        onClose={() => setIsAttendanceListOpen(false)}
+        maxWidth="max-w-3xl"
+        title="Daftar Presensi Peserta"
+        icon={<Users size={20} />}
+        headerRight={
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Live
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-0.5">
-            {event.title}
-          </h1>
-        </div>
-      </div>
-
-      {/* Event Details Card */}
-      <div className="bg-bg-card border border-border-default/70 rounded-xl p-4 sm:p-5 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 divide-y sm:divide-y-0 sm:divide-x divide-border-default/40">
-          {/* Info 1: Date & Time */}
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
-              <Calendar className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Jadwal Acara</p>
-              <p className="text-xs font-bold text-text-primary mt-0.5">{formatDate(event.event_date)}</p>
-              <p className="text-[11px] text-text-secondary mt-0.5 font-mono">{formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB</p>
-            </div>
-          </div>
-
-          {/* Info 2: Location */}
-          <div className="flex items-start gap-3 pt-3 sm:pt-0 sm:pl-6">
-            <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
-              <MapPin className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Lokasi / Venue</p>
-              <p className="text-xs font-bold text-text-primary mt-0.5 truncate" title={event.location}>{event.location}</p>
-              <p className="text-[10px] text-text-muted uppercase font-medium mt-0.5">{event.event_type.replace("_", " ")}</p>
-            </div>
-          </div>
-
-          {/* Info 3: Kehadiran Live Stat */}
-          <div className="hidden lg:flex items-start gap-3 pl-6">
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-              <Users className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Kehadiran Peserta</p>
-              <p className="text-xs font-bold text-text-primary mt-0.5">
-                {stats.present} Peserta Hadir ({stats.percentage}%)
-              </p>
-              <p className="text-[10px] text-text-muted mt-0.5">
-                Total tercatat: {stats.total}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Grid: Attendance Table (Full width) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
-
-        {/* Left Section: Attendance List table */}
-        <div className="lg:col-span-12 space-y-4">
-          {/* Table toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2 pb-3 border-b border-border-default/45">
-            {/* Search Bar */}
+        }
+      >
+        <div className="space-y-4 py-1">
+          {/* Toolbar Dalam Popup: Search & Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border-default/50">
             <div className="relative w-full sm:w-64">
               <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
                 <Search className="w-3.5 h-3.5" />
@@ -501,18 +651,12 @@ export default function AcaraDetailClient({
               />
             </div>
 
-            {/* Action Buttons Group */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0 select-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Live
-              </span>
-
+            <div className="flex items-center gap-2">
               {canCreate && (
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(true)}
-                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 text-zinc-900 rounded-lg transition-colors cursor-pointer shrink-0 border border-[#e5e19e] shadow-xs"
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 text-zinc-900 rounded-lg transition-colors cursor-pointer shrink-0 border border-[#e5e19e] shadow-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Tambah Peserta</span>
@@ -527,87 +671,130 @@ export default function AcaraDetailClient({
                 <FileDown className="w-3.5 h-3.5 text-text-muted" />
                 <span>Ekspor CSV</span>
               </button>
-
-              <button
-                type="button"
-                onClick={() => setIsQrModalOpen(true)}
-                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs"
-              >
-                <QrCode className="w-3.5 h-3.5" />
-                <span>QR Code</span>
-              </button>
             </div>
           </div>
 
-          <div className="bg-bg-card border border-border-default rounded-2xl">
-            <div className="overflow-x-auto">
+          {/* Tabel Absensi Di Dalam Popup */}
+          <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto max-h-[50vh] scrollbar-thin">
               <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="text-zinc-650 dark:text-zinc-400 font-semibold">
-                    <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Nama Peserta</th>
-                    <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">No. WhatsApp</th>
-                    <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Metode Scan</th>
-                    <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Waktu Hadir</th>
-                    <th className="py-4 px-6 border-b border-border-default/70 bg-bg-well/50 text-center">Aksi</th>
+                <thead className="sticky top-0 z-10 bg-bg-well/90 backdrop-blur-sm">
+                  <tr className="text-zinc-650 dark:text-zinc-400 font-semibold border-b border-border-default">
+                    <th className="py-3 px-4">Nama Peserta</th>
+                    <th className="py-3 px-4">No. WhatsApp</th>
+                    <th className="py-3 px-4">Metode Scan</th>
+                    <th className="py-3 px-4">Waktu Hadir</th>
+                    <th className="py-3 px-4 text-center">Aksi</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border-default/40">
                   {filteredAttendances.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-text-muted font-semibold">
+                      <td colSpan={5} className="p-8 text-center text-text-muted font-medium">
                         Tidak ada data daftar absensi tercatat.
                       </td>
                     </tr>
                   ) : (
-                    filteredAttendances.map((att, index) => {
-                      const isLastRow = index === filteredAttendances.length - 1;
-                      const cellBorderClass = `${isLastRow ? "" : "border-b"} border-r border-border-default/30 last:border-r-0 py-4 px-6`;
-
-                      return (
-                        <tr
-                          key={att.id}
-                          className="hover:bg-bg-well/30 transition-colors group"
-                        >
-                          <td className={`${cellBorderClass} font-bold text-text-primary`}>
-                            {att.member_name}
-                          </td>
-                          <td className={`${cellBorderClass} text-text-secondary font-medium`}>
-                            {att.member_wa || "-"}
-                          </td>
-                          <td className={`${cellBorderClass} text-text-secondary font-medium uppercase`}>
+                    filteredAttendances.map((att) => (
+                      <tr
+                        key={att.id}
+                        className="hover:bg-bg-well/40 transition-colors"
+                      >
+                        <td className="py-3 px-4 font-bold text-text-primary">
+                          {att.member_name}
+                        </td>
+                        <td className="py-3 px-4 text-text-secondary font-medium">
+                          {att.member_wa || "-"}
+                        </td>
+                        <td className="py-3 px-4 text-text-secondary font-medium uppercase">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-bg-well border border-border-default/60">
                             {att.is_present ? att.scan_method : "-"}
-                          </td>
-                          <td className={`${cellBorderClass} text-text-secondary`}>
-                            {att.is_present ? formatDateTime(att.scanned_at) : "-"}
-                          </td>
-                          <td className={cellBorderClass}>
-                            <div className="flex items-center justify-center">
-                              {canDelete ? (
-                                <button
-                                  onClick={() => handleDeleteAttendance(att)}
-                                  className="p-1.5 text-[#b91c1c] hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer flex items-center justify-center"
-                                  title="Hapus dari Daftar"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              ) : (
-                                <span className="text-text-muted font-medium">—</span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-text-secondary font-mono">
+                          {att.is_present ? formatDateTime(att.scanned_at) : "-"}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center">
+                            {canDelete ? (
+                              <button
+                                onClick={() => handleDeleteAttendance(att)}
+                                className="p-1.5 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer flex items-center justify-center transition-colors"
+                                title="Hapus dari Daftar"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <span className="text-text-muted font-medium">—</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
             </div>
-
           </div>
         </div>
+      </Modal>
 
+      {/* ═══ FLOATING ACTION CONTROLS (Sesuai Referensi Gambar) ═══ */}
+      <div className="fixed bottom-6 inset-x-0 z-40 pointer-events-none px-5 sm:px-8 max-w-2xl mx-auto">
+        <div className="flex items-center justify-between pointer-events-auto">
+          {/* Bottom Left: Circular Controls */}
+          <div className="flex items-center gap-3">
+            {/* Tombol QR Code */}
+            <button
+              type="button"
+              onClick={() => setIsQrModalOpen(true)}
+              className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40"
+              title="Tampilkan QR Code"
+            >
+              <QrCode className="w-5 h-5" />
+            </button>
+
+            {/* Tombol Buka Popup Absensi */}
+            <button
+              type="button"
+              onClick={() => setIsAttendanceListOpen(true)}
+              className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40 relative"
+              title="Buka Daftar Absensi"
+            >
+              <Users className="w-5 h-5" />
+              {stats.present > 0 && (
+                <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[9px] font-mono font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-900">
+                  {stats.present > 99 ? "99+" : stats.present}
+                </span>
+              )}
+            </button>
+
+            {/* Tombol Ekspor CSV */}
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40"
+              title="Ekspor CSV"
+            >
+              <FileDown className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Bottom Right: Cyan Floating Action Button (FAB) untuk Tambah Peserta */}
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="w-14 h-14 rounded-full bg-[#67e8f9] hover:bg-[#22d3ee] active:scale-95 text-zinc-950 flex items-center justify-center shadow-xl hover:scale-105 transition-all cursor-pointer border border-[#a5f3fc]"
+              title="Tambah Peserta Absen"
+            >
+              <Plus className="w-6 h-6 stroke-[2.5]" />
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* ═══ MODAL: TAMBAH PESERTA MANUAL ═══ */}
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => {
@@ -617,11 +804,9 @@ export default function AcaraDetailClient({
           setError("");
           setSuccess("");
         }}
-        title="Absen Peserta"
+        title="Tambah Peserta Absen"
       >
         <form onSubmit={handleAddMember} className="space-y-4">
-
-          {/* Selected Members List Badge display */}
           {selectedMemberIds.length > 0 && (
             <div className="space-y-2 bg-bg-well border border-border-default/60 rounded-xl p-3.5">
               <div className="flex items-center justify-between">
@@ -661,7 +846,6 @@ export default function AcaraDetailClient({
             </div>
           )}
 
-          {/* Select Member Dropdown */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-text-primary uppercase tracking-wider block">
               Pilih Peserta (Bisa memilih beberapa)
@@ -683,7 +867,7 @@ export default function AcaraDetailClient({
                   </button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0 z-50 bg-bg-card border border-border-default/85 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.4)] animate-in fade-in-50 zoom-in-95 duration-150"
+                  className="w-[var(--radix-popover-trigger-width)] p-0 z-50 bg-bg-card border border-border-default/85 rounded-2xl shadow-xl animate-in fade-in-50 zoom-in-95 duration-150"
                   align="start"
                   sideOffset={6}
                 >
@@ -739,7 +923,6 @@ export default function AcaraDetailClient({
             </div>
           </div>
 
-          {/* Status alerts feedback */}
           {error && (
             <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
               <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
@@ -754,7 +937,6 @@ export default function AcaraDetailClient({
             </div>
           )}
 
-          {/* Submit button */}
           <button
             type="submit"
             disabled={isSubmitting || selectedMemberIds.length === 0}
@@ -772,17 +954,10 @@ export default function AcaraDetailClient({
               </>
             )}
           </button>
-
-          {availableMembers.length === 0 && (
-            <p className="text-[9px] text-text-secondary italic text-center">
-              Semua member terdaftar sudah masuk dalam absensi.
-            </p>
-          )}
-
         </form>
       </Modal>
 
-      {/* Modal QR Code Acara */}
+      {/* ═══ MODAL: QR CODE KEHADIRAN ACARA ═══ */}
       <Modal
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
@@ -790,8 +965,7 @@ export default function AcaraDetailClient({
         icon={<QrCode size={20} />}
       >
         <div className="space-y-6 py-4 text-center">
-          {/* Detail Acara */}
-          <div className="space-y-2 border-b border-border-default/50">
+          <div className="space-y-2 border-b border-border-default/50 pb-3">
             <h3 className="text-lg font-bold text-text-primary">
               {event.title}
             </h3>
@@ -803,73 +977,65 @@ export default function AcaraDetailClient({
             </p>
           </div>
 
-          {/* QR Code Container */}
-          {(() => {
-            const publicUrl = getPublicAbsensiUrl(event.id);
-            return (
-              <div className="flex flex-col items-center justify-center space-y-4">
-                <div className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm flex items-center justify-center">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-                      publicUrl
-                    )}`}
-                    alt={`QR Code Kehadiran ${event.title}`}
-                    className="w-52 h-52 object-contain"
-                  />
-                </div>
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm flex items-center justify-center">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+                  publicUrl
+                )}`}
+                alt={`QR Code Kehadiran ${event.title}`}
+                className="w-52 h-52 object-contain"
+              />
+            </div>
 
-                {/* Tautan URL Publik Peserta */}
-                <div className="w-full max-w-sm bg-bg-well border border-border-default/70 rounded-xl p-3 text-left space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted">
-                      Link Presensi Peserta
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyUrl(publicUrl)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-primary hover:text-emerald-600 transition-colors cursor-pointer"
-                    >
-                      {copiedUrl ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          <span className="text-emerald-600 font-bold">Tersalin</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Salin Link</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 bg-bg-card border border-border-default/50 rounded-lg px-2.5 py-1.5 overflow-hidden">
-                    <p className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
-                      {publicUrl}
-                    </p>
-                    <a
-                      href={publicUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-text-muted hover:text-text-primary p-0.5 transition-colors"
-                      title="Buka Link di Tab Baru"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
-                    Pindai untuk Hadir
-                  </p>
-                  <p className="text-[9px] text-text-muted max-w-xs mx-auto">
-                    Scan kode QR ini untuk mencatat kehadiran peserta secara langsung ke sistem.
-                  </p>
-                </div>
+            <div className="w-full max-w-sm bg-bg-well border border-border-default/70 rounded-xl p-3 text-left space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted">
+                  Link Presensi Peserta
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopyUrl(publicUrl)}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-primary hover:text-emerald-600 transition-colors cursor-pointer"
+                >
+                  {copiedUrl ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="text-emerald-600 font-bold">Tersalin</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Salin Link</span>
+                    </>
+                  )}
+                </button>
               </div>
-            );
-          })()}
+              <div className="flex items-center gap-2 bg-bg-card border border-border-default/50 rounded-lg px-2.5 py-1.5 overflow-hidden">
+                <p className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
+                  {publicUrl}
+                </p>
+                <a
+                  href={publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-text-muted hover:text-text-primary p-0.5 transition-colors"
+                  title="Buka Link di Tab Baru"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
 
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
+                Pindai untuk Hadir
+              </p>
+              <p className="text-[9px] text-text-muted max-w-xs mx-auto">
+                Scan kode QR ini untuk mencatat kehadiran peserta secara langsung ke sistem.
+              </p>
+            </div>
+          </div>
         </div>
       </Modal>
 
@@ -883,7 +1049,6 @@ export default function AcaraDetailClient({
         isLoading={confirmModal.isLoading}
         type={confirmModal.type}
       />
-
     </div>
   );
 }
