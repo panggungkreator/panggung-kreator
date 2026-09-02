@@ -127,10 +127,8 @@ export function GoogleSignInButton({
         });
 
         setIsButtonReady(true);
-
-        // Tampilkan One Tap popup jika diizinkan oleh Google
-        window.google.accounts.id.prompt();
       } catch (err) {
+
         console.error("Failed to render Google button:", err);
       }
     }
