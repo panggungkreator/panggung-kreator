@@ -179,7 +179,7 @@ function LoginPageContent() {
 
             <div>
               <label className="text-[9px] font-bold tracking-wider text-zinc-500 dark:text-zinc-400 uppercase block mb-1">
-                PASSWORD
+                KATA SANDI
               </label>
               <div className="relative">
                 <input
@@ -206,11 +206,8 @@ function LoginPageContent() {
             </div>
 
             <div className="flex items-center justify-between pt-1 text-[9px] font-mono tracking-wider uppercase text-zinc-400">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <span></span>
-              </label>
               <Link href="/forgot-password" className="hover:text-black dark:hover:text-white transition-colors">
-                LUPA PASSWORD?
+                LUPA KATA SANDI?
               </Link>
             </div>
 
@@ -218,7 +215,7 @@ function LoginPageContent() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full md:w-auto self-start px-8 py-3 bg-black dark:bg-white text-white dark:text-black hover:bg-[#bc151b] dark:hover:bg-[#bc151b] dark:hover:text-white font-bold text-[11px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full md:w-full self-start px-8 py-3 bg-black dark:bg-white text-white dark:text-black hover:bg-[#bc151b] dark:hover:bg-[#bc151b] dark:hover:text-white font-bold text-[11px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isLoading ? (
                   <svg className="animate-spin h-3.5 w-3.5 text-white dark:text-black" fill="none" viewBox="0 0 24 24">

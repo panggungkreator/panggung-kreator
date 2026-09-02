@@ -85,7 +85,9 @@ export interface MemberProfile {
   portfolio_url: string | null
   community: Community
   membership_tier: MembershipTier
+  role?: string | null
   subscribed_newsletter: boolean
+
   affiliate_code: string | null
   referred_by: string | null
   commission_balance: number

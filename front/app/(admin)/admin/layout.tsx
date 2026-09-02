@@ -251,16 +251,26 @@ export default function AdminLayout({
           return;
         }
 
-        const { data: member } = await supabase
+        let { data: member } = await supabase
           .from("members")
           .select("full_name, role")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
+
+        if (!member && user.email) {
+          const { data: memberByEmail } = await supabase
+            .from("members")
+            .select("full_name, role")
+            .ilike("email", user.email)
+            .maybeSingle();
+          if (memberByEmail) member = memberByEmail;
+        }
 
         if (member) {
           setAdminName(member.full_name || "Admin");
           setIsAdmin(member.role === "admin");
         }
+
 
         // Fetch admin_roles to check status and get color/is_super_admin
         const { data: adminRole } = await supabase

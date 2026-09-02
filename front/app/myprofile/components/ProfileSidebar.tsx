@@ -239,6 +239,16 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
 
       {/* ACTION BUTTONS (EDIT PROFIL, GANTI PASSWORD & LOGOUT) */}
       <div className="w-full space-y-2.5 pt-4">
+        {member.role === "admin" && (
+          <Link
+            href="/admin"
+            onClick={onLinkClick}
+            className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs uppercase tracking-widest transition-colors block text-center font-bold border border-amber-500 shadow-sm"
+          >
+            Dashboard Admin &rarr;
+          </Link>
+        )}
+
         <Link
           href="/myprofile/edit"
           onClick={onLinkClick}
@@ -246,6 +256,7 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
         >
           Edit Profil
         </Link>
+
 
         <button
           onClick={() => {

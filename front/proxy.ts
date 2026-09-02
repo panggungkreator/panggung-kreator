@@ -171,17 +171,26 @@ export async function proxy(request: NextRequest) {
 
   if (isDirectAdminPath) {
     if (!user) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return noCacheRedirect(new URL("/login", request.url));
     }
 
-    const { data: member } = await supabase
+    let { data: member } = await supabase
       .from("members")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
+
+    if (!member && user.email) {
+      const { data: memberByEmail } = await supabase
+        .from("members")
+        .select("role")
+        .ilike("email", user.email)
+        .maybeSingle();
+      if (memberByEmail) member = memberByEmail;
+    }
 
     if (!member || member.role !== "admin") {
-      return NextResponse.redirect(new URL("/", request.url));
+      return noCacheRedirect(new URL("/", request.url));
     }
   }
 
@@ -221,16 +230,26 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(`${protocol}//${rootHost}/login`, request.url));
     }
 
-    const { data: member } = await supabase
+    let { data: member } = await supabase
       .from("members")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
+
+    if (!member && user.email) {
+      const { data: memberByEmail } = await supabase
+        .from("members")
+        .select("role")
+        .ilike("email", user.email)
+        .maybeSingle();
+      if (memberByEmail) member = memberByEmail;
+    }
 
     if (!member || member.role !== "admin") {
       // If logged in but not admin, redirect to root homepage
-      return NextResponse.redirect(new URL(`${protocol}//${rootHost}/`, request.url));
+      return noCacheRedirect(new URL(`${protocol}//${rootHost}/`, request.url));
     }
+
 
     // Rewrite request to /admin subfolder
     return NextResponse.rewrite(new URL(`/admin${pathname}${search}`, request.url));
@@ -304,11 +323,21 @@ export async function proxy(request: NextRequest) {
 
     // If logged in (not in recovery mode) and goes to login page via GET (page load), redirect based on role/tier
     if (pathname === "/login" && user && !isRecoveryMode && request.method === "GET") {
-      const { data: member } = await supabase
+      let { data: member } = await supabase
         .from("members")
         .select("role, membership_tier")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
+
+      if (!member && user.email) {
+        const { data: memberByEmail } = await supabase
+          .from("members")
+          .select("role, membership_tier")
+          .ilike("email", user.email)
+          .maybeSingle();
+        if (memberByEmail) member = memberByEmail;
+      }
+
 
       if (member) {
         if (member.role === "admin") {
