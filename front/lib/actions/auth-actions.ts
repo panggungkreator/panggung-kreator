@@ -614,8 +614,10 @@ export async function requestPasswordResetAction(emailOrUsername: string) {
 
     if (!memberData) {
       console.warn(`[REQUEST RESET PWD] Email "${targetEmail}" tidak ditemukan di database members.`);
-      // Jangan bocorkan bahwa email tidak terdaftar (pencegahan email enumeration)
-      return { success: true, email: targetEmail };
+      return {
+        success: false,
+        error: `Email "${targetEmail}" tidak terdaftar di akun manapun. Pastikan email yang Anda masukkan sudah benar.`,
+      };
     }
   }
 
