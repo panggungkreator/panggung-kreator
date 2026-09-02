@@ -180,7 +180,7 @@ export default function MyProfilePage() {
         )
       )}
 
-      {activeTab === "affiliate" && isAffiliateActive && (
+      {activeTab === "affiliate" && (
         disabledTabs.affiliate ? (
           <UnderConstruction
             title="Program Affiliate"
@@ -188,7 +188,14 @@ export default function MyProfilePage() {
             onBackToOverview={() => setActiveTab("overview")}
           />
         ) : (
-          <AffiliatePanel member={member} referrals={referrals} ledger={ledger} />
+          <AffiliatePanel
+            member={member}
+            referrals={referrals}
+            ledger={ledger}
+            onAffiliateGenerated={(newCode) => {
+              setMember((prev) => (prev ? { ...prev, affiliate_code: newCode } : prev));
+            }}
+          />
         )
       )}
     </ProfileLayout>

@@ -737,3 +737,130 @@ export async function getReferredMembersAction() {
     return { success: false, data: [] };
   }
 }
+
+/**
+ * Member Action: Generate Kode Affiliate Unik
+ * Logika: Kombinasi nama akun (username / stage_name / full_name) + 3-4 digit angka random
+ * Contoh: BAGASKAWAN550 atau BAGAS842
+ */
+export async function generateAffiliateCodeAction() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, error: "Sesi login tidak valid. Silakan login kembali." };
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
+
+    // 1. Ambil data profil member
+    const { data: member, error: memberError } = await supabaseAdmin
+      .from("members")
+      .select("id, username, full_name, stage_name, affiliate_code")
+      .eq("id", user.id)
+      .single();
+
+    if (memberError || !member) {
+      return { success: false, error: "Data member tidak ditemukan." };
+    }
+
+    // Jika member sudah memiliki kode affiliate, kembalikan kode yang sudah ada
+    if (member.affiliate_code && member.affiliate_code.trim()) {
+      return {
+        success: true,
+        affiliateCode: member.affiliate_code,
+        alreadyExisted: true,
+        message: "Kode affiliate sudah aktif.",
+      };
+    }
+
+    // 2. Tentukan basis nama (username > stage_name > full_name)
+    const rawBase = (member.username || member.stage_name || member.full_name || "MEMBER")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
+
+    const baseClean = (rawBase.length > 0 ? rawBase : "MEMBER").substring(0, 10);
+
+    let finalCode = "";
+    let isUnique = false;
+    let attempts = 0;
+
+    // 3. Generate dengan kombinasi 3-4 digit angka random (100 - 9999)
+    while (!isUnique && attempts < 15) {
+      attempts++;
+      // Angka random 3 atau 4 digit
+      const randomDigits = Math.floor(100 + Math.random() * 9900);
+      const candidateCode = `${baseClean}${randomDigits}`;
+
+      const [{ data: existingMember }, { data: existingRefCode }] = await Promise.all([
+        supabaseAdmin
+          .from("members")
+          .select("id")
+          .eq("affiliate_code", candidateCode)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("referral_codes")
+          .select("id")
+          .eq("code", candidateCode)
+          .maybeSingle(),
+      ]);
+
+      if (!existingMember && !existingRefCode) {
+        finalCode = candidateCode;
+        isUnique = true;
+      }
+    }
+
+    if (!finalCode) {
+      finalCode = `${baseClean}${Date.now().toString().slice(-4)}`;
+    }
+
+    // 4. Update tabel members
+    const { error: updateMemberError } = await supabaseAdmin
+      .from("members")
+      .update({
+        affiliate_code: finalCode,
+        my_referral_code: finalCode,
+      })
+      .eq("id", user.id);
+
+    if (updateMemberError) {
+      console.error("Error updating member affiliate_code:", updateMemberError);
+      return { success: false, error: `Gagal menyimpan kode affiliate: ${updateMemberError.message}` };
+    }
+
+    // 5. Simpan juga ke tabel referral_codes untuk validasi multi-sistem
+    try {
+      await supabaseAdmin
+        .from("referral_codes")
+        .upsert(
+          {
+            code: finalCode,
+            owner_member_id: user.id,
+            description: `Kode Affiliate untuk ${member.stage_name || member.full_name || member.username || "Member"}`,
+            is_active: true,
+            max_usage: 0,
+            default_reward: 10000,
+          },
+          { onConflict: "code" }
+        );
+    } catch (err) {
+      console.warn("Notice: referral_codes upsert warning:", err);
+    }
+
+    return {
+      success: true,
+      affiliateCode: finalCode,
+      alreadyExisted: false,
+      message: "Kode affiliate berhasil dibuat!",
+    };
+  } catch (err: any) {
+    console.error("generateAffiliateCodeAction error:", err);
+    return { success: false, error: err.message || "Terjadi kesalahan pada server." };
+  }
+}
+

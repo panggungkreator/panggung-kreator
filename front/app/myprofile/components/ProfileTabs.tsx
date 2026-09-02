@@ -25,9 +25,8 @@ export default function ProfileTabs({
     { key: "affiliate", label: "Affiliate", icon: Share2 },
   ];
 
-  const visibleTabs = isAffiliateActive
-    ? allTabs
-    : allTabs.filter((t) => t.key !== "affiliate");
+  // Tab affiliate selalu tampil agar member yang belum memiliki kode dapat mengaktifkannya di dalam tab
+  const visibleTabs = allTabs;
 
   return (
     <div className="w-full border-b border-neutral-200 dark:border-neutral-800 pb-3">

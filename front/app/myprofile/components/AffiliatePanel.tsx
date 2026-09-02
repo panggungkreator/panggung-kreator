@@ -2,30 +2,63 @@
 
 import React, { useState } from "react";
 import { MemberProfile, ReferralMember, CommissionLedgerEntry } from "@/lib/types/member";
-import { Copy, Check, TrendingUp, Gift, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Copy, Check, TrendingUp, Gift, ArrowDownRight, ArrowUpRight, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { generateAffiliateCodeAction } from "@/lib/actions/referral-actions";
+import GenerateAffiliateModal from "@/components/member/GenerateAffiliateModal";
 
 interface AffiliatePanelProps {
   member: MemberProfile;
   referrals: ReferralMember[];
   ledger?: CommissionLedgerEntry[];
+  onAffiliateGenerated?: (code: string) => void;
 }
 
-export default function AffiliatePanel({ member, referrals, ledger = [] }: AffiliatePanelProps) {
+export default function AffiliatePanel({
+  member,
+  referrals,
+  ledger = [],
+  onAffiliateGenerated,
+}: AffiliatePanelProps) {
   const [copied, setCopied] = useState(false);
+  const [affiliateCode, setAffiliateCode] = useState(member?.affiliate_code || "");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleGenerateCode = async () => {
+    setIsGenerating(true);
+    try {
+      const result = await generateAffiliateCodeAction();
+      if (result.success && result.affiliateCode) {
+        setAffiliateCode(result.affiliateCode);
+        setIsModalOpen(true);
+        if (onAffiliateGenerated) {
+          onAffiliateGenerated(result.affiliateCode);
+        }
+        toast.success(result.message || "Kode affiliate berhasil dibuat!");
+      } else {
+        toast.error(result.error || "Gagal membuat kode affiliate.");
+      }
+    } catch (err: any) {
+      console.error("Generate affiliate code error:", err);
+      toast.error("Terjadi kesalahan saat membuat kode affiliate.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleCopyLink = () => {
-    if (!member?.affiliate_code) return;
-    const link = `${window.location.origin}/akademi/checkout?ref=${member.affiliate_code}`;
+    if (!affiliateCode) return;
+    const link = `${window.location.origin}/akademi/checkout?ref=${affiliateCode}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     toast.success("Link affiliate berhasil disalin!");
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const affiliateLink = typeof window !== "undefined" && member?.affiliate_code
-    ? `${window.location.origin}/akademi/checkout?ref=${member.affiliate_code}`
-    : `/akademi/checkout?ref=${member?.affiliate_code || ""}`;
+  const affiliateLink = typeof window !== "undefined" && affiliateCode
+    ? `${window.location.origin}/akademi/checkout?ref=${affiliateCode}`
+    : `/akademi/checkout?ref=${affiliateCode || ""}`;
 
   return (
     <div className="bg-transparent border-0 p-0 space-y-6 animate-fade-in text-neutral-900 dark:text-neutral-100 w-full rounded-none">
@@ -38,6 +71,43 @@ export default function AffiliatePanel({ member, referrals, ledger = [] }: Affil
           Bagikan tautan referral unik Anda. Dapatkan komisi saldo setelah teman atau member baru melakukan pembayaran pendaftaran Akademi dan berhasil diverifikasi oleh Admin.
         </p>
       </div>
+
+      {/* GENERATE CODE CTA CARD (Jika Belum Memiliki Kode Affiliate) */}
+      {!affiliateCode && (
+        <div className="border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-900/30 p-5 space-y-3 rounded-none">
+          <div className="flex items-start gap-3">
+            <Sparkles className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="font-bold font-sans text-sm text-neutral-900 dark:text-white">
+                Aktifkan Kode Affiliate Anda
+              </h4>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed font-sans">
+                Buat kode referral kupon unik Anda dengan 1 klik untuk mulai membagikan tautan dan menghasilkan komisi.
+              </p>
+            </div>
+          </div>
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={handleGenerateCode}
+              disabled={isGenerating}
+              className="px-5 py-2.5 bg-[#bc151b] hover:bg-red-700 text-white font-mono text-xs uppercase tracking-wider font-bold transition-colors cursor-pointer flex items-center gap-2 rounded-none disabled:opacity-50 border border-[#bc151b]"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="animate-spin w-4 h-4" />
+                  <span>Membuat Kode...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Buat Kode Affiliate &rarr;</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* COMMISSION BALANCE & STATS SUMMARY */}
       <div className="border-b border-neutral-200 dark:border-neutral-800 pb-4 flex flex-wrap gap-8">
@@ -60,7 +130,7 @@ export default function AffiliatePanel({ member, referrals, ledger = [] }: Affil
       </div>
 
       {/* AFFILIATE LINK CLIPBOARD */}
-      {member?.affiliate_code ? (
+      {affiliateCode && (
         <div className="border border-neutral-200 dark:border-neutral-800 p-4 max-w-xl space-y-2.5 bg-transparent">
           <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">
             [ LINK REFERRAL UNIK ANDA ]
@@ -81,14 +151,11 @@ export default function AffiliatePanel({ member, referrals, ledger = [] }: Affil
             </button>
           </div>
           <p className="text-[10px] text-neutral-400 font-mono">
-            Kode Referral: <strong className="text-neutral-900 dark:text-white">{member.affiliate_code}</strong>
+            Kode Referral: <strong className="text-neutral-900 dark:text-white">{affiliateCode}</strong>
           </p>
         </div>
-      ) : (
-        <div className="border border-neutral-300 dark:border-neutral-700 bg-transparent p-4 text-xs font-mono text-neutral-600 dark:text-neutral-400">
-          [ KODE REFERRAL SEDANG DISIAPKAN SETELAH PROFIL LENGKAP ]
-        </div>
       )}
+
 
       {/* REFERRED FRIENDS TABLE */}
       <div className="space-y-3 pt-2">
@@ -219,6 +286,14 @@ export default function AffiliatePanel({ member, referrals, ledger = [] }: Affil
           </div>
         </div>
       )}
+
+      {/* POPUP MODAL KODE AFFILIATE */}
+      <GenerateAffiliateModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        affiliateCode={affiliateCode}
+      />
     </div>
   );
 }
+
