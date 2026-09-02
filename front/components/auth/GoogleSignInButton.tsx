@@ -1,0 +1,158 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+import Script from "next/script";
+import { createClient } from "@/lib/supabase/client";
+import { Loader2 } from "lucide-react";
+
+interface GoogleSignInButtonProps {
+  redirectTo?: string;
+  onSuccess?: (user: any) => void;
+  onError?: (error: string) => void;
+  className?: string;
+  text?: "signin_with" | "signup_with" | "continue_with" | "signin";
+  theme?: "outline" | "filled_black" | "filled_blue";
+}
+
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
+
+const GOOGLE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  "150554382998-bnautg5j9esbm2u0hm7vhbask8kqc4nn.apps.googleusercontent.com";
+
+export function GoogleSignInButton({
+  redirectTo,
+  onSuccess,
+  onError,
+  className = "",
+  text = "continue_with",
+  theme = "outline",
+}: GoogleSignInButtonProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+
+  const handleCredentialResponse = async (response: any) => {
+    if (!response?.credential) {
+      if (onError) onError("Gagal menerima kredensial dari Google.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: response.credential,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.user) {
+        if (onSuccess) {
+          onSuccess(data.user);
+          return;
+        }
+
+        // Cek apakah user adalah admin
+        let { data: member } = await supabase
+          .from("members")
+          .select("role")
+          .eq("id", data.user.id)
+          .maybeSingle();
+
+        if (!member && data.user.email) {
+          const { data: mByEmail } = await supabase
+            .from("members")
+            .select("role")
+            .ilike("email", data.user.email)
+            .maybeSingle();
+          if (mByEmail) member = mByEmail;
+        }
+
+        const isAdmin = member?.role === "admin";
+        const isCustomNext = redirectTo && redirectTo !== "/myprofile" && redirectTo !== "/";
+
+        if (isAdmin && !isCustomNext) {
+          const isLocal =
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1";
+          window.location.href = isLocal
+            ? "/admin"
+            : process.env.NEXT_PUBLIC_ADMIN_URL || "/admin";
+        } else {
+          window.location.href = redirectTo || "/myprofile";
+        }
+      }
+    } catch (err: any) {
+      console.error("[GOOGLE GIS ERROR]", err);
+      if (onError) onError(err?.message || "Gagal masuk dengan Google.");
+      setIsProcessing(false);
+    }
+  };
+
+  const renderGoogleButton = () => {
+    if (window.google?.accounts?.id && containerRef.current) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        const containerWidth = containerRef.current.offsetWidth || 320;
+
+        window.google.accounts.id.renderButton(containerRef.current, {
+          type: "standard",
+          theme: theme,
+          size: "large",
+          text: text,
+          shape: "rectangular",
+          logo_alignment: "left",
+          width: Math.min(Math.max(containerWidth, 240), 400),
+        });
+
+        // Tampilkan One Tap popup jika diizinkan oleh Google
+        window.google.accounts.id.prompt();
+      } catch (err) {
+        console.error("Failed to render Google button:", err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (scriptLoaded || (typeof window !== "undefined" && window.google?.accounts?.id)) {
+      renderGoogleButton();
+    }
+  }, [scriptLoaded, theme, text]);
+
+  return (
+    <div className={`w-full flex flex-col items-center justify-center ${className}`}>
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={() => {
+          setScriptLoaded(true);
+        }}
+      />
+
+      {isProcessing ? (
+        <div className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center gap-2 border border-zinc-300 dark:border-zinc-700">
+          <Loader2 className="w-4 h-4 animate-spin text-zinc-600 dark:text-zinc-400" />
+          <span>Memverifikasi Akun Google...</span>
+        </div>
+      ) : (
+        <div className="w-full flex justify-center">
+          <div ref={containerRef} className="w-full flex justify-center min-h-[44px]" />
+        </div>
+      )}
+    </div>
+  );
+}
