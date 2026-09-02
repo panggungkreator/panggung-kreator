@@ -174,13 +174,13 @@ export function GoogleSignInButton({
   };
 
   useEffect(() => {
-    if (scriptLoaded || (typeof window !== "undefined" && window.google?.accounts?.id)) {
+    if (!isProcessing && (scriptLoaded || (typeof window !== "undefined" && window.google?.accounts?.id))) {
       renderGoogleButton();
     }
-  }, [scriptLoaded]);
+  }, [scriptLoaded, isProcessing]);
 
   return (
-    <div className={`w-full flex justify-center ${className}`}>
+    <div className={`w-full flex flex-col items-center justify-center ${className}`}>
       <Script
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
@@ -189,20 +189,21 @@ export function GoogleSignInButton({
         }}
       />
 
-      {isProcessing ? (
-        <div className="w-full max-w-[320px] py-3 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-3 border border-zinc-900 dark:border-white shadow-md">
+      {isProcessing && (
+        <div className="w-full max-w-[320px] mb-2 py-3 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-3 border border-zinc-900 dark:border-white shadow-md">
           <Loader2 className="w-4 h-4 animate-spin text-white dark:text-zinc-900" />
           <span>Memverifikasi Akun Google...</span>
         </div>
-      ) : (
-        <div className="w-full flex justify-center">
-          <div
-            ref={containerRef}
-            className="flex justify-center min-h-[44px]"
-          />
-        </div>
       )}
+
+      <div className={`w-full flex justify-center ${isProcessing ? "hidden" : "block"}`}>
+        <div
+          ref={containerRef}
+          className="flex justify-center min-h-[44px]"
+        />
+      </div>
     </div>
   );
 }
+
 
