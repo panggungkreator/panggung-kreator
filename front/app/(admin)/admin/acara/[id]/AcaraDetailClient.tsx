@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+
 import {
   Calendar,
   Clock,
@@ -153,12 +154,53 @@ export default function AcaraDetailClient({
           member_name: att.members?.full_name || "MEMBER TERHAPUS",
           member_wa: att.members?.whatsapp_number || "",
         }));
+
+        // Urutkan berdasarkan waktu hadir terbaru di atas
+        formatted.sort((a: any, b: any) => {
+          const timeA = new Date(a.scanned_at || 0).getTime();
+          const timeB = new Date(b.scanned_at || 0).getTime();
+          return timeB - timeA;
+        });
+
         setAttendances(formatted);
       }
     } catch (err) {
       console.error(err);
     }
   };
+
+  // ═══ LIVE AUTO-RELOAD (REALTIME & POLLING) ═══
+  useEffect(() => {
+    const supabase = createClient();
+
+    // 1. Supabase Realtime Channel
+    const channel = supabase
+      .channel(`attendances_realtime_${event.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "attendances",
+          filter: `event_id=eq.${event.id}`,
+        },
+        () => {
+          refreshAttendances();
+        }
+      )
+      .subscribe();
+
+    // 2. Polling interval setiap 3 detik untuk menjamin data selalu sinkron seketika
+    const intervalId = setInterval(() => {
+      refreshAttendances();
+    }, 3000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(intervalId);
+    };
+  }, [event.id]);
+
 
   // Handle Toggle Checkbox Status Hadir
   const handleToggleAttendance = async (attendanceId: string, currentStatus: boolean, memberName: string) => {
@@ -408,8 +450,15 @@ export default function AcaraDetailClient({
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center mr-1">
+                <span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs select-none">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Live Auto-Reload
+                </span>
+              </div>
               {canCreate && (
+
                 <button
                   onClick={() => setIsAddModalOpen(true)}
                   className="flex items-center justify-center gap-1.5 px-6 py-4 text-xs font-bold bg-[#F4F1BB] dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 rounded-full transition-all shadow-sm cursor-pointer tracking-wider flex-shrink-0 border-none"
