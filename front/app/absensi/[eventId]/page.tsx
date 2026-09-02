@@ -284,7 +284,7 @@ function AbsensiContent({ eventId }: { eventId: string }) {
                 </p>
               </div>
 
-              <div className="w-full">
+              <div className="w-full flex justify-center">
                 <GoogleSignInButton
                   redirectTo={`/absensi/${eventId}?autoClaim=true`}
                   onSuccess={async () => {
@@ -293,6 +293,7 @@ function AbsensiContent({ eventId }: { eventId: string }) {
                   onError={(err) => toast.error(err)}
                 />
               </div>
+
 
 
 

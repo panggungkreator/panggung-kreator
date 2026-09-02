@@ -268,13 +268,14 @@ function LoginPageContent() {
                 </div>
               </div>
 
-              <div className="w-full">
+              <div className="w-full flex justify-center">
                 <GoogleSignInButton
                   redirectTo={redirectToParam || "/myprofile"}
                   onError={(err) => setError(err)}
                   onLoadingChange={(loading) => setIsGoogleLoading(loading)}
                 />
               </div>
+
 
 
 

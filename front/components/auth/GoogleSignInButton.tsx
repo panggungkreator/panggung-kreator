@@ -110,13 +110,7 @@ export function GoogleSignInButton({
           use_fedcm_for_prompt: false,
         });
 
-        // Ukur lebar form induk agar tombol Google pas penuh setara dengan tombol MASUK (maks 400px resmi Google)
-        const parentW = containerRef.current.parentElement?.clientWidth || 384;
-        const targetWidth = Math.min(Math.max(parentW, 280), 400);
-
-        // Kosongkan kontainer sebelum render ulang untuk mencegah duplikasi iframe
-        containerRef.current.innerHTML = "";
-
+        // Gunakan ukuran standar awal (320px) agar proporsional dan rapi
         window.google.accounts.id.renderButton(containerRef.current, {
           type: "standard",
           theme: "outline",
@@ -124,7 +118,7 @@ export function GoogleSignInButton({
           text: "continue_with",
           shape: "rectangular",
           logo_alignment: "left",
-          width: targetWidth,
+          width: 320,
         });
 
         // Munculkan popup Google One Tap secara otomatis
@@ -146,7 +140,7 @@ export function GoogleSignInButton({
   }, [scriptLoaded]);
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`w-full flex justify-center ${className}`}>
       <Script
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
@@ -156,19 +150,19 @@ export function GoogleSignInButton({
       />
 
       {isProcessing ? (
-        <div className="w-full py-3 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-3 border border-zinc-900 dark:border-white shadow-md">
+        <div className="w-full max-w-[320px] py-3 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-3 border border-zinc-900 dark:border-white shadow-md">
           <Loader2 className="w-4 h-4 animate-spin text-white dark:text-zinc-900" />
-          <span>Memverifikasi & Mengambil Data...</span>
+          <span>Memverifikasi Akun Google...</span>
         </div>
       ) : (
         <div className="w-full flex justify-center">
-          {/* Kontainer Google Identity Services selalu ada di DOM dengan min-height 44px agar tidak ada layout shift atau efek meluncur dari kiri */}
           <div
             ref={containerRef}
-            className="w-full flex justify-center min-h-[44px] [&>div]:!w-full [&>div]:flex [&>div]:justify-center [&_iframe]:!w-full [&_iframe]:max-w-full"
+            className="flex justify-center min-h-[44px]"
           />
         </div>
       )}
     </div>
   );
 }
+
