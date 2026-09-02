@@ -182,14 +182,12 @@ function AbsensiContent({ eventId }: { eventId: string }) {
   if (isLoading) {
     return (
       <div className="min-h-screen w-full flex flex-col justify-between bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 font-sans">
-        <Header />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3 pt-28">
           <Loader2 className="animate-spin h-8 w-8 text-neutral-900 dark:text-white" />
           <span className="text-xs font-mono uppercase tracking-widest text-neutral-500">
             Memverifikasi Sesi Presensi...
           </span>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -197,7 +195,6 @@ function AbsensiContent({ eventId }: { eventId: string }) {
   if (errorMessage || (!eventData && isAuthenticated)) {
     return (
       <div className="min-h-screen w-full flex flex-col justify-between bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 font-sans">
-        <Header />
         <div className="max-w-md w-full mx-auto flex-1 flex flex-col justify-center items-center p-6 text-center pt-28">
           <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-none space-y-4 w-full">
             <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400 mx-auto" />
@@ -213,20 +210,16 @@ function AbsensiContent({ eventId }: { eventId: string }) {
             </Link>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen w-full bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 font-sans flex flex-col justify-between">
-      <Header />
-
       <main className="max-w-xl w-full mx-auto pt-28 pb-16 px-4 sm:px-6 flex-1 flex flex-col justify-center">
         {/* TAMPILAN BELUM LOGIN: CTA GOOGLE LOGIN UNTUK ABSENSI INSTAN */}
         {!isAuthenticated ? (
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-6 sm:p-8 space-y-6 animate-fade-in rounded-none shadow-sm">
-            {/* HEADER BADGE */}
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-4">
               <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
                 [ PRESENSI EVENT KOMUNITAS ]
@@ -293,11 +286,6 @@ function AbsensiContent({ eventId }: { eventId: string }) {
                   onError={(err) => toast.error(err)}
                 />
               </div>
-
-
-
-
-
               <div className="pt-2 text-center">
                 <Link
                   href={`/login?redirectTo=${encodeURIComponent(`/absensi/${eventId}?autoClaim=true`)}`}
@@ -363,7 +351,6 @@ function AbsensiContent({ eventId }: { eventId: string }) {
         ) : (
           /* TAMPILAN BELUM ABSEN (DETAIL ACARA + TOMBOL ABSEN) */
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-6 sm:p-8 space-y-6 animate-fade-in rounded-none shadow-sm">
-            {/* HEADER BADGE */}
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-4">
               <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
                 [ PRESENSI EVENT KOMUNITAS ]
@@ -467,8 +454,6 @@ function AbsensiContent({ eventId }: { eventId: string }) {
           </div>
         )}
       </main>
-
-      <Footer />
     </div>
   );
 }
@@ -480,14 +465,13 @@ export default function AbsensiPage({ params }: AbsensiPageProps) {
     <Suspense
       fallback={
         <div className="min-h-screen w-full flex flex-col justify-between bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 font-sans">
-          <Header />
+
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3 pt-28">
             <Loader2 className="animate-spin h-8 w-8 text-neutral-900 dark:text-white" />
             <span className="text-xs font-mono uppercase tracking-widest text-neutral-500">
               Memuat Presensi...
             </span>
           </div>
-          <Footer />
         </div>
       }
     >
