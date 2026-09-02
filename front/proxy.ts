@@ -92,7 +92,28 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // 5. Check Session — also capture auth error to detect stale/corrupted tokens
+  // 5. Check Recovery Mode & Session Protection
+  const isRecoveryMode = request.cookies.get("sb-recovery-mode")?.value === "1";
+
+  // 5.1 SECURITY GUARD: Scoped Recovery Session Protection
+  // Pengguna dalam recovery mode HANYA diizinkan mereset password di /reset-password.
+  // Dilarang masuk ke dashboard terproteksi (/myprofile, /admin, /akademi/dashboard) tanpa menyelesaikan reset password.
+  const isProtectedPath =
+    pathname === "/myprofile" ||
+    pathname.startsWith("/myprofile/") ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname.startsWith("/akademi/dashboard");
+
+  if (isRecoveryMode && isProtectedPath) {
+    console.log(`[PROXY SECURITY] Recovery session blocked from accessing protected route ${pathname}.`);
+    const loginRedirect = new URL("/login", request.url);
+    return NextResponse.redirect(loginRedirect, {
+      headers: response.headers,
+    });
+  }
+
+  // 5.2 Check Session — capture auth error to detect stale/corrupted tokens for normal browsing
   const {
     data: { user },
     error: getUserError,
@@ -100,9 +121,9 @@ export async function proxy(request: NextRequest) {
 
   // Jika token di cookie tidak valid / sudah expired, sign out server-side agar
   // browser menerima header Set-Cookie yang menghapus cookie korup secara otomatis.
-  // CATATAN: "Auth session missing!" adalah kondisi normal (belum login), bukan error korup.
-  // Hanya hapus cookie jika error spesifik tentang token yang tidak valid / expired.
+  // PENTING: JANGAN lakukan signOut jika sedang dalam recovery mode di /reset-password!
   const isStaleTokenError =
+    !isRecoveryMode &&
     getUserError &&
     (getUserError.message?.includes("Invalid Refresh Token") ||
       getUserError.message?.includes("Refresh Token Not Found") ||
@@ -113,32 +134,6 @@ export async function proxy(request: NextRequest) {
     console.log(`[PROXY] Stale token detected (${getUserError!.message}), clearing session cookies...`);
     await supabase.auth.signOut();
   }
-
-  // 5.1 SECURITY GUARD: Scoped Recovery Session Protection
-  // Mencegah login tanpa password jika pengguna meninggalkan halaman /reset-password
-  const isRecoveryMode = request.cookies.get("sb-recovery-mode")?.value === "1";
-  if (isRecoveryMode) {
-    const isResetPasswordPath = pathname === "/reset-password";
-    if (!isResetPasswordPath) {
-      console.log(`[PROXY SECURITY] Recovery session attempted to access ${pathname}. Destroying recovery session!`);
-      await supabase.auth.signOut();
-      response.cookies.set("sb-recovery-mode", "", { maxAge: 0, path: "/" });
-      const loginRedirect = new URL("/login", request.url);
-      loginRedirect.searchParams.set(
-        "error",
-        "Sesi pemulihan dibatalkan karena Anda meninggalkan halaman reset password."
-      );
-      return NextResponse.redirect(loginRedirect, {
-        headers: response.headers,
-      });
-    }
-  }
-
-  // DEBUG: Log session state for diagnosis
-  const allCookieNames = request.cookies.getAll().map(c => c.name);
-  console.log(`[PROXY DEBUG] host=${host} sub="${sub}" isRootDomain=${isRootDomain} pathname=${pathname}`);
-  console.log(`[PROXY DEBUG] cookieDomain=${cookieDomain ?? "undefined (localhost)"} user=${user ? user.email : "NULL"} authError=${getUserError?.message ?? "none"}`);
-  console.log(`[PROXY DEBUG] cookies present: ${allCookieNames.join(", ") || "(none)"}`);
 
 
   // 6. Direct Path Guards (for localhost or direct path access)
@@ -262,8 +257,8 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    // If logged in and goes to login page via GET (page load), redirect based on role/tier
-    if (pathname === "/login" && user && request.method === "GET") {
+    // If logged in (not in recovery mode) and goes to login page via GET (page load), redirect based on role/tier
+    if (pathname === "/login" && user && !isRecoveryMode && request.method === "GET") {
       const { data: member } = await supabase
         .from("members")
         .select("role, membership_tier")
