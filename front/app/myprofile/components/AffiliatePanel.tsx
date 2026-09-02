@@ -64,7 +64,6 @@ export default function AffiliatePanel({
     <div className="bg-transparent border-0 p-0 space-y-6 animate-fade-in text-neutral-900 dark:text-neutral-100 w-full rounded-none">
       <div className="space-y-2 border-b border-neutral-200 dark:border-neutral-800 pb-4">
         <h3 className="text-lg font-bold font-sans text-neutral-900 dark:text-white flex items-center gap-2">
-          <Gift className="w-5 h-5 text-[#bc151b]" />
           <span>Program Referral & <span className="highlight-stabilo">Affiliate</span> Panggung Kreator</span>
         </h3>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-2xl font-sans">
@@ -76,7 +75,6 @@ export default function AffiliatePanel({
       {!affiliateCode && (
         <div className="border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-900/30 p-5 space-y-3 rounded-none">
           <div className="flex items-start gap-3">
-            <Sparkles className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <h4 className="font-bold font-sans text-sm text-neutral-900 dark:text-white">
                 Aktifkan Kode Affiliate Anda
@@ -100,7 +98,6 @@ export default function AffiliatePanel({
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
                   <span>Buat Kode Affiliate &rarr;</span>
                 </>
               )}
@@ -258,20 +255,18 @@ export default function AffiliatePanel({
                       </td>
                       <td className="p-3.5">
                         <span
-                          className={`px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider inline-flex items-center gap-1 ${
-                            isCredit
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                              : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
-                          }`}
+                          className={`px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider inline-flex items-center gap-1 ${isCredit
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                            : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
+                            }`}
                         >
                           {isCredit ? <ArrowDownRight size={10} /> : <ArrowUpRight size={10} />}
                           {isCredit ? "Kredit" : "Debit"}
                         </span>
                       </td>
                       <td
-                        className={`p-3.5 text-right font-mono font-bold ${
-                          isCredit ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-                        }`}
+                        className={`p-3.5 text-right font-mono font-bold ${isCredit ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                          }`}
                       >
                         {isCredit ? "+" : "-"} Rp {entry.amount.toLocaleString("id-ID")}
                       </td>
