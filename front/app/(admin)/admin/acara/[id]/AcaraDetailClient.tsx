@@ -405,491 +405,157 @@ export default function AcaraDetailClient({
           </div>
         </div>
 
-        {/* Header Right Action Buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsQrModalOpen(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-full transition-colors cursor-pointer shadow-xs"
-          >
-            <QrCode className="w-3.5 h-3.5" />
-            <span>QR Code</span>
-          </button>
+        {/* ═══ 1. DESKTOP VIEW (hidden on mobile, visible on md/lg) ═══ */}
+        <div className="hidden md:block space-y-6">
+          {/* Desktop Event Details Card */}
+          <div className="bg-bg-card border border-border-default/70 rounded-xl p-5 shadow-xs">
+            <div className="grid grid-cols-3 gap-6 divide-x divide-border-default/40">
+              {/* Info 1: Date & Time */}
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Jadwal Acara</p>
+                  <p className="text-xs font-bold text-text-primary mt-0.5">{formatDate(event.event_date)}</p>
+                  <p className="text-[11px] text-text-secondary mt-0.5 font-mono">{formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB</p>
+                </div>
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setIsAttendanceListOpen(true)}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 text-zinc-900 rounded-full transition-colors cursor-pointer shadow-xs"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Absensi ({stats.present})</span>
-          </button>
-        </div>
-      </div>
+              {/* Info 2: Location */}
+              <div className="flex items-start gap-3 pl-6">
+                <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Lokasi / Venue</p>
+                  <p className="text-xs font-bold text-text-primary mt-0.5 truncate" title={event.location}>{event.location}</p>
+                  <p className="text-[10px] text-text-muted uppercase font-medium mt-0.5">{event.event_type.replace("_", " ")}</p>
+                </div>
+              </div>
 
-      {/* ═══ 1. DESKTOP VIEW (hidden on mobile, visible on md/lg) ═══ */}
-      <div className="hidden md:block space-y-6">
-        {/* Desktop Event Details Card */}
-        <div className="bg-bg-card border border-border-default/70 rounded-xl p-5 shadow-xs">
-          <div className="grid grid-cols-3 gap-6 divide-x divide-border-default/40">
-            {/* Info 1: Date & Time */}
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
-                <Calendar className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Jadwal Acara</p>
-                <p className="text-xs font-bold text-text-primary mt-0.5">{formatDate(event.event_date)}</p>
-                <p className="text-[11px] text-text-secondary mt-0.5 font-mono">{formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB</p>
-              </div>
-            </div>
-
-            {/* Info 2: Location */}
-            <div className="flex items-start gap-3 pl-6">
-              <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
-                <MapPin className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Lokasi / Venue</p>
-                <p className="text-xs font-bold text-text-primary mt-0.5 truncate" title={event.location}>{event.location}</p>
-                <p className="text-[10px] text-text-muted uppercase font-medium mt-0.5">{event.event_type.replace("_", " ")}</p>
-              </div>
-            </div>
-
-            {/* Info 3: Kehadiran Live Stat */}
-            <div className="flex items-start gap-3 pl-6">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-                <Users className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Kehadiran Peserta</p>
-                <p className="text-xs font-bold text-text-primary mt-0.5">
-                  {stats.present} Peserta Hadir ({stats.percentage}%)
-                </p>
-                <p className="text-[10px] text-text-muted mt-0.5">
-                  Total tercatat: {stats.total} {event.capacity ? `/ ${event.capacity} Kuota` : ""}
-                </p>
+              {/* Info 3: Kehadiran Live Stat */}
+              <div className="flex items-start gap-3 pl-6">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Kehadiran Peserta</p>
+                  <p className="text-xs font-bold text-text-primary mt-0.5">
+                    {stats.present} Peserta Hadir ({stats.percentage}%)
+                  </p>
+                  <p className="text-[10px] text-text-muted mt-0.5">
+                    Total tercatat: {stats.total} {event.capacity ? `/ ${event.capacity} Kuota` : ""}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Desktop Attendance Table Section */}
-        <div className="space-y-4">
-          {/* Table Toolbar */}
-          <div className="flex items-center justify-between gap-3 pb-3 border-b border-border-default/45">
-            {/* Search Bar */}
-            <div className="relative w-64">
-              <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
-                <Search className="w-3.5 h-3.5" />
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari nama atau No. WA..."
-                className="bg-bg-well/70 border border-border-default rounded-lg h-9 pl-9 pr-3 text-xs w-full text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors"
-              />
-            </div>
-
-            {/* Action Buttons Group */}
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0 select-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Live Auto-Reload
-              </span>
-
-              {canCreate && (
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 text-zinc-900 rounded-lg transition-colors cursor-pointer shrink-0 border border-[#e5e19e] shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah Peserta</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={handleExportCSV}
-                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-bg-card hover:bg-bg-well text-text-primary rounded-lg border border-border-default transition-colors cursor-pointer shrink-0 shadow-xs"
-              >
-                <FileDown className="w-3.5 h-3.5 text-text-muted" />
-                <span>Ekspor CSV</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsQrModalOpen(true)}
-                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs"
-              >
-                <QrCode className="w-3.5 h-3.5" />
-                <span>QR Code</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Table Container */}
-          <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden shadow-xs">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="text-zinc-650 dark:text-zinc-400 font-semibold border-b border-border-default bg-bg-well/50">
-                  <th className="py-3.5 px-5 border-r border-border-default/60">Nama Peserta</th>
-                  <th className="py-3.5 px-5 border-r border-border-default/60">No. WhatsApp</th>
-                  <th className="py-3.5 px-5 border-r border-border-default/60">Metode Scan</th>
-                  <th className="py-3.5 px-5 border-r border-border-default/60">Waktu Hadir</th>
-                  <th className="py-3.5 px-5 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-default/40">
-                {filteredAttendances.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-text-muted font-medium">
-                      Tidak ada data absensi tercatat.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredAttendances.map((att) => (
-                    <tr key={att.id} className="hover:bg-bg-well/40 transition-colors">
-                      <td className="py-3.5 px-5 font-bold text-text-primary border-r border-border-default/40">
-                        {att.member_name}
-                      </td>
-                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-medium">
-                        {att.member_wa || "-"}
-                      </td>
-                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-medium uppercase">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-bg-well border border-border-default/60">
-                          {att.is_present ? att.scan_method : "-"}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-mono">
-                        {att.is_present ? formatDateTime(att.scanned_at) : "-"}
-                      </td>
-                      <td className="py-3.5 px-5 text-center">
-                        {canDelete ? (
-                          <button
-                            onClick={() => handleDeleteAttendance(att)}
-                            className="p-1.5 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer inline-flex items-center justify-center transition-colors"
-                            title="Hapus dari Daftar"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        ) : (
-                          <span className="text-text-muted font-medium">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* ═══ 2. MOBILE VIEW (visible on mobile, hidden on md/lg) ═══ */}
-      <div className="block md:hidden max-w-3xl mx-auto space-y-5">
-        {/* KARTU 1: DETAIL UTAMA EVENT (Persis Estetika Referensi) */}
-        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 shadow-xs relative">
-          {/* Baris Atas: Status Badge & Tipe Acara */}
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              {event.is_published ? (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-[#d9f99d] text-[#365314] dark:bg-lime-950/60 dark:text-lime-300 border border-[#bef264]/60">
-                  Published
+          {/* Desktop Attendance Table Section */}
+          <div className="space-y-4">
+            {/* Table Toolbar */}
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-border-default/45">
+              {/* Search Bar */}
+              <div className="relative w-64">
+                <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
+                  <Search className="w-3.5 h-3.5" />
                 </span>
-              ) : (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium tracking-wide bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                  Draft
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari nama atau No. WA..."
+                  className="bg-bg-well/70 border border-border-default rounded-lg h-9 pl-9 pr-3 text-xs w-full text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors"
+                />
+              </div>
+
+              {/* Action Buttons Group */}
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0 select-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Live Auto-Reload
                 </span>
-              )}
-            </div>
 
-            {/* Dot Indicator (• Tipe Acara) */}
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${typeInfo.dotColor} shrink-0`}></span>
-              <span className="text-xs font-semibold text-text-primary tracking-tight">
-                {typeInfo.label}
-              </span>
-            </div>
-          </div>
-
-          {/* Bagian Tengah: Judul & Jam Pelaksanaan */}
-          <div className="my-4">
-            <h2 className="text-xl font-bold text-text-primary tracking-tight leading-snug">
-              {event.title}
-            </h2>
-            <p className="text-xs text-text-muted mt-1 font-mono font-medium">
-              {formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB
-            </p>
-            {event.description && (
-              <p className="text-xs text-text-secondary mt-3 leading-relaxed border-t border-border-default/40 pt-3">
-                {event.description}
-              </p>
-            )}
-          </div>
-
-          {/* Baris Bawah: Tanggal, Lokasi, dan Info Kapasitas */}
-          <div className="pt-3 border-t border-border-default/40 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-text-secondary">
-                Tanggal: {formatDate(event.event_date)}
-              </p>
-              <p className="text-xs text-text-muted flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 shrink-0 text-text-muted" />
-                <span>{event.location}</span>
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-text-primary bg-bg-well border border-border-default/60 px-3 py-1 rounded-full">
-                {stats.present} / {event.capacity ? `${event.capacity} Kuota` : "Tak Terbatas"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* KARTU 2: RINGKASAN PRESENSI & TRIGGER POPUP */}
-        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-text-primary tracking-tight">
-                Presensi Peserta
-              </h3>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Live
-              </span>
-            </div>
-            <span className="text-xs font-mono font-bold text-text-muted">
-              {stats.present} Hadir ({stats.percentage}%)
-            </span>
-          </div>
-
-          {/* 3 Metric Mini Cards */}
-          <div className="grid grid-cols-3 gap-2.5">
-            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-2.5 text-center">
-              <span className="text-[9px] uppercase font-bold text-text-muted block">Hadir</span>
-              <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.present}</p>
-            </div>
-            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-2.5 text-center">
-              <span className="text-[9px] uppercase font-bold text-text-muted block">Terdaftar</span>
-              <p className="text-base font-black text-text-primary mt-0.5">{stats.total}</p>
-            </div>
-            <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-2.5 text-center">
-              <span className="text-[9px] uppercase font-bold text-text-muted block">Rasio</span>
-              <p className="text-base font-black text-blue-600 dark:text-blue-400 mt-0.5">{stats.percentage}%</p>
-            </div>
-          </div>
-
-          {/* Recent Attendees Mini Preview */}
-          {attendances.length > 0 && (
-            <div className="space-y-2 pt-1">
-              <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">
-                Peserta Terbaru yang Hadir
-              </span>
-              <div className="space-y-1.5">
-                {attendances.slice(0, 3).map((att) => (
-                  <div
-                    key={att.id}
-                    className="flex items-center justify-between py-2 px-3 bg-bg-well/40 border border-border-default/40 rounded-xl text-xs"
+                {canCreate && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 text-zinc-900 rounded-lg transition-colors cursor-pointer shrink-0 border border-[#e5e19e] shadow-xs"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-800 text-[10px] font-bold flex items-center justify-center text-text-secondary shrink-0">
-                        {att.member_name.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="font-semibold text-text-primary truncate">
-                        {att.member_name}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-mono text-text-muted shrink-0">
-                      {formatDateTime(att.scanned_at)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Peserta</span>
+                  </button>
+                )}
 
-          {/* Tombol Utama: Buka Popup Daftar Absensi */}
-          <button
-            type="button"
-            onClick={() => setIsAttendanceListOpen(true)}
-            className="w-full flex items-center justify-between p-3.5 bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 text-zinc-900 rounded-2xl transition-all shadow-xs cursor-pointer text-left font-bold"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-zinc-900 text-white dark:bg-zinc-900 dark:text-white flex items-center justify-center shrink-0">
-                <ListOrdered className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold tracking-tight">Buka Daftar Lengkap Absensi</p>
-                <p className="text-[10px] opacity-75 font-medium">Kelola data kehadiran, pencarian & hapus peserta</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 shrink-0" />
-          </button>
-        </div>
-
-        {/* KARTU 3: TAUTAN & QR CODE PRESENSI PESERTA */}
-        <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-text-primary tracking-tight">
-              Tautan Presensi Peserta
-            </span>
-            <button
-              type="button"
-              onClick={() => handleCopyUrl(publicUrl)}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-primary hover:text-emerald-600 transition-colors cursor-pointer"
-            >
-              {copiedUrl ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="text-emerald-600 font-bold">Tersalin</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Salin Link</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 bg-bg-well border border-border-default/60 rounded-xl px-3 py-2">
-            <p className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
-              {publicUrl}
-            </p>
-            <a
-              href={publicUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-text-muted hover:text-text-primary p-1 transition-colors shrink-0"
-              title="Buka Link di Tab Baru"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsQrModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-bg-well hover:bg-bg-well/80 border border-border-default/70 rounded-xl text-xs font-semibold text-text-primary transition-colors cursor-pointer"
-          >
-            <QrCode className="w-4 h-4" />
-            <span>Tampilkan QR Code Layar Penuh</span>
-          </button>
-        </div>
-      </div>
-
-
-      {/* ═══ POPUP / MODAL: DAFTAR ABSENSI LENGKAP ═══ */}
-      <Modal
-        isOpen={isAttendanceListOpen}
-        onClose={() => setIsAttendanceListOpen(false)}
-        maxWidth="max-w-3xl"
-        title="Daftar Presensi Peserta"
-        icon={<Users size={20} />}
-        headerRight={
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Live
-          </span>
-        }
-      >
-        <div className="space-y-4 py-1">
-          {/* Toolbar Dalam Popup: Search & Action Buttons */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border-default/50">
-            <div className="relative w-full sm:w-64">
-              <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
-                <Search className="w-3.5 h-3.5" />
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari nama atau No. WA..."
-                className="bg-bg-well/70 border border-border-default rounded-lg h-9 pl-9 pr-3 text-xs w-full text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              {canCreate && (
                 <button
                   type="button"
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 text-zinc-900 rounded-lg transition-colors cursor-pointer shrink-0 border border-[#e5e19e] shadow-xs"
+                  onClick={handleExportCSV}
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-bg-card hover:bg-bg-well text-text-primary rounded-lg border border-border-default transition-colors cursor-pointer shrink-0 shadow-xs"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah Peserta</span>
+                  <FileDown className="w-3.5 h-3.5 text-text-muted" />
+                  <span>Ekspor CSV</span>
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={handleExportCSV}
-                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-bg-card hover:bg-bg-well text-text-primary rounded-lg border border-border-default transition-colors cursor-pointer shrink-0 shadow-xs"
-              >
-                <FileDown className="w-3.5 h-3.5 text-text-muted" />
-                <span>Ekspor CSV</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setIsQrModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs"
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span>QR Code</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Tabel Absensi Di Dalam Popup */}
-          <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto max-h-[50vh] scrollbar-thin">
+            {/* Table Container */}
+            <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden shadow-xs">
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="sticky top-0 z-10 bg-bg-well/90 backdrop-blur-sm">
-                  <tr className="text-zinc-650 dark:text-zinc-400 font-semibold border-b border-border-default">
-                    <th className="py-3 px-4">Nama Peserta</th>
-                    <th className="py-3 px-4">No. WhatsApp</th>
-                    <th className="py-3 px-4">Metode Scan</th>
-                    <th className="py-3 px-4">Waktu Hadir</th>
-                    <th className="py-3 px-4 text-center">Aksi</th>
+                <thead>
+                  <tr className="text-zinc-650 dark:text-zinc-400 font-semibold border-b border-border-default bg-bg-well/50">
+                    <th className="py-3.5 px-5 border-r border-border-default/60">Nama Peserta</th>
+                    <th className="py-3.5 px-5 border-r border-border-default/60">No. WhatsApp</th>
+                    <th className="py-3.5 px-5 border-r border-border-default/60">Metode Scan</th>
+                    <th className="py-3.5 px-5 border-r border-border-default/60">Waktu Hadir</th>
+                    <th className="py-3.5 px-5 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-default/40">
                   {filteredAttendances.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="p-8 text-center text-text-muted font-medium">
-                        Tidak ada data daftar absensi tercatat.
+                        Tidak ada data absensi tercatat.
                       </td>
                     </tr>
                   ) : (
                     filteredAttendances.map((att) => (
-                      <tr
-                        key={att.id}
-                        className="hover:bg-bg-well/40 transition-colors"
-                      >
-                        <td className="py-3 px-4 font-bold text-text-primary">
+                      <tr key={att.id} className="hover:bg-bg-well/40 transition-colors">
+                        <td className="py-3.5 px-5 font-bold text-text-primary border-r border-border-default/40">
                           {att.member_name}
                         </td>
-                        <td className="py-3 px-4 text-text-secondary font-medium">
+                        <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-medium">
                           {att.member_wa || "-"}
                         </td>
-                        <td className="py-3 px-4 text-text-secondary font-medium uppercase">
+                        <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-medium uppercase">
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-bg-well border border-border-default/60">
                             {att.is_present ? att.scan_method : "-"}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-text-secondary font-mono">
+                        <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-mono">
                           {att.is_present ? formatDateTime(att.scanned_at) : "-"}
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center justify-center">
-                            {canDelete ? (
-                              <button
-                                onClick={() => handleDeleteAttendance(att)}
-                                className="p-1.5 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer flex items-center justify-center transition-colors"
-                                title="Hapus dari Daftar"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            ) : (
-                              <span className="text-text-muted font-medium">—</span>
-                            )}
-                          </div>
+                        <td className="py-3.5 px-5 text-center">
+                          {canDelete ? (
+                            <button
+                              onClick={() => handleDeleteAttendance(att)}
+                              className="p-1.5 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer inline-flex items-center justify-center transition-colors"
+                              title="Hapus dari Daftar"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <span className="text-text-muted font-medium">—</span>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -899,319 +565,632 @@ export default function AcaraDetailClient({
             </div>
           </div>
         </div>
-      </Modal>
 
-      {/* ═══ FLOATING ACTION CONTROLS (Only visible on mobile) ═══ */}
-      <div className="md:hidden fixed bottom-6 inset-x-0 z-40 pointer-events-none px-5 max-w-sm mx-auto">
-        <div className="flex items-center justify-between pointer-events-auto">
+        {/* ═══ 2. MOBILE VIEW (visible on mobile, hidden on md/lg) ═══ */}
+        <div className="block md:hidden max-w-3xl mx-auto space-y-5">
+          {/* KARTU 1: DETAIL UTAMA EVENT (Persis Estetika Referensi) */}
+          <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 shadow-xs relative">
+            {/* Baris Atas: Status Badge & Tipe Acara */}
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                {event.is_published ? (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-[#d9f99d] text-[#365314] dark:bg-lime-950/60 dark:text-lime-300 border border-[#bef264]/60">
+                    Published
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium tracking-wide bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                    Draft
+                  </span>
+                )}
+              </div>
 
-          {/* Bottom Left: Circular Controls */}
-          <div className="flex items-center gap-3">
-            {/* Tombol QR Code */}
-            <button
-              type="button"
-              onClick={() => setIsQrModalOpen(true)}
-              className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40"
-              title="Tampilkan QR Code"
-            >
-              <QrCode className="w-5 h-5" />
-            </button>
+              {/* Dot Indicator (• Tipe Acara) */}
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${typeInfo.dotColor} shrink-0`}></span>
+                <span className="text-xs font-semibold text-text-primary tracking-tight">
+                  {typeInfo.label}
+                </span>
+              </div>
+            </div>
 
-            {/* Tombol Buka Popup Absensi */}
+            {/* Bagian Tengah: Judul & Jam Pelaksanaan */}
+            <div className="my-4">
+              <h2 className="text-xl font-bold text-text-primary tracking-tight leading-snug">
+                {event.title}
+              </h2>
+              <p className="text-xs text-text-muted mt-1 font-mono font-medium">
+                {formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB
+              </p>
+              {event.description && (
+                <p className="text-xs text-text-secondary mt-3 leading-relaxed border-t border-border-default/40 pt-3">
+                  {event.description}
+                </p>
+              )}
+            </div>
+
+            {/* Baris Bawah: Tanggal, Lokasi, dan Info Kapasitas */}
+            <div className="pt-3 border-t border-border-default/40 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-text-secondary">
+                  Tanggal: {formatDate(event.event_date)}
+                </p>
+                <p className="text-xs text-text-muted flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 shrink-0 text-text-muted" />
+                  <span>{event.location}</span>
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold text-text-primary bg-bg-well border border-border-default/60 px-3 py-1 rounded-full">
+                  {stats.present} / {event.capacity ? `${event.capacity} Kuota` : "Tak Terbatas"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* KARTU 2: RINGKASAN PRESENSI & TRIGGER POPUP */}
+          <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-text-primary tracking-tight">
+                  Presensi Peserta
+                </h3>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Live
+                </span>
+              </div>
+              <span className="text-xs font-mono font-bold text-text-muted">
+                {stats.present} Hadir ({stats.percentage}%)
+              </span>
+            </div>
+
+            {/* 3 Metric Mini Cards */}
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-2.5 text-center">
+                <span className="text-[9px] uppercase font-bold text-text-muted block">Hadir</span>
+                <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.present}</p>
+              </div>
+              <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-2.5 text-center">
+                <span className="text-[9px] uppercase font-bold text-text-muted block">Terdaftar</span>
+                <p className="text-base font-black text-text-primary mt-0.5">{stats.total}</p>
+              </div>
+              <div className="bg-bg-well/60 border border-border-default/50 rounded-2xl p-2.5 text-center">
+                <span className="text-[9px] uppercase font-bold text-text-muted block">Rasio</span>
+                <p className="text-base font-black text-blue-600 dark:text-blue-400 mt-0.5">{stats.percentage}%</p>
+              </div>
+            </div>
+
+            {/* Recent Attendees Mini Preview */}
+            {attendances.length > 0 && (
+              <div className="space-y-2 pt-1">
+                <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">
+                  Peserta Terbaru yang Hadir
+                </span>
+                <div className="space-y-1.5">
+                  {attendances.slice(0, 3).map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center justify-between py-2 px-3 bg-bg-well/40 border border-border-default/40 rounded-xl text-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-800 text-[10px] font-bold flex items-center justify-center text-text-secondary shrink-0">
+                          {att.member_name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-semibold text-text-primary truncate">
+                          {att.member_name}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-text-muted shrink-0">
+                        {formatDateTime(att.scanned_at)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tombol Utama: Buka Popup Daftar Absensi */}
             <button
               type="button"
               onClick={() => setIsAttendanceListOpen(true)}
-              className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40 relative"
-              title="Buka Daftar Absensi"
+              className="w-full flex items-center justify-between p-3.5 bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 text-zinc-900 rounded-2xl transition-all shadow-xs cursor-pointer text-left font-bold"
             >
-              <Users className="w-5 h-5" />
-              {stats.present > 0 && (
-                <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[9px] font-mono font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-900">
-                  {stats.present > 99 ? "99+" : stats.present}
-                </span>
-              )}
-            </button>
-
-            {/* Tombol Ekspor CSV */}
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40"
-              title="Ekspor CSV"
-            >
-              <FileDown className="w-5 h-5" />
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-zinc-900 text-white dark:bg-zinc-900 dark:text-white flex items-center justify-center shrink-0">
+                  <ListOrdered className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold tracking-tight">Buka Daftar Lengkap Absensi</p>
+                  <p className="text-[10px] opacity-75 font-medium">Kelola data kehadiran, pencarian & hapus peserta</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 shrink-0" />
             </button>
           </div>
 
-          {/* Bottom Right: Cyan Floating Action Button (FAB) untuk Tambah Peserta */}
-          {canCreate && (
+          {/* KARTU 3: TAUTAN & QR CODE PRESENSI PESERTA */}
+          <div className="bg-white dark:bg-[#121212] border border-border-default/80 rounded-3xl p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-text-primary tracking-tight">
+                Tautan Presensi Peserta
+              </span>
+              <button
+                type="button"
+                onClick={() => handleCopyUrl(publicUrl)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-primary hover:text-emerald-600 transition-colors cursor-pointer"
+              >
+                {copiedUrl ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-emerald-600 font-bold">Tersalin</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Salin Link</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 bg-bg-well border border-border-default/60 rounded-xl px-3 py-2">
+              <p className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
+                {publicUrl}
+              </p>
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-text-muted hover:text-text-primary p-1 transition-colors shrink-0"
+                title="Buka Link di Tab Baru"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+
             <button
               type="button"
-              onClick={() => setIsAddModalOpen(true)}
-              className="w-14 h-14 rounded-full bg-[#67e8f9] hover:bg-[#22d3ee] active:scale-95 text-zinc-950 flex items-center justify-center shadow-xl hover:scale-105 transition-all cursor-pointer border border-[#a5f3fc]"
-              title="Tambah Peserta Absen"
+              onClick={() => setIsQrModalOpen(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-bg-well hover:bg-bg-well/80 border border-border-default/70 rounded-xl text-xs font-semibold text-text-primary transition-colors cursor-pointer"
             >
-              <Plus className="w-6 h-6 stroke-[2.5]" />
+              <QrCode className="w-4 h-4" />
+              <span>Tampilkan QR Code Layar Penuh</span>
             </button>
-          )}
+          </div>
         </div>
-      </div>
 
-      {/* ═══ MODAL: TAMBAH PESERTA MANUAL ═══ */}
-      <Modal
-        isOpen={isAddModalOpen}
-        onClose={() => {
-          setIsAddModalOpen(false);
-          setSelectedMemberIds([]);
-          setComboboxSearch("");
-          setError("");
-          setSuccess("");
-        }}
-        title="Tambah Peserta Absen"
-      >
-        <form onSubmit={handleAddMember} className="space-y-4">
-          {selectedMemberIds.length > 0 && (
-            <div className="space-y-2 bg-bg-well border border-border-default/60 rounded-xl p-3.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
-                  Peserta Terpilih ({selectedMemberIds.length})
+
+        {/* ═══ POPUP / MODAL: DAFTAR ABSENSI LENGKAP ═══ */}
+        <Modal
+          isOpen={isAttendanceListOpen}
+          onClose={() => setIsAttendanceListOpen(false)}
+          maxWidth="max-w-3xl"
+          title="Daftar Presensi Peserta"
+          icon={<Users size={20} />}
+          headerRight={
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live
+            </span>
+          }
+        >
+          <div className="space-y-4 py-1">
+            {/* Toolbar Dalam Popup: Search & Action Buttons */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border-default/50">
+              <div className="relative w-full sm:w-64">
+                <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
+                  <Search className="w-3.5 h-3.5" />
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedMemberIds([])}
-                  className="text-[9px] font-bold text-[#b91c1c] hover:underline cursor-pointer uppercase"
-                >
-                  Hapus Semua
-                </button>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari nama atau No. WA..."
+                  className="bg-bg-well/70 border border-border-default rounded-lg h-9 pl-9 pr-3 text-xs w-full text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors"
+                />
               </div>
-              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto scrollbar-thin py-1">
-                {selectedMemberIds.map(id => {
-                  const m = members.find(member => member.id === id);
-                  if (!m) return null;
-                  return (
-                    <div
-                      key={id}
-                      className="flex items-center gap-1.5 bg-bg-card border border-border-default/80 rounded-full py-1 pl-3 pr-2 text-xs font-semibold text-text-primary shadow-sm hover:border-red-500/30 group transition-all"
-                    >
-                      <span>{m.full_name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedMemberIds(prev => prev.filter(mid => mid !== id))}
-                        className="w-4 h-4 rounded-full bg-bg-well hover:bg-red-500 hover:text-white flex items-center justify-center text-[10px] font-bold transition-colors cursor-pointer text-text-secondary"
-                        title="Hapus dari pilihan"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-text-primary uppercase tracking-wider block">
-              Pilih Peserta (Bisa memilih beberapa)
-            </label>
-            <div className="relative mt-3">
-              <Popover>
-                <PopoverTrigger asChild>
+              <div className="flex items-center gap-2">
+                {canCreate && (
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between bg-bg-well border border-border-default rounded-full py-3 px-6 text-xs text-text-primary focus:outline-none cursor-pointer pr-10 font-bold text-left min-h-10"
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold bg-[#F4F1BB] hover:bg-[#eae6a5] dark:bg-yellow-100 dark:text-zinc-900 text-zinc-900 rounded-lg transition-colors cursor-pointer shrink-0 border border-[#e5e19e] shadow-xs"
                   >
-                    <span className="truncate">
-                      {selectedMemberIds.length > 0
-                        ? `${selectedMemberIds.length} Peserta Terpilih`
-                        : availableMembers.length === 0
-                          ? "Semua member sudah terdaftar"
-                          : "Cari & Pilih Member..."}
-                    </span>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Peserta</span>
                   </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0 z-50 bg-bg-card border border-border-default/85 rounded-2xl shadow-xl animate-in fade-in-50 zoom-in-95 duration-150"
-                  align="start"
-                  sideOffset={6}
-                >
-                  <div className="flex items-center border-b border-border-default/50 px-6 py-4">
-                    <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-55 text-text-secondary" />
-                    <input
-                      placeholder="Cari nama atau No. WA..."
-                      value={comboboxSearch}
-                      onChange={(e) => setComboboxSearch(e.target.value)}
-                      className="flex h-7 w-full rounded-md bg-transparent text-xs outline-none placeholder:text-text-muted text-text-primary border-none p-0 focus:ring-0 focus:outline-none"
-                    />
-                  </div>
-                  <div className="max-h-60 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin">
-                    {filteredComboboxMembers.length === 0 ? (
-                      <p className="text-[11px] text-text-muted text-center py-4">
-                        Tidak ada member ditemukan.
-                      </p>
-                    ) : (
-                      filteredComboboxMembers.map((member) => {
-                        const isSelected = selectedMemberIds.includes(member.id);
-                        return (
-                          <button
-                            key={member.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedMemberIds(prev =>
-                                isSelected
-                                  ? prev.filter(id => id !== member.id)
-                                  : [...prev, member.id]
-                              );
-                            }}
-                            className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-xs hover:bg-bg-well transition-colors text-text-primary font-medium cursor-pointer"
-                          >
-                            <div className="flex items-center justify-center w-4 h-4 border border-border-default rounded bg-bg-well shrink-0">
-                              {isSelected && <Check className="h-3 w-3 text-text-primary" />}
-                            </div>
-                            <div className="flex-1 truncate">
-                              {member.full_name}{" "}
-                              {member.whatsapp_number && (
-                                <span className="text-text-muted font-normal text-[10px]">
-                                  ({member.whatsapp_number})
-                                </span>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <ChevronDown className="absolute right-3.5 top-3.5 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-            </div>
-          </div>
+                )}
 
-          {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
-              <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {success && (
-            <div className="p-3 bg-green-500/10 border border-green-500/30 text-[#2D5A00] rounded-xl text-xs font-semibold flex items-start gap-2 animate-pulse">
-              <UserCheck className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-              <span>{success}</span>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSubmitting || selectedMemberIds.length === 0}
-            className="w-full bg-text-primary text-bg-card border border-text-primary rounded-full py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader className="w-4.5 h-4.5 animate-spin" />
-                <span>Mendaftarkan...</span>
-              </>
-            ) : (
-              <>
-                <Plus className="w-4.5 h-4.5" />
-                <span>Daftarkan {selectedMemberIds.length > 0 ? `(${selectedMemberIds.length})` : ""} Hadir</span>
-              </>
-            )}
-          </button>
-        </form>
-      </Modal>
-
-      {/* ═══ MODAL: QR CODE KEHADIRAN ACARA ═══ */}
-      <Modal
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        title="QR CODE KEHADIRAN ACARA"
-        icon={<QrCode size={20} />}
-      >
-        <div className="space-y-6 py-4 text-center">
-          <div className="space-y-2 border-b border-border-default/50 pb-3">
-            <h3 className="text-lg font-bold text-text-primary">
-              {event.title}
-            </h3>
-            <p className="text-xs text-text-secondary">
-              {formatDate(event.event_date)} • {event.start_time} - {event.end_time || "Selesai"}
-            </p>
-            <p className="text-xs text-text-muted font-medium">
-              📍 {event.location}
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <div className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm flex items-center justify-center">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-                  publicUrl
-                )}`}
-                alt={`QR Code Kehadiran ${event.title}`}
-                className="w-52 h-52 object-contain"
-              />
-            </div>
-
-            <div className="w-full max-w-sm bg-bg-well border border-border-default/70 rounded-xl p-3 text-left space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted">
-                  Link Presensi Peserta
-                </span>
                 <button
                   type="button"
-                  onClick={() => handleCopyUrl(publicUrl)}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-primary hover:text-emerald-600 transition-colors cursor-pointer"
+                  onClick={handleExportCSV}
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium bg-bg-card hover:bg-bg-well text-text-primary rounded-lg border border-border-default transition-colors cursor-pointer shrink-0 shadow-xs"
                 >
-                  {copiedUrl ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="text-emerald-600 font-bold">Tersalin</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Salin Link</span>
-                    </>
-                  )}
+                  <FileDown className="w-3.5 h-3.5 text-text-muted" />
+                  <span>Ekspor CSV</span>
                 </button>
               </div>
-              <div className="flex items-center gap-2 bg-bg-card border border-border-default/50 rounded-lg px-2.5 py-1.5 overflow-hidden">
-                <p className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
-                  {publicUrl}
-                </p>
-                <a
-                  href={publicUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-text-muted hover:text-text-primary p-0.5 transition-colors"
-                  title="Buka Link di Tab Baru"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+            </div>
+
+            {/* Tabel Absensi Di Dalam Popup */}
+            <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto max-h-[50vh] scrollbar-thin">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="sticky top-0 z-10 bg-bg-well/90 backdrop-blur-sm">
+                    <tr className="text-zinc-650 dark:text-zinc-400 font-semibold border-b border-border-default">
+                      <th className="py-3 px-4">Nama Peserta</th>
+                      <th className="py-3 px-4">No. WhatsApp</th>
+                      <th className="py-3 px-4">Metode Scan</th>
+                      <th className="py-3 px-4">Waktu Hadir</th>
+                      <th className="py-3 px-4 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-default/40">
+                    {filteredAttendances.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center text-text-muted font-medium">
+                          Tidak ada data daftar absensi tercatat.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAttendances.map((att) => (
+                        <tr
+                          key={att.id}
+                          className="hover:bg-bg-well/40 transition-colors"
+                        >
+                          <td className="py-3 px-4 font-bold text-text-primary">
+                            {att.member_name}
+                          </td>
+                          <td className="py-3 px-4 text-text-secondary font-medium">
+                            {att.member_wa || "-"}
+                          </td>
+                          <td className="py-3 px-4 text-text-secondary font-medium uppercase">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-bg-well border border-border-default/60">
+                              {att.is_present ? att.scan_method : "-"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-text-secondary font-mono">
+                            {att.is_present ? formatDateTime(att.scanned_at) : "-"}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-center">
+                              {canDelete ? (
+                                <button
+                                  onClick={() => handleDeleteAttendance(att)}
+                                  className="p-1.5 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer flex items-center justify-center transition-colors"
+                                  title="Hapus dari Daftar"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <span className="text-text-muted font-medium">—</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </Modal>
+
+        {/* ═══ FLOATING ACTION CONTROLS (Only visible on mobile) ═══ */}
+        <div className="md:hidden fixed bottom-6 inset-x-0 z-40 pointer-events-none px-5 max-w-sm mx-auto">
+          <div className="flex items-center justify-between pointer-events-auto">
+
+            {/* Bottom Left: Circular Controls */}
+            <div className="flex items-center gap-3">
+              {/* Tombol QR Code */}
+              <button
+                type="button"
+                onClick={() => setIsQrModalOpen(true)}
+                className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40"
+                title="Tampilkan QR Code"
+              >
+                <QrCode className="w-5 h-5" />
+              </button>
+
+              {/* Tombol Buka Popup Absensi */}
+              <button
+                type="button"
+                onClick={() => setIsAttendanceListOpen(true)}
+                className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40 relative"
+                title="Buka Daftar Absensi"
+              >
+                <Users className="w-5 h-5" />
+                {stats.present > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[9px] font-mono font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-900">
+                    {stats.present > 99 ? "99+" : stats.present}
+                  </span>
+                )}
+              </button>
+
+              {/* Tombol Ekspor CSV */}
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40"
+                title="Ekspor CSV"
+              >
+                <FileDown className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Bottom Right: Cyan Floating Action Button (FAB) untuk Tambah Peserta */}
+            {canCreate && (
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(true)}
+                className="w-14 h-14 rounded-full bg-[#67e8f9] hover:bg-[#22d3ee] active:scale-95 text-zinc-950 flex items-center justify-center shadow-xl hover:scale-105 transition-all cursor-pointer border border-[#a5f3fc]"
+                title="Tambah Peserta Absen"
+              >
+                <Plus className="w-6 h-6 stroke-[2.5]" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ═══ MODAL: TAMBAH PESERTA MANUAL ═══ */}
+        <Modal
+          isOpen={isAddModalOpen}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setSelectedMemberIds([]);
+            setComboboxSearch("");
+            setError("");
+            setSuccess("");
+          }}
+          title="Tambah Peserta Absen"
+        >
+          <form onSubmit={handleAddMember} className="space-y-4">
+            {selectedMemberIds.length > 0 && (
+              <div className="space-y-2 bg-bg-well border border-border-default/60 rounded-xl p-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
+                    Peserta Terpilih ({selectedMemberIds.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMemberIds([])}
+                    className="text-[9px] font-bold text-[#b91c1c] hover:underline cursor-pointer uppercase"
+                  >
+                    Hapus Semua
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto scrollbar-thin py-1">
+                  {selectedMemberIds.map(id => {
+                    const m = members.find(member => member.id === id);
+                    if (!m) return null;
+                    return (
+                      <div
+                        key={id}
+                        className="flex items-center gap-1.5 bg-bg-card border border-border-default/80 rounded-full py-1 pl-3 pr-2 text-xs font-semibold text-text-primary shadow-sm hover:border-red-500/30 group transition-all"
+                      >
+                        <span>{m.full_name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMemberIds(prev => prev.filter(mid => mid !== id))}
+                          className="w-4 h-4 rounded-full bg-bg-well hover:bg-red-500 hover:text-white flex items-center justify-center text-[10px] font-bold transition-colors cursor-pointer text-text-secondary"
+                          title="Hapus dari pilihan"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-text-primary uppercase tracking-wider block">
+                Pilih Peserta (Bisa memilih beberapa)
+              </label>
+              <div className="relative mt-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between bg-bg-well border border-border-default rounded-full py-3 px-6 text-xs text-text-primary focus:outline-none cursor-pointer pr-10 font-bold text-left min-h-10"
+                    >
+                      <span className="truncate">
+                        {selectedMemberIds.length > 0
+                          ? `${selectedMemberIds.length} Peserta Terpilih`
+                          : availableMembers.length === 0
+                            ? "Semua member sudah terdaftar"
+                            : "Cari & Pilih Member..."}
+                      </span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[var(--radix-popover-trigger-width)] p-0 z-50 bg-bg-card border border-border-default/85 rounded-2xl shadow-xl animate-in fade-in-50 zoom-in-95 duration-150"
+                    align="start"
+                    sideOffset={6}
+                  >
+                    <div className="flex items-center border-b border-border-default/50 px-6 py-4">
+                      <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-55 text-text-secondary" />
+                      <input
+                        placeholder="Cari nama atau No. WA..."
+                        value={comboboxSearch}
+                        onChange={(e) => setComboboxSearch(e.target.value)}
+                        className="flex h-7 w-full rounded-md bg-transparent text-xs outline-none placeholder:text-text-muted text-text-primary border-none p-0 focus:ring-0 focus:outline-none"
+                      />
+                    </div>
+                    <div className="max-h-60 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin">
+                      {filteredComboboxMembers.length === 0 ? (
+                        <p className="text-[11px] text-text-muted text-center py-4">
+                          Tidak ada member ditemukan.
+                        </p>
+                      ) : (
+                        filteredComboboxMembers.map((member) => {
+                          const isSelected = selectedMemberIds.includes(member.id);
+                          return (
+                            <button
+                              key={member.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedMemberIds(prev =>
+                                  isSelected
+                                    ? prev.filter(id => id !== member.id)
+                                    : [...prev, member.id]
+                                );
+                              }}
+                              className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-xs hover:bg-bg-well transition-colors text-text-primary font-medium cursor-pointer"
+                            >
+                              <div className="flex items-center justify-center w-4 h-4 border border-border-default rounded bg-bg-well shrink-0">
+                                {isSelected && <Check className="h-3 w-3 text-text-primary" />}
+                              </div>
+                              <div className="flex-1 truncate">
+                                {member.full_name}{" "}
+                                {member.whatsapp_number && (
+                                  <span className="text-text-muted font-normal text-[10px]">
+                                    ({member.whatsapp_number})
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <ChevronDown className="absolute right-3.5 top-3.5 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
-                Pindai untuk Hadir
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
+                <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {success && (
+              <div className="p-3 bg-green-500/10 border border-green-500/30 text-[#2D5A00] rounded-xl text-xs font-semibold flex items-start gap-2 animate-pulse">
+                <UserCheck className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+                <span>{success}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmitting || selectedMemberIds.length === 0}
+              className="w-full bg-text-primary text-bg-card border border-text-primary rounded-full py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader className="w-4.5 h-4.5 animate-spin" />
+                  <span>Mendaftarkan...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4.5 h-4.5" />
+                  <span>Daftarkan {selectedMemberIds.length > 0 ? `(${selectedMemberIds.length})` : ""} Hadir</span>
+                </>
+              )}
+            </button>
+          </form>
+        </Modal>
+
+        {/* ═══ MODAL: QR CODE KEHADIRAN ACARA ═══ */}
+        <Modal
+          isOpen={isQrModalOpen}
+          onClose={() => setIsQrModalOpen(false)}
+          title="QR CODE KEHADIRAN ACARA"
+          icon={<QrCode size={20} />}
+        >
+          <div className="space-y-6 py-4 text-center">
+            <div className="space-y-2 border-b border-border-default/50 pb-3">
+              <h3 className="text-lg font-bold text-text-primary">
+                {event.title}
+              </h3>
+              <p className="text-xs text-text-secondary">
+                {formatDate(event.event_date)} • {event.start_time} - {event.end_time || "Selesai"}
               </p>
-              <p className="text-[9px] text-text-muted max-w-xs mx-auto">
-                Scan kode QR ini untuk mencatat kehadiran peserta secara langsung ke sistem.
+              <p className="text-xs text-text-muted font-medium">
+                📍 {event.location}
               </p>
             </div>
-          </div>
-        </div>
-      </Modal>
 
-      {/* Confirmation Modal */}
-      <ModalConfirmation
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-        title={confirmModal.title}
-        description={confirmModal.description}
-        onConfirm={confirmModal.onConfirm}
-        isLoading={confirmModal.isLoading}
-        type={confirmModal.type}
-      />
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <div className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm flex items-center justify-center">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+                    publicUrl
+                  )}`}
+                  alt={`QR Code Kehadiran ${event.title}`}
+                  className="w-52 h-52 object-contain"
+                />
+              </div>
+
+              <div className="w-full max-w-sm bg-bg-well border border-border-default/70 rounded-xl p-3 text-left space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted">
+                    Link Presensi Peserta
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyUrl(publicUrl)}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-primary hover:text-emerald-600 transition-colors cursor-pointer"
+                  >
+                    {copiedUrl ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-emerald-600 font-bold">Tersalin</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Salin Link</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 bg-bg-card border border-border-default/50 rounded-lg px-2.5 py-1.5 overflow-hidden">
+                  <p className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
+                    {publicUrl}
+                  </p>
+                  <a
+                    href={publicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-text-muted hover:text-text-primary p-0.5 transition-colors"
+                    title="Buka Link di Tab Baru"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
+                  Pindai untuk Hadir
+                </p>
+                <p className="text-[9px] text-text-muted max-w-xs mx-auto">
+                  Scan kode QR ini untuk mencatat kehadiran peserta secara langsung ke sistem.
+                </p>
+              </div>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Confirmation Modal */}
+        <ModalConfirmation
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+          title={confirmModal.title}
+          description={confirmModal.description}
+          onConfirm={confirmModal.onConfirm}
+          isLoading={confirmModal.isLoading}
+          type={confirmModal.type}
+        />
+      </div>
     </div>
   );
 }
