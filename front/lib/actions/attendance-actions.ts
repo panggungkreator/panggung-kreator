@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import nodemailer from "nodemailer";
 import { getAttendanceEmailSettingAction } from "@/lib/actions/settings-actions";
 
@@ -13,8 +14,10 @@ export async function checkAttendanceStatusAction(eventId: string) {
       data: { session },
     } = await supabase.auth.getSession();
 
+    const serviceClient = createServiceRoleClient();
+
     if (!session?.user) {
-      const { data: publicEvent } = await supabase
+      const { data: publicEvent } = await serviceClient
         .from("events")
         .select("*")
         .eq("id", eventId)
@@ -28,15 +31,14 @@ export async function checkAttendanceStatusAction(eventId: string) {
       };
     }
 
-
     const userId = session.user.id;
 
     // 2. Fetch Event Detail
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await serviceClient
       .from("events")
       .select("*")
       .eq("id", eventId)
-      .single();
+      .maybeSingle();
 
     if (eventError || !event) {
       return {
@@ -48,18 +50,32 @@ export async function checkAttendanceStatusAction(eventId: string) {
       };
     }
 
-    // 3. Fetch Member Profile
-    const { data: member } = await supabase
+    // 3. Fetch Member Profile (id atau email)
+    let member = null;
+    const { data: mById } = await serviceClient
       .from("members")
-      .select("id, full_name, stage_name, email")
+      .select("id, full_name, stage_name, email, username, avatar_url")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
+
+    if (mById) {
+      member = mById;
+    } else if (session.user.email) {
+      const { data: mByEmail } = await serviceClient
+        .from("members")
+        .select("id, full_name, stage_name, email, username, avatar_url")
+        .ilike("email", session.user.email)
+        .maybeSingle();
+      if (mByEmail) member = mByEmail;
+    }
+
+    const memberId = member?.id || userId;
 
     // 4. Cek Presensi Ganda di Tabel attendances
-    const { data: existingAttendance } = await supabase
+    const { data: existingAttendance } = await serviceClient
       .from("attendances")
       .select("id, is_present, scanned_at, created_at")
-      .eq("member_id", userId)
+      .eq("member_id", memberId)
       .eq("event_id", eventId)
       .eq("is_present", true)
       .maybeSingle();
@@ -81,7 +97,7 @@ export async function recordAttendanceAction(eventId: string) {
   try {
     const supabase = await createClient();
 
-    // 1. Cek User Session
+    // 1. Cek User Session (Keamanan: Pastikan user login)
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -91,33 +107,54 @@ export async function recordAttendanceAction(eventId: string) {
     }
 
     const userId = session.user.id;
+    const serviceClient = createServiceRoleClient();
 
     // 2. Fetch Event
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await serviceClient
       .from("events")
       .select("*")
       .eq("id", eventId)
-      .single();
+      .maybeSingle();
 
     if (eventError || !event) {
       return { success: false, error: "Acara tidak ditemukan." };
     }
 
-    // 3. Fetch Member Info
-    const { data: member } = await supabase
+    // 3. Fetch Member Info (cari via ID atau via email fallback)
+    let member = null;
+    const { data: mById } = await serviceClient
       .from("members")
       .select("id, full_name, stage_name, email")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
-    const userEmail = member?.email || session.user.email;
-    const userName = member?.stage_name || member?.full_name || "Kreator";
+    if (mById) {
+      member = mById;
+    } else if (session.user.email) {
+      const { data: mByEmail } = await serviceClient
+        .from("members")
+        .select("id, full_name, stage_name, email")
+        .ilike("email", session.user.email)
+        .maybeSingle();
+      if (mByEmail) member = mByEmail;
+    }
 
-    // 4. Validasi Absen Ganda (Backend Safeguard)
-    const { data: existingAttendance } = await supabase
+    if (!member) {
+      return {
+        success: false,
+        error: "Data anggota tidak ditemukan pada sistem. Hubungi admin untuk mendaftarkan akun Anda.",
+      };
+    }
+
+    const memberDbId = member.id;
+    const userEmail = member.email || session.user.email;
+    const userName = member.stage_name || member.full_name || "Kreator";
+
+    // 4. Validasi Absen Ganda
+    const { data: existingAttendance } = await serviceClient
       .from("attendances")
       .select("id")
-      .eq("member_id", userId)
+      .eq("member_id", memberDbId)
       .eq("event_id", eventId)
       .eq("is_present", true)
       .maybeSingle();
@@ -130,10 +167,10 @@ export async function recordAttendanceAction(eventId: string) {
       };
     }
 
-    // 5. Catat Presensi Baru
-    const { error: insertError } = await supabase.from("attendances").insert([
+    // 5. Catat Presensi Baru via Service Role (Bypass RLS Insert Restriction secara aman di Server)
+    const { error: insertError } = await serviceClient.from("attendances").insert([
       {
-        member_id: userId,
+        member_id: memberDbId,
         event_id: eventId,
         is_present: true,
         scan_method: "qr_code",
@@ -142,9 +179,10 @@ export async function recordAttendanceAction(eventId: string) {
     ]);
 
     if (insertError) {
-      console.error("Gagal mencatat absensi:", insertError);
+      console.error("Gagal mencatat absensi via service role:", insertError);
       return { success: false, error: insertError.message || "Gagal mencatat presensi." };
     }
+
 
     // 6. Kirim Email Konfirmasi (jika fitur aktif di Settings & SMTP dikonfigurasi)
     const isEmailEnabled = await getAttendanceEmailSettingAction();
