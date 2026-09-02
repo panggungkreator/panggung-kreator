@@ -142,8 +142,19 @@ export async function proxy(request: NextRequest) {
 
   if (isStaleTokenError) {
     console.log(`[PROXY] Stale token detected (${getUserError!.message}), clearing session cookies...`);
-    await supabase.auth.signOut();
+    await supabase.auth.signOut().catch(() => {});
+    // Bersihkan cookie auth secara eksplisit di level host maupun domain agar cookie ganda di Chrome terhapus
+    const allCookieNames = request.cookies.getAll().map((c) => c.name);
+    allCookieNames.forEach((name) => {
+      if (name.startsWith("sb-") || name.includes("auth") || name.includes("token")) {
+        response.cookies.set(name, "", { maxAge: 0, path: "/" });
+        if (cookieDomain) {
+          response.cookies.set(name, "", { maxAge: 0, path: "/", domain: cookieDomain });
+        }
+      }
+    });
   }
+
 
 
   // 6. Direct Path Guards (for localhost or direct path access)
@@ -261,11 +272,24 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(targetUrl, request.url));
     }
 
-    if (pathname === "/myprofile") {
+    if (pathname === "/myprofile" || pathname.startsWith("/myprofile/")) {
       if (!user) {
-        return NextResponse.redirect(new URL("/login", request.url));
+        const loginRedirect = new URL("/login", request.url);
+        const redirectRes = NextResponse.redirect(loginRedirect);
+        // Bersihkan cookie auth yang tidak valid/stale agar browser lama tidak terjebak dalam cookie korup
+        const cookieNames = request.cookies.getAll().map((c) => c.name);
+        cookieNames.forEach((name) => {
+          if (name.startsWith("sb-") || name.includes("auth") || name.includes("token")) {
+            redirectRes.cookies.set(name, "", { maxAge: 0, path: "/" });
+            if (cookieDomain) {
+              redirectRes.cookies.set(name, "", { maxAge: 0, path: "/", domain: cookieDomain });
+            }
+          }
+        });
+        return redirectRes;
       }
     }
+
 
     // If logged in (not in recovery mode) and goes to login page via GET (page load), redirect based on role/tier
     if (pathname === "/login" && user && !isRecoveryMode && request.method === "GET") {

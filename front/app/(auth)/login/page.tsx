@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithPasswordAction } from "@/lib/actions/auth-actions";
+import { clearStaleAuthStorage } from "@/lib/utils/url";
 import Logo from "@/components/ui/Logo";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -20,6 +21,12 @@ function LoginPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    // Bersihkan token basi di localStorage/sessionStorage agar tidak ada konflik multi-akun
+    clearStaleAuthStorage();
+  }, []);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

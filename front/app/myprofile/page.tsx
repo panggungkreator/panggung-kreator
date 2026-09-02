@@ -7,6 +7,7 @@ import { MemberProfile, ReferralMember } from "@/lib/types/member";
 import PortfolioManager from "@/components/member/PortfolioManager";
 import { toast } from "sonner";
 import { performCompleteSignOut } from "@/lib/utils/auth-client";
+import { clearStaleAuthStorage } from "@/lib/utils/url";
 import ProfileLayout from "./components/ProfileLayout";
 import ProfileSidebar from "./components/ProfileSidebar";
 import ProfileOverviewContent from "./components/ProfileOverviewContent";
@@ -48,9 +49,11 @@ export default function MyProfilePage() {
       }
 
       if (!user) {
+        clearStaleAuthStorage();
         router.push("/login");
         return;
       }
+
 
 
       // Parallel fetching initial data
