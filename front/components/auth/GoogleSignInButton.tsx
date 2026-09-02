@@ -114,7 +114,12 @@ export function GoogleSignInButton({
           use_fedcm_for_prompt: false,
         });
 
-        const containerWidth = containerRef.current.offsetWidth || 320;
+        // Dapatkan lebar form induk atau gunakan 400px (lebar maksimal resmi Google API)
+        const parentWidth =
+          containerRef.current.parentElement?.clientWidth ||
+          containerRef.current.clientWidth ||
+          400;
+        const targetWidth = Math.min(Math.max(parentWidth, 320), 400);
 
         window.google.accounts.id.renderButton(containerRef.current, {
           type: "standard",
@@ -123,12 +128,18 @@ export function GoogleSignInButton({
           text: text,
           shape: "rectangular",
           logo_alignment: "left",
-          width: Math.min(Math.max(containerWidth, 240), 400),
+          width: targetWidth,
         });
 
         setIsButtonReady(true);
-      } catch (err) {
 
+        // Munculkan kembali One Tap popup di web prod
+        window.google.accounts.id.prompt((notification: any) => {
+          if (notification?.isNotDisplayed?.()) {
+            console.debug("[GSI] One Tap not displayed:", notification.getNotDisplayedReason?.());
+          }
+        });
+      } catch (err) {
         console.error("Failed to render Google button:", err);
       }
     }
@@ -158,18 +169,19 @@ export function GoogleSignInButton({
       ) : (
         <div className="w-full flex flex-col items-center justify-center">
           {!isButtonReady && (
-            <div className="w-full py-2.5 px-4 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-mono text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 animate-pulse">
+            <div className="w-full py-3 px-4 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-mono text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 animate-pulse">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
               <span>Memuat Google Sign-In...</span>
             </div>
           )}
           <div
             ref={containerRef}
-            className={`w-full flex justify-center min-h-[44px] ${!isButtonReady ? "hidden" : "block"}`}
+            className={`w-full flex justify-center [&>div]:!w-full [&>div]:flex [&>div]:justify-center [&_iframe]:!w-full min-h-[44px] ${!isButtonReady ? "hidden" : "block"}`}
           />
         </div>
       )}
     </div>
   );
 }
+
 

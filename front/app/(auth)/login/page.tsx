@@ -268,15 +268,17 @@ function LoginPageContent() {
                 </div>
               </div>
 
-              <div className="w-full flex flex-col items-center">
+              <div className="w-full flex justify-center">
                 <GoogleSignInButton
                   redirectTo={redirectToParam || "/myprofile"}
                   onError={(err) => setError(err)}
                   onLoadingChange={(loading) => setIsGoogleLoading(loading)}
                   text="continue_with"
                   theme="outline"
+                  className="w-full"
                 />
               </div>
+
 
 
 
