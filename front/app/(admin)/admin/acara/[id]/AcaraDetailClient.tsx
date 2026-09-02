@@ -19,8 +19,11 @@ import {
   UserCheck,
   QrCode,
   ChevronRight,
-  Check
+  Check,
+  Copy,
+  ExternalLink
 } from "lucide-react";
+
 import { createClient } from "@/lib/supabase/client";
 import { hasPermission } from "@/lib/check-permission-client";
 import { manualAttendanceAddAction } from "@/lib/actions/attendance-actions";
@@ -102,8 +105,42 @@ export default function AcaraDetailClient({
     isLoading: false,
     type: "default",
   });
+  const [copiedUrl, setCopiedUrl] = useState(false);
+
+  // Dapatkan URL absensi yang selalu mengarah ke domain publik peserta (bukan admin subdomain)
+  const getPublicAbsensiUrl = (eventId: string) => {
+    if (typeof window === "undefined") {
+      return `/absensi/${eventId}`;
+    }
+
+    const host = window.location.host;
+    const protocol = window.location.protocol;
+    const cleanHost = host.split(":")[0].toLowerCase();
+
+    const isLocalhost =
+      cleanHost === "localhost" ||
+      cleanHost === "127.0.0.1" ||
+      cleanHost.endsWith(".localhost") ||
+      cleanHost.endsWith(".local") ||
+      /^(\d{1,3}\.){3}\d{1,3}$/.test(cleanHost);
+
+    if (isLocalhost) {
+      return `${protocol}//${host}/absensi/${eventId}`;
+    }
+
+    // Di production: Hilangkan prefix admin. atau akademi. agar selalu mengarah ke domain publik panggungkreator.web.id
+    const publicHost = host.replace(/^(admin\.|akademi\.)/i, "");
+    return `https://${publicHost}/absensi/${eventId}`;
+  };
+
+  const handleCopyUrl = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
 
   const formatDate = (dateStr: string) => {
+
     return new Date(dateStr).toLocaleDateString("id-ID", {
       day: "2-digit",
       month: "short",
@@ -756,27 +793,72 @@ export default function AcaraDetailClient({
           </div>
 
           {/* QR Code Container */}
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <div className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm flex items-center justify-center">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-                  typeof window !== "undefined"
-                    ? `${window.location.origin}/absensi/${event.id}`
-                    : `/absensi/${event.id}`
-                )}`}
-                alt={`QR Code Kehadiran ${event.title}`}
-                className="w-52 h-52 object-contain"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
-                Pindai untuk Hadir
-              </p>
-              <p className="text-[9px] text-text-muted max-w-xs mx-auto">
-                Scan kode QR ini untuk mencatat kehadiran peserta secara langsung ke sistem.
-              </p>
-            </div>
-          </div>
+          {(() => {
+            const publicUrl = getPublicAbsensiUrl(event.id);
+            return (
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm flex items-center justify-center">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+                      publicUrl
+                    )}`}
+                    alt={`QR Code Kehadiran ${event.title}`}
+                    className="w-52 h-52 object-contain"
+                  />
+                </div>
+
+                {/* Tautan URL Publik Peserta */}
+                <div className="w-full max-w-sm bg-bg-well border border-border-default/70 rounded-xl p-3 text-left space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted">
+                      Link Presensi Peserta
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyUrl(publicUrl)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-primary hover:text-emerald-600 transition-colors cursor-pointer"
+                    >
+                      {copiedUrl ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span className="text-emerald-600 font-bold">Tersalin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Salin Link</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 bg-bg-card border border-border-default/50 rounded-lg px-2.5 py-1.5 overflow-hidden">
+                    <p className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
+                      {publicUrl}
+                    </p>
+                    <a
+                      href={publicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-text-muted hover:text-text-primary p-0.5 transition-colors"
+                      title="Buka Link di Tab Baru"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
+                    Pindai untuk Hadir
+                  </p>
+                  <p className="text-[9px] text-text-muted max-w-xs mx-auto">
+                    Scan kode QR ini untuk mencatat kehadiran peserta secara langsung ke sistem.
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
         </div>
       </Modal>
 
