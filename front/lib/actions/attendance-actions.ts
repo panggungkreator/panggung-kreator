@@ -14,8 +14,20 @@ export async function checkAttendanceStatusAction(eventId: string) {
     } = await supabase.auth.getSession();
 
     if (!session?.user) {
-      return { authenticated: false, isAttended: false, event: null, member: null };
+      const { data: publicEvent } = await supabase
+        .from("events")
+        .select("*")
+        .eq("id", eventId)
+        .maybeSingle();
+
+      return {
+        authenticated: false,
+        isAttended: false,
+        event: publicEvent,
+        member: null,
+      };
     }
+
 
     const userId = session.user.id;
 

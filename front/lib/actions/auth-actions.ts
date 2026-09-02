@@ -60,24 +60,41 @@ export async function signout() {
   return { success: true };
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(nextParam?: string) {
   const supabase = await createClient();
   const headersList = await headers();
-  const origin = headersList.get("origin");
+  const host = headersList.get("host") || "www.panggungkreator.web.id";
+  const proto = headersList.get("x-forwarded-proto") || (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+  const origin = headersList.get("origin") || `${proto}://${host}`;
+
+  const callbackUrl = new URL(`${origin}/auth/callback`);
+  if (nextParam) {
+    callbackUrl.searchParams.set("next", nextParam);
+  }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: callbackUrl.toString(),
+      queryParams: {
+        access_type: "offline",
+        prompt: "select_account",
+      },
     },
   });
 
   if (error) {
-    return redirect("/login?message=Could not authenticate user");
+    console.error("[AUTH ACTION] signInWithGoogle error:", error);
+    return redirect(`/login?error=${encodeURIComponent(error.message || "Gagal mengautentikasi dengan Google")}`);
   }
 
-  return redirect(data.url);
+  if (data?.url) {
+    return redirect(data.url);
+  }
+
+  return redirect("/login?error=OAuth URL tidak ditemukan");
 }
+
 
 export async function signInWithGithub() {
   const supabase = await createClient();

@@ -1,8 +1,16 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+function noCacheRedirect(url: URL | string, init?: { headers?: HeadersInit }) {
+  const res = NextResponse.redirect(url, init);
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  res.headers.set("Pragma", "no-cache");
+  return res;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+
 
   // 1. Skip static assets, favicon, files with extensions, etc.
   if (
@@ -113,7 +121,7 @@ export async function proxy(request: NextRequest) {
     console.log(`[PROXY SECURITY] Recovery session blocked from accessing protected route ${pathname}.`);
     await supabase.auth.signOut().catch(() => {});
     const loginRedirect = new URL("/login", request.url);
-    const redirectResponse = NextResponse.redirect(loginRedirect, {
+    const redirectResponse = noCacheRedirect(loginRedirect, {
       headers: response.headers,
     });
     redirectResponse.cookies.set("sb-recovery-mode", "", { maxAge: 0, path: "/" });
@@ -275,7 +283,7 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/myprofile" || pathname.startsWith("/myprofile/")) {
       if (!user) {
         const loginRedirect = new URL("/login", request.url);
-        const redirectRes = NextResponse.redirect(loginRedirect);
+        const redirectRes = noCacheRedirect(loginRedirect);
         // Bersihkan cookie auth yang tidak valid/stale agar browser lama tidak terjebak dalam cookie korup
         const cookieNames = request.cookies.getAll().map((c) => c.name);
         cookieNames.forEach((name) => {
@@ -288,8 +296,11 @@ export async function proxy(request: NextRequest) {
         });
         return redirectRes;
       }
-    }
 
+      // Pastikan response /myprofile tidak pernah di-cache oleh browser mobile
+      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+      response.headers.set("Pragma", "no-cache");
+    }
 
     // If logged in (not in recovery mode) and goes to login page via GET (page load), redirect based on role/tier
     if (pathname === "/login" && user && !isRecoveryMode && request.method === "GET") {
@@ -307,12 +318,13 @@ export async function proxy(request: NextRequest) {
           const adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL
             ? `${process.env.NEXT_PUBLIC_ADMIN_URL}/`
             : `${defaultAdminUrl}/`;
-          return NextResponse.redirect(new URL(adminRedirectUrl, request.url));
+          return noCacheRedirect(new URL(adminRedirectUrl, request.url));
         } else {
-          return NextResponse.redirect(new URL("/myprofile", request.url));
+          return noCacheRedirect(new URL("/myprofile", request.url));
         }
       }
     }
+
 
     return response;
   }

@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, use, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
   checkAttendanceStatusAction,
   recordAttendanceAction,
 } from "@/lib/actions/attendance-actions";
+import { signInWithGoogle } from "@/lib/actions/auth-actions";
 import {
   Calendar,
   Clock,
@@ -26,57 +27,22 @@ interface AbsensiPageProps {
   params: Promise<{ eventId: string }>;
 }
 
-export default function AbsensiPage({ params }: AbsensiPageProps) {
+function AbsensiContent({ eventId }: { eventId: string }) {
   const router = useRouter();
-  const { eventId } = use(params);
+  const searchParams = useSearchParams();
+  const autoClaimParam = searchParams.get("autoClaim") === "true";
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAlreadyAttended, setIsAlreadyAttended] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [eventData, setEventData] = useState<any>(null);
   const [memberData, setMemberData] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function initCheck() {
-      setIsLoading(true);
-      setErrorMessage(null);
-      try {
-        const result = await checkAttendanceStatusAction(eventId);
-
-        if (!result.authenticated) {
-          // Redirect ke halaman login dengan param redirectTo
-          const redirectTarget = `/absensi/${eventId}`;
-          router.push(`/login?redirectTo=${encodeURIComponent(redirectTarget)}`);
-          return;
-        }
-
-        if (result.error) {
-          setErrorMessage(result.error);
-          setIsLoading(false);
-          return;
-        }
-
-        setEventData(result.event);
-        setMemberData(result.member);
-        setIsAlreadyAttended(result.isAttended);
-      } catch (err: any) {
-        console.error("Error checking attendance:", err);
-        setErrorMessage("Gagal memuat informasi presensi acara.");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    if (eventId) {
-      initCheck();
-    }
-  }, [eventId, router]);
-
-  const handleClaimAttendance = async () => {
-    if (isSubmitting || isAlreadyAttended) return;
-
+  const claimAttendance = async () => {
     setIsSubmitting(true);
     try {
       const res = await recordAttendanceAction(eventId);
@@ -90,7 +56,7 @@ export default function AbsensiPage({ params }: AbsensiPageProps) {
           toast.success(res.message || "Presensi berhasil dicatat! Email konfirmasi telah dikirim.");
         }
 
-        // Redirect otomatis ke /myprofile setelah 2 detik
+        // Redirect otomatis ke /myprofile setelah 2.2 detik
         setTimeout(() => {
           router.push("/myprofile");
         }, 2200);
@@ -102,6 +68,76 @@ export default function AbsensiPage({ params }: AbsensiPageProps) {
       console.error("Submit attendance error:", err);
       toast.error("Terjadi kesalahan jaringan.");
       setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function initCheck() {
+      setIsLoading(true);
+      setErrorMessage(null);
+      try {
+        const result = await checkAttendanceStatusAction(eventId);
+        if (!isMounted) return;
+
+        if (!result.authenticated) {
+          setIsAuthenticated(false);
+          setEventData(result.event);
+          setIsLoading(false);
+          return;
+        }
+
+        setIsAuthenticated(true);
+        if (result.error) {
+          setErrorMessage(result.error);
+          setIsLoading(false);
+          return;
+        }
+
+        setEventData(result.event);
+        setMemberData(result.member);
+        setIsAlreadyAttended(result.isAttended);
+        setIsLoading(false);
+
+        // Jika user baru login lewat alur QR (autoClaim=true) dan belum absen, otomatis catat absen!
+        if (!result.isAttended && autoClaimParam) {
+          claimAttendance();
+        }
+      } catch (err: any) {
+        console.error("Error checking attendance:", err);
+        if (isMounted) {
+          setErrorMessage("Gagal memuat informasi presensi acara.");
+          setIsLoading(false);
+        }
+      }
+    }
+
+    if (eventId) {
+      initCheck();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [eventId, autoClaimParam]);
+
+  const handleClaimAttendance = async () => {
+    if (isSubmitting || isAlreadyAttended) return;
+    await claimAttendance();
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    try {
+      await signInWithGoogle(`/absensi/${eventId}?autoClaim=true`);
+    } catch (err: any) {
+      if (err?.message?.includes("NEXT_REDIRECT")) {
+        return;
+      }
+      console.error("Google sign in error:", err);
+      toast.error("Gagal menghubungkan ke Google.");
+      setIsGoogleLoading(false);
     }
   };
 
@@ -134,7 +170,7 @@ export default function AbsensiPage({ params }: AbsensiPageProps) {
     );
   }
 
-  if (errorMessage || !eventData) {
+  if (errorMessage || (!eventData && isAuthenticated)) {
     return (
       <div className="min-h-screen w-full flex flex-col justify-between bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 font-sans">
         <Header />
@@ -163,8 +199,115 @@ export default function AbsensiPage({ params }: AbsensiPageProps) {
       <Header />
 
       <main className="max-w-xl w-full mx-auto pt-28 pb-16 px-4 sm:px-6 flex-1 flex flex-col justify-center">
-        {/* HASIL / STATUS VERIFIKASI PRESENSI GANDA */}
-        {isAlreadyAttended || isSuccess ? (
+        {/* TAMPILAN BELUM LOGIN: CTA GOOGLE LOGIN UNTUK ABSENSI INSTAN */}
+        {!isAuthenticated ? (
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-6 sm:p-8 space-y-6 animate-fade-in rounded-none shadow-sm">
+            {/* HEADER BADGE */}
+            <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-4">
+              <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+                [ PRESENSI EVENT KOMUNITAS ]
+              </span>
+              <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 uppercase tracking-widest font-bold flex items-center gap-1">
+                <Sparkles size={12} /> SCAN QR VALID
+              </span>
+            </div>
+
+            {/* EVENT TITLE & SUMMARY */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">
+                ACARA YANG DIHADIRI
+              </span>
+              <h1 className="font-serif text-2xl sm:text-3xl text-neutral-900 dark:text-white font-normal leading-snug">
+                <span className="highlight-stabilo font-semibold">
+                  {eventData?.title || "Event Panggung Kreator"}
+                </span>
+              </h1>
+            </div>
+
+            {eventData && (
+              <div className="bg-neutral-50 dark:bg-neutral-950 p-4 border border-neutral-200 dark:border-neutral-800 space-y-2.5 text-xs font-sans">
+                {eventData.event_date && (
+                  <div className="flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300">
+                    <Calendar className="w-4 h-4 text-neutral-500 flex-shrink-0" />
+                    <span>{formatDate(eventData.event_date)}</span>
+                  </div>
+                )}
+                {eventData.start_time && (
+                  <div className="flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300">
+                    <Clock className="w-4 h-4 text-neutral-500 flex-shrink-0" />
+                    <span>
+                      {eventData.start_time} - {eventData.end_time || "Selesai"} WIB
+                    </span>
+                  </div>
+                )}
+                {eventData.location && (
+                  <div className="flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300">
+                    <MapPin className="w-4 h-4 text-neutral-500 flex-shrink-0" />
+                    <span>{eventData.location}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CTA SECTION: LOGIN DENGAN GOOGLE */}
+            <div className="pt-2 space-y-3">
+              <div className="text-center space-y-1 pb-1">
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
+                  Presensi Cepat Satu Klik
+                </h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  Masuk dengan akun Google Anda untuk konfirmasi dan pencatatan presensi secara otomatis.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={isGoogleLoading}
+                className="w-full py-3.5 px-6 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-100 font-mono text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-3 cursor-pointer font-bold border border-neutral-300 dark:border-neutral-700 shadow-sm disabled:opacity-50"
+              >
+                {isGoogleLoading ? (
+                  <>
+                    <Loader2 className="animate-spin h-4 w-4 text-neutral-500" />
+                    <span>Menghubungkan ke Google...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-1.04.69-2.37 1.1-3.71 1.1-2.85 0-5.27-1.92-6.13-4.49H2.18v2.82C4 20.36 7.77 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.87 14.01c-.22-.66-.35-1.36-.35-2.01s.13-1.35.35-2.01V7.17H2.18C1.43 8.47 1 9.93 1 11.5s.43 3.03 1.18 4.33l3.69-2.82z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.77 1 4 3.64 2.18 7.17l3.69 2.82C6.73 7.42 9.15 5.38 12 5.38z"
+                      />
+                    </svg>
+                    <span>Masuk dengan Google</span>
+                  </>
+                )}
+              </button>
+
+              <div className="pt-2 text-center">
+                <Link
+                  href={`/login?redirectTo=${encodeURIComponent(`/absensi/${eventId}?autoClaim=true`)}`}
+                  className="text-[11px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white underline font-mono tracking-wide"
+                >
+                  Atau masuk dengan email & password
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : isAlreadyAttended || isSuccess ? (
+          /* HASIL / STATUS VERIFIKASI PRESENSI GANDA */
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-6 sm:p-8 space-y-6 animate-fade-in rounded-none shadow-sm text-center">
             {/* ICON CHECK BADGE */}
             <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-800">
@@ -297,6 +440,7 @@ export default function AbsensiPage({ params }: AbsensiPageProps) {
             {/* MAIN ACTION BUTTON */}
             <div className="pt-2 space-y-3">
               <button
+                type="button"
                 onClick={handleClaimAttendance}
                 disabled={isSubmitting}
                 className="w-full py-3.5 px-6 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-mono text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2 cursor-pointer font-bold border border-neutral-900 dark:border-white disabled:opacity-50"
@@ -324,5 +468,28 @@ export default function AbsensiPage({ params }: AbsensiPageProps) {
 
       <Footer />
     </div>
+  );
+}
+
+export default function AbsensiPage({ params }: AbsensiPageProps) {
+  const { eventId } = use(params);
+
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen w-full flex flex-col justify-between bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 font-sans">
+          <Header />
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3 pt-28">
+            <Loader2 className="animate-spin h-8 w-8 text-neutral-900 dark:text-white" />
+            <span className="text-xs font-mono uppercase tracking-widest text-neutral-500">
+              Memuat Presensi...
+            </span>
+          </div>
+          <Footer />
+        </div>
+      }
+    >
+      <AbsensiContent eventId={eventId} />
+    </Suspense>
   );
 }
