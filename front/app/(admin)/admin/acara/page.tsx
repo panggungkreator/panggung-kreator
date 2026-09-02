@@ -27,7 +27,7 @@ export default async function AcaraPage() {
     redirect("/myprofile");
   }
 
-  // Fetch events along with their attendance records to calculate present counts
+  // Fetch events along with their attendance records to calculate present counts and attendees
   const { data: rawEvents } = await supabase
     .from("events")
     .select(`
@@ -43,7 +43,12 @@ export default async function AcaraPage() {
       is_published,
       created_at,
       attendances (
-        is_present
+        id,
+        is_present,
+        members (
+          full_name,
+          avatar_url
+        )
       )
     `)
     .order("event_date", { ascending: false });
@@ -52,9 +57,18 @@ export default async function AcaraPage() {
 
   // Format events for client consumption
   const formattedEvents = events.map((e: any) => {
-    const presentCount = (e.attendances || []).filter((a: any) => a.is_present).length;
+    const presentList = (e.attendances || []).filter((a: any) => a.is_present);
+    const presentCount = presentList.length;
     const totalRegistered = (e.attendances || []).length;
     
+    const attendees = presentList
+      .filter((a: any) => a.members)
+      .map((a: any) => ({
+        name: a.members?.full_name || "Peserta",
+        avatar: a.members?.avatar_url || null,
+      }))
+      .slice(0, 4);
+
     return {
       id: e.id,
       title: e.title,
@@ -68,9 +82,11 @@ export default async function AcaraPage() {
       is_published: e.is_published ?? false,
       created_at: e.created_at,
       present_count: presentCount,
-      total_registered: totalRegistered
+      total_registered: totalRegistered,
+      attendees,
     };
   });
+
 
   return <AcaraListClient initialEvents={formattedEvents} />;
 }
