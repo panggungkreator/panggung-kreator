@@ -176,6 +176,7 @@ function ResetPasswordContent() {
               <span></span>
               <Link
                 href="/forgot-password"
+                prefetch={false}
                 className="font-bold text-amber-950 dark:text-amber-200 hover:underline flex items-center gap-1"
               >
                 Minta Link Baru &rarr;
@@ -228,6 +229,7 @@ function ResetPasswordContent() {
           <div className="pt-2 text-center">
             <Link
               href="/login"
+              prefetch={false}
               className="text-[10px] font-mono text-zinc-500 hover:text-black dark:hover:text-white transition-colors inline-flex items-center gap-1.5 uppercase tracking-wider"
             >
               <ArrowLeft className="w-3 h-3" />
@@ -309,6 +311,7 @@ function ResetPasswordContent() {
               <div className="pt-2 text-center">
                 <Link
                   href="/login"
+                  prefetch={false}
                   className="text-[10px] font-mono text-zinc-500 hover:text-black dark:hover:text-white transition-colors inline-flex items-center gap-1.5 uppercase tracking-wider"
                 >
                   <ArrowLeft className="w-3 h-3" />
@@ -323,11 +326,11 @@ function ResetPasswordContent() {
       {/* Footer */}
       <div className="flex flex-col sm:flex-row justify-between items-center max-w-md w-full mx-auto text-[9px] text-zinc-400 font-mono tracking-wider uppercase gap-4 pt-4 border-t border-zinc-200/50 dark:border-zinc-800/50">
         <div className="flex gap-4">
-          <Link href="/privacy" className="hover:text-black dark:hover:text-white transition-colors">
+          <Link href="/privacy" prefetch={false} className="hover:text-black dark:hover:text-white transition-colors">
             Privacy
           </Link>
           <span>•</span>
-          <Link href="/terms" className="hover:text-black dark:hover:text-white transition-colors">
+          <Link href="/terms" prefetch={false} className="hover:text-black dark:hover:text-white transition-colors">
             Terms
           </Link>
         </div>
