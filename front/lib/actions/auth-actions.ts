@@ -831,3 +831,30 @@ export async function resetPasswordAction(newPassword: string) {
   }
 }
 
+/**
+ * Validasi apakah email terdaftar di tabel members.
+ * Digunakan untuk memblokir login Google jika akun belum terdaftar di sistem.
+ */
+export async function checkMemberEmailExistsAction(email: string) {
+  if (!email) return { exists: false, member: null };
+  try {
+    const serviceClient = createServiceRoleClient();
+    const cleanEmail = email.trim().toLowerCase();
+    const { data: member, error } = await serviceClient
+      .from("members")
+      .select("id, email, role")
+      .ilike("email", cleanEmail)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[CHECK MEMBER EMAIL] Query error:", error);
+    }
+
+    return { exists: !!member, member: member || null };
+  } catch (e) {
+    console.error("[CHECK MEMBER EMAIL] Exception:", e);
+    return { exists: false, member: null };
+  }
+}
+
+

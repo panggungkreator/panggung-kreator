@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { createClient } from "@/lib/supabase/client";
+import { checkMemberEmailExistsAction } from "@/lib/actions/auth-actions";
 import { Loader2 } from "lucide-react";
 
 interface GoogleSignInButtonProps {
@@ -22,6 +23,23 @@ declare global {
 const GOOGLE_CLIENT_ID =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
   "150554382998-bnautg5j9esbm2u0hm7vhbask8kqc4nn.apps.googleusercontent.com";
+
+function parseJwt(token: string) {
+  try {
+    const base64Url = token.split(".")[1];
+    if (!base64Url) return null;
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+}
 
 export function GoogleSignInButton({
   redirectTo,
@@ -76,6 +94,27 @@ export function GoogleSignInButton({
     if (onLoadingChange) onLoadingChange(true);
 
     try {
+      // 1. Ekstrak email dari token kredensial Google
+      const payload = parseJwt(response.credential);
+      const googleEmail = payload?.email?.toLowerCase().trim();
+
+      if (!googleEmail) {
+        throw new Error("Email tidak ditemukan pada akun Google Anda.");
+      }
+
+      // 2. Validasi Sistem: Tolak login jika email belum terdaftar di tabel members
+      const { exists, member } = await checkMemberEmailExistsAction(googleEmail);
+
+      if (!exists || !member) {
+        setIsProcessing(false);
+        if (onLoadingChange) onLoadingChange(false);
+        const unregMsg =
+          "Email tidak terdaftar. Gunakan email saat register atau hubungi admin.";
+        if (onError) onError(unregMsg);
+        return;
+      }
+
+      // 3. Email terdaftar! Lanjutkan proses sign in via ID token
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: "google",
@@ -98,6 +137,7 @@ export function GoogleSignInButton({
       if (onLoadingChange) onLoadingChange(false);
     }
   };
+
 
   const renderGoogleButton = () => {
     if (typeof window !== "undefined" && window.google?.accounts?.id && containerRef.current) {

@@ -75,15 +75,18 @@ export async function GET(request: Request) {
 
     const authUser = sessionData?.user;
     let isAdmin = false;
+    let member: any = null;
 
     if (authUser) {
         try {
             // 1. Cek di tabel members via Supabase client (berdasarkan auth id)
-            let { data: member } = await supabase
+            const { data: mById } = await supabase
                 .from("members")
                 .select("id, role, email")
                 .eq("id", authUser.id)
                 .maybeSingle();
+            if (mById) member = mById;
+
 
             // 2. Jika tidak ditemukan via ID, cari via email
             if (!member && authUser.email) {
@@ -143,7 +146,16 @@ export async function GET(request: Request) {
         } catch (mErr) {
             console.error("[AUTH CALLBACK] Error checking member role:", mErr);
         }
+
+        // Validasi Sistem: Jika email akun Google tidak terdaftar di tabel members, tolak login!
+        if (!member) {
+            console.warn(`[AUTH CALLBACK] Unauthorized login: ${authUser.email} tidak terdaftar di tabel members.`);
+            await supabase.auth.signOut({ scope: "global" });
+            const errorMsg = encodeURIComponent("Email tidak terdaftar. Gunakan email saat register atau hubungi admin.");
+            return NextResponse.redirect(new URL(`/login?error=${errorMsg}`, request.url));
+        }
     }
+
 
     // Tentukan URL tujuan
     const nextParam = searchParams.get("next");
