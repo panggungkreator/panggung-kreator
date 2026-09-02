@@ -24,9 +24,11 @@ export function createClient() {
 
   // Reuse browser client singleton instance
   if (!supabaseBrowserInstance) {
-    const hostname = window.location.hostname;
-    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
+    const hostname = window.location.hostname.toLowerCase();
+    const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(":") || hostname === "[::1]";
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost") || hostname.endsWith(".local") || isIpAddress;
     const isProd = !isLocalhost && (hostname.endsWith("web.id") || hostname.endsWith(".com"));
+
 
     let cookieDomain = undefined;
     if (!isLocalhost) {

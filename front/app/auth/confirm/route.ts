@@ -1,7 +1,7 @@
 import { type EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { getPublicOrigin } from "@/lib/utils/url";
+import { getPublicOrigin, getCookieDomain } from "@/lib/utils/url";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -19,20 +19,8 @@ export async function GET(request: Request) {
     const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim().replace(/^["']|["']$/g, "");
 
     const host = request.headers.get("host") || "";
-    const cleanHost = host.split(":")[0];
-    const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
+    const cookieDomain = getCookieDomain(host);
 
-    let cookieDomain: string | undefined = undefined;
-    if (!isLocalhost) {
-      const parts = cleanHost.split(".");
-      if (parts.length >= 2) {
-        if (cleanHost.endsWith(".web.id") && parts.length >= 3) {
-          cookieDomain = `.${parts.slice(-3).join(".")}`;
-        } else {
-          cookieDomain = `.${parts.slice(-2).join(".")}`;
-        }
-      }
-    }
 
     const supabase = createServerClient(cleanUrl, anonKey, {
       cookies: {

@@ -15,9 +15,12 @@ export async function proxy(request: NextRequest) {
 
   // 2. Detect subdomain, protocol, and port dynamically
   const host = request.headers.get("host") || "";
-  const cleanHost = host.split(":")[0];
+  const cleanHost = host.split(":")[0].toLowerCase();
   const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
-  const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
+
+  // Cek apakah host berupa localhost atau IP address (IPv4/IPv6 saat diakses dari HP via LAN)
+  const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(cleanHost) || cleanHost.includes(":") || cleanHost === "[::1]";
+  const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost") || cleanHost.endsWith(".local") || isIpAddress;
 
   let rootDomain = "panggungkreator.web.id";
   if (!isLocalhost) {
@@ -30,14 +33,15 @@ export async function proxy(request: NextRequest) {
       }
     }
   } else {
-    rootDomain = "localhost";
+    rootDomain = cleanHost;
   }
 
   const protocol = request.nextUrl.protocol; // "http:" or "https:"
-  const rootHost = rootDomain === "localhost" ? `localhost${port}` : `${rootDomain}${port}`;
+  const rootHost = isLocalhost ? `${cleanHost}${port}` : `${rootDomain}${port}`;
 
-  const sub = cleanHost.replace(`.${rootDomain}`, "").replace(rootDomain, "");
-  const isRootDomain = sub === "" || sub === "www" || sub === "localhost";
+  const sub = isLocalhost ? "" : cleanHost.replace(`.${rootDomain}`, "").replace(rootDomain, "");
+  const isRootDomain = isLocalhost || sub === "" || sub === "www";
+
 
   // 3. Centralized login/register redirect
   // If accessing auth routes on a subdomain (admin or akademi), redirect to root domain login center

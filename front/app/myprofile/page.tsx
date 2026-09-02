@@ -37,14 +37,21 @@ export default function MyProfilePage() {
     setIsLoading(true);
     try {
       const supabase = createClient();
-      const {
+      let {
         data: { user },
       } = await supabase.auth.getUser();
+
+      // Fallback: jika getUser() belum terhidrasi di mobile browser, cek via getSession()
+      if (!user) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        user = sessionData?.session?.user ?? null;
+      }
 
       if (!user) {
         router.push("/login");
         return;
       }
+
 
       // Parallel fetching initial data
       const [profileRes, attendanceCountRes, referralRes, ledgerRes, tabVisRes] = await Promise.all([

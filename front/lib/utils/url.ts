@@ -71,13 +71,38 @@ export function clearStaleAuthStorage() {
 }
 
 /**
+ * Memeriksa apakah host merupakan localhost atau IP address (IPv4 / IPv6).
+ * Cookies pada IP address tidak boleh memiliki atribut domain (RFC 6265).
+ */
+export function isLocalOrIpHost(host?: string | null): boolean {
+  if (!host) return true;
+  const cleanHost = host.split(":")[0].toLowerCase();
+  if (
+    cleanHost === "localhost" ||
+    cleanHost === "127.0.0.1" ||
+    cleanHost === "0.0.0.0" ||
+    cleanHost.endsWith(".localhost") ||
+    cleanHost.endsWith(".local")
+  ) {
+    return true;
+  }
+  // Cek apakah berupa IPv4 (misal 192.168.x.x, 10.x.x.x, dll saat diakses dari HP via LAN)
+  const isIpv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(cleanHost);
+  if (isIpv4) return true;
+
+  // Cek apakah berupa IPv6
+  if (cleanHost.includes(":") || cleanHost === "[::1]") return true;
+
+  return false;
+}
+
+/**
  * Helper untuk mendapatkan cookie domain yang seragam di seluruh aplikasi.
  */
 export function getCookieDomain(host?: string | null): string | undefined {
   if (!host) return undefined;
-  const cleanHost = host.split(":")[0];
-  const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
-  if (isLocalhost) return undefined;
+  const cleanHost = host.split(":")[0].toLowerCase();
+  if (isLocalOrIpHost(cleanHost)) return undefined;
 
   const parts = cleanHost.split(".");
   if (parts.length >= 2) {
@@ -89,4 +114,5 @@ export function getCookieDomain(host?: string | null): string | undefined {
   }
   return undefined;
 }
+
 

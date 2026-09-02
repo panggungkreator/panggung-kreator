@@ -27,10 +27,12 @@ export default async function DashboardLayout({
 
   const headersList = await headers();
   const host = headersList.get("host") || "";
-  const cleanHost = host.split(":")[0];
-  const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost");
+  const cleanHost = host.split(":")[0].toLowerCase();
+  const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(cleanHost) || cleanHost.includes(":") || cleanHost === "[::1]";
+  const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost.endsWith(".localhost") || cleanHost.endsWith(".local") || isIpAddress;
 
   let rootDomain = "panggungkreator.web.id";
+
   if (!isLocalhost) {
     const parts = cleanHost.split(".");
     if (parts.length >= 2) {

@@ -34,7 +34,8 @@ function LoginPageContent() {
         const hostname = window.location.hostname;
         const port = window.location.port ? `:${window.location.port}` : "";
 
-        const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
+        const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(":") || hostname === "[::1]";
+        const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost") || hostname.endsWith(".local") || isIpAddress;
 
         let rootDomain = "panggungkreator.web.id";
         if (!isLocalhost) {
@@ -47,10 +48,10 @@ function LoginPageContent() {
             }
           }
         } else {
-          rootDomain = "localhost";
+          rootDomain = hostname;
         }
 
-        const rootHost = rootDomain === "localhost" ? `localhost${port}` : `${rootDomain}${port}`;
+        const rootHost = isLocalhost ? `${hostname}${port}` : `${rootDomain}${port}`;
 
         let adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
 
@@ -60,13 +61,13 @@ function LoginPageContent() {
             : `${protocol}//admin.${rootHost}/`;
         }
 
-        const userRedirectUrl = isLocalhost
-          ? "/myprofile"
-          : `${protocol}//${rootHost}/myprofile`;
+        // Gunakan relative path /myprofile agar tidak terjadi cross-host/cross-port mismatch di perangkat mobile / IP LAN
+        const userRedirectUrl = "/myprofile";
 
         const targetUrl = redirectToParam ? redirectToParam : userRedirectUrl;
 
         window.location.href = result.isAdmin ? adminRedirectUrl : targetUrl;
+
       } else {
         setError(result.error || "Terjadi kesalahan saat masuk.");
         setIsLoading(false);

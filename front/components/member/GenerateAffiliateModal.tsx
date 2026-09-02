@@ -46,7 +46,7 @@ export default function GenerateAffiliateModal({
         {/* Header with Icon */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 mb-1">
-            <Sparkles className="w-6 h-6 animate-pulse" />
+
           </div>
           <span className="text-[10px] font-mono uppercase tracking-widest text-[#bc151b] font-bold block">
             [ KODE AFFILIATE AKTIF ]
