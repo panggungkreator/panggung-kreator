@@ -30,11 +30,11 @@ export default function AdminPagination({
 
   return (
     <div
-      className={`bg-white dark:bg-[#121212] border border-border-default/70 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs select-none ${className}`}
+      className={`bg-white dark:bg-[#121212] border border-border-default/70 rounded-2xl p-3.5 sm:p-4 flex items-center justify-center shadow-xs select-none ${className}`}
     >
 
       {/* Navigation Controls */}
-      <div className="flex items-center justify-center gap-2">
+      <div className="flex items-center justify-center gap-2 flex-wrap">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
