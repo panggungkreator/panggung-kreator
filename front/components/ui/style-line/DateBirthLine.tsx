@@ -274,7 +274,7 @@ export const DateBirthLine: React.FC<DateBirthLineProps> = ({
   );
 };
 
-// Helper WheelColumn Component with Smooth Scroll Alignment & Click Selection
+// Helper WheelColumn Component with Smooth Scroll Alignment, Auto-Selection on Scroll & Click Selection
 interface WheelColumnProps<T> {
   items: T[];
   selectedValue: T;
@@ -289,11 +289,86 @@ function WheelColumn<T>({
   renderLabel,
 }: WheelColumnProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isProgrammaticScrollRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const programmaticTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialMountRef = useRef(true);
+
   const isSelected = (item: T) => {
-    if (typeof item === "object" && item !== null && "index" in item && typeof selectedValue === "object" && selectedValue !== null && "index" in selectedValue) {
+    if (
+      typeof item === "object" &&
+      item !== null &&
+      "index" in item &&
+      typeof selectedValue === "object" &&
+      selectedValue !== null &&
+      "index" in selectedValue
+    ) {
       return (item as any).index === (selectedValue as any).index;
     }
     return item === selectedValue;
+  };
+
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+
+  const isSelectedRef = useRef(isSelected);
+  isSelectedRef.current = isSelected;
+
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(() => {
+    const idx = items.findIndex((it) => isSelected(it));
+    return idx !== -1 ? idx : 0;
+  });
+
+  const itemHeight = 36; // 36px per row (h-9)
+
+  const commitSelection = (index: number) => {
+    if (index >= 0 && index < itemsRef.current.length) {
+      const item = itemsRef.current[index];
+      if (item !== undefined && !isSelectedRef.current(item)) {
+        onSelectRef.current(item);
+      }
+    }
+  };
+
+  const handleScroll = () => {
+    if (!containerRef.current) return;
+    const currentScrollTop = containerRef.current.scrollTop;
+    const currentIndex = Math.max(
+      0,
+      Math.min(itemsRef.current.length - 1, Math.round(currentScrollTop / itemHeight))
+    );
+
+    setHighlightedIndex(currentIndex);
+
+    if (isProgrammaticScrollRef.current) return;
+
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      commitSelection(currentIndex);
+    }, 80);
+  };
+
+  const handleScrollEnd = () => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+    if (isProgrammaticScrollRef.current) {
+      isProgrammaticScrollRef.current = false;
+      return;
+    }
+    if (!containerRef.current) return;
+    const currentIndex = Math.max(
+      0,
+      Math.min(itemsRef.current.length - 1, Math.round(containerRef.current.scrollTop / itemHeight))
+    );
+    setHighlightedIndex(currentIndex);
+    commitSelection(currentIndex);
   };
 
   // Scroll active item to middle on mount or when selectedValue changes
@@ -301,27 +376,86 @@ function WheelColumn<T>({
     if (!containerRef.current) return;
     const activeIndex = items.findIndex((it) => isSelected(it));
     if (activeIndex !== -1) {
-      const itemHeight = 36; // 36px per row
+      setHighlightedIndex(activeIndex);
       const targetScrollTop = activeIndex * itemHeight;
-      containerRef.current.scrollTo({
-        top: targetScrollTop,
-        behavior: "smooth",
-      });
+
+      if (isInitialMountRef.current) {
+        isInitialMountRef.current = false;
+        isProgrammaticScrollRef.current = true;
+        containerRef.current.scrollTop = targetScrollTop;
+        requestAnimationFrame(() => {
+          if (containerRef.current) {
+            containerRef.current.scrollTop = targetScrollTop;
+          }
+          setTimeout(() => {
+            isProgrammaticScrollRef.current = false;
+          }, 50);
+        });
+        return;
+      }
+
+      // Only scroll if container is not already positioned at target
+      if (Math.abs(containerRef.current.scrollTop - targetScrollTop) > 1) {
+        isProgrammaticScrollRef.current = true;
+        if (programmaticTimerRef.current) clearTimeout(programmaticTimerRef.current);
+        programmaticTimerRef.current = setTimeout(() => {
+          isProgrammaticScrollRef.current = false;
+        }, 400);
+
+        containerRef.current.scrollTo({
+          top: targetScrollTop,
+          behavior: "smooth",
+        });
+      }
     }
   }, [selectedValue, items]);
+
+  // Attach native scrollend listener
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.addEventListener("scrollend", handleScrollEnd);
+    return () => {
+      container.removeEventListener("scrollend", handleScrollEnd);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      if (programmaticTimerRef.current) clearTimeout(programmaticTimerRef.current);
+    };
+  }, []);
+
+  const handleClick = (item: T, idx: number) => {
+    setHighlightedIndex(idx);
+    onSelectRef.current(item);
+    if (containerRef.current) {
+      const targetScrollTop = idx * itemHeight;
+      if (Math.abs(containerRef.current.scrollTop - targetScrollTop) > 1) {
+        isProgrammaticScrollRef.current = true;
+        if (programmaticTimerRef.current) clearTimeout(programmaticTimerRef.current);
+        programmaticTimerRef.current = setTimeout(() => {
+          isProgrammaticScrollRef.current = false;
+        }, 400);
+
+        containerRef.current.scrollTo({
+          top: targetScrollTop,
+          behavior: "smooth",
+        });
+      }
+    }
+  };
 
   return (
     <div
       ref={containerRef}
+      onScroll={handleScroll}
       className="h-full overflow-y-auto scrollbar-none py-[72px] space-y-0 text-center"
       style={{ scrollSnapType: "y mandatory" }}
     >
       {items.map((item, idx) => {
-        const selected = isSelected(item);
+        const selected = idx === highlightedIndex;
         return (
           <div
             key={idx}
-            onClick={() => onSelect(item)}
+            onClick={() => handleClick(item, idx)}
             style={{ scrollSnapAlign: "center" }}
             className={cn(
               "h-9 flex items-center justify-center text-xs font-semibold cursor-pointer transition-all duration-150 rounded-lg",

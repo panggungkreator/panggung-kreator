@@ -71,7 +71,10 @@ export const Section1Profile: React.FC<Section1ProfileProps> = React.memo(functi
         id="birthDate"
         label="TANGGAL LAHIR *"
         value={birthDate}
-        onChange={setBirthDate}
+        onChange={(val) => {
+          setBirthDate(val);
+          handleFieldChange("birthDate", val);
+        }}
         error={fieldErrors.birthDate}
       />
 
