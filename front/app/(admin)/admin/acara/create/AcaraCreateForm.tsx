@@ -99,41 +99,41 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
   };
 
   return (
-    <div className="min-h-screen bg-card py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto bg-card border border-border-primary rounded-3xl p-6 sm:p-8 text-text-primary">
+    <div className="min-h-screen py-4 sm:py-8 px-3 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto border-0 sm:border border-border-default/70 rounded-none sm:rounded-3xl p-1 sm:p-8 text-text-primary bg-transparent sm:bg-card">
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border-primary pb-4 mb-6">
+        <div className="flex items-center justify-between border-b border-border-default/60 pb-4 mb-6">
           <div className="flex items-center gap-3">
             <Link
               href="/admin/acara"
-              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors cursor-pointer"
+              className="p-2 border border-border-default hover:bg-bg-well rounded-full text-text-secondary hover:text-text-primary transition-colors cursor-pointer shrink-0"
             >
-              <ArrowLeft className="w-5 h-5 text-zinc-500" />
+              <ArrowLeft size={16} />
             </Link>
             <div>
-              <h1 className="text-lg font-black text-zinc-900 dark:text-white uppercase tracking-widest font-title">
-                BUAT ACARA BARU
+              <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted block">
+                [ ACARA KOMUNITAS ]
+              </span>
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-text-primary mt-0.5">
+                Buat Acara Baru
               </h1>
-              <p className="text-xs text-zinc-400 font-semibold mt-0.5">
-                Silakan isi data acara komunitas di bawah ini secara lengkap.
-              </p>
             </div>
           </div>
 
           <div>
-            <span className="px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-500/20 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/10 font-bold">
+            <span className="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
               BARU
             </span>
           </div>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
 
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">
+            <label className="text-[11px] font-semibold text-text-secondary block">
               Nama / Judul Acara *
             </label>
             <input
@@ -142,37 +142,36 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Contoh: Open Mic Night Volume 10"
-              className="flex h-12 w-full rounded-xl border border-zinc-400 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition-all font-bold"
+              className="flex h-10 w-full rounded-xl border border-border-default bg-bg-well/50 px-3.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors font-medium"
             />
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">
+            <label className="text-[11px] font-semibold text-text-secondary block">
               Deskripsi Acara
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Detail kegiatan, syarat peserta, dsb..."
-              rows={4}
-              className="flex w-full rounded-md border border-zinc-400 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 text-sm text-text-primary placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition-all font-semibold"
+              rows={3}
+              className="flex w-full rounded-xl border border-border-default bg-bg-well/50 px-3.5 py-2.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors font-medium leading-relaxed"
             />
           </div>
 
-          {/* Event Type & Capacity */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-
+          {/* Event Type & Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             {/* Event Type */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">
+              <label className="text-[11px] font-semibold text-text-secondary block">
                 Tipe Acara *
               </label>
               <Select value={eventType} onValueChange={setEventType}>
-                <SelectTrigger className="w-full h-[50px] border-zinc-400 dark:border-zinc-800">
+                <SelectTrigger className="w-full h-10 rounded-xl px-3.5 text-xs font-medium bg-bg-well/50 border-border-default">
                   <SelectValue placeholder="Pilih Tipe Acara" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-bg-card border-border-default">
                   <SelectItem value="open_mic">Open Mic</SelectItem>
                   <SelectItem value="speech_practice">Speech Practice</SelectItem>
                   <SelectItem value="mc_practice">MC Practice</SelectItem>
@@ -183,54 +182,38 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
               </Select>
             </div>
 
-
             {/* Event Date */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">
+              <label className="text-[11px] font-semibold text-text-secondary block">
                 Tanggal Acara *
               </label>
               <DatePicker
                 value={eventDate}
                 onChange={setEventDate}
                 placeholder="Pilih Tanggal"
+                className="h-10 rounded-xl px-3.5 text-xs font-medium bg-bg-well/50 border-border-default"
               />
             </div>
-
-            {/* Capacity */}
-            {/* <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">
-                Kapasitas Peserta (Orang)
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={capacity}
-                onChange={(e) => setCapacity(Number(e.target.value))}
-                className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition-all font-bold"
-              />
-              <p className="text-[9px] text-text-muted mt-0.5">Isi 0 jika kapasitas tidak terbatas (unlimited)</p>
-            </div> */}
-
           </div>
 
           {/* Date & Time Picker */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             {/* Start Time */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">
+              <label className="text-[11px] font-semibold text-text-secondary block">
                 Waktu Mulai *
               </label>
               <TimePicker
                 value={startTime}
                 onChange={setStartTime}
                 placeholder="Pilih Waktu Mulai"
+                className="h-10 rounded-xl px-3.5 text-xs font-medium bg-bg-well/50 border-border-default"
               />
             </div>
 
             {/* End Time */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">
+              <label className="text-[11px] font-semibold text-text-secondary block">
                 Waktu Selesai *
               </label>
               <TimePicker
@@ -239,15 +222,15 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
                 placeholder="Pilih Waktu Selesai"
                 allowEmpty={true}
                 emptyLabel="Sampai Selesai"
+                className="h-10 rounded-xl px-3.5 text-xs font-medium bg-bg-well/50 border-border-default"
               />
             </div>
-
           </div>
 
           {/* Location Area */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">
+              <label className="text-[11px] font-semibold text-text-secondary block">
                 Lokasi / Alamat Lengkap *
               </label>
               <input
@@ -255,7 +238,7 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Tulis nama cafe, jalan, gedung..."
-                className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition-all font-medium"
+                className="flex h-10 w-full rounded-xl border border-border-default bg-bg-well/50 px-3.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors font-medium"
                 required
               />
             </div>
@@ -263,16 +246,16 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
             {/* Auto Populate Location helper from Venue options */}
             {venues.length > 0 && (
               <div className="space-y-1.5">
-                <span className="text-[9px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest block">
-                  Atau pilih dari Venue terdaftar:
+                <span className="text-[10px] font-semibold text-text-muted block">
+                  Atau pilih dari venue terdaftar:
                 </span>
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
                   {venues.map((v) => (
                     <button
                       key={v.id}
                       type="button"
                       onClick={() => handleSelectVenue(v.name, v.address)}
-                      className="text-[10px] font-bold px-3 py-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full text-zinc-650 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-400 transition-colors cursor-pointer"
+                      className="text-[11px] font-medium px-3 py-1 bg-bg-well/70 border border-border-default/70 hover:border-text-primary rounded-full text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                     >
                       {v.name}
                     </button>
@@ -283,45 +266,45 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
           </div>
 
           {/* Publish Checkbox */}
-          <div className="flex items-center gap-2 py-1 select-none">
+          <div className="flex items-center gap-2.5 py-1 select-none">
             <input
               type="checkbox"
               id="is_published"
               checked={isPublished}
               onChange={(e) => setIsPublished(e.target.checked)}
-              className="w-4.5 h-4.5 text-zinc-900 border-zinc-300 rounded focus:ring-0 cursor-pointer"
+              className="w-4 h-4 text-zinc-900 rounded border-border-default cursor-pointer accent-zinc-900 dark:accent-yellow-400"
             />
             <label
               htmlFor="is_published"
-              className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-widest cursor-pointer"
+              className="text-xs font-medium text-text-primary cursor-pointer"
             >
-              Publish Acara langsung (Terlihat di web publik)
+              Publish acara langsung (Terlihat di web publik)
             </label>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
-              <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+            <div className="p-3.5 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Submit Button */}
-          <div className="flex gap-4 pt-6 border-t border-zinc-400 dark:border-zinc-800">
+          {/* Submit & Cancel Buttons */}
+          <div className="flex items-center gap-3 pt-4 border-t border-border-default/60">
             <Link href="/admin/acara" className="flex-1">
-              <Button
+              <button
                 type="button"
                 disabled={isSubmitting}
-                className="w-full py-4 text-xs font-bold rounded-full border border-zinc-400 dark:border-zinc-800 bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-650 dark:text-zinc-300 transition-colors uppercase tracking-widest cursor-pointer disabled:opacity-50 h-auto"
+                className="w-full h-10 text-xs font-semibold rounded-xl border border-border-default bg-bg-well/50 hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:opacity-50"
               >
                 Batal
-              </Button>
+              </button>
             </Link>
-            <Button
+            <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 py-4 text-xs font-bold text-white bg-zinc-900 hover:bg-gray-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-full transition-all shadow-sm flex items-center justify-center gap-1.5 uppercase tracking-widest cursor-pointer disabled:opacity-50 h-auto"
+              className="flex-1 h-10 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -329,15 +312,14 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
                   <span>Menyimpan...</span>
                 </>
               ) : (
-                <>
-                  <span>Simpan</span>
-                </>
+                <span>Simpan</span>
               )}
-            </Button>
+            </button>
           </div>
 
         </form>
       </div>
     </div>
+
   );
 }

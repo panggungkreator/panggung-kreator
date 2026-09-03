@@ -38,16 +38,14 @@ export default async function VouchersPage() {
     console.error("Error fetching vouchers for admin:", error);
   }
 
-  return (
-    <div className="flex flex-col h-full animate-fade-in p-8 text-zinc-800">
-      {/* Main Content Title Area */}
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-bold font-title text-zinc-900 dark:text-white">
-          Voucher Diskon
-        </h2>
-      </div>
+  // Tarik batas limit pagination dari pengaturan sistem
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
 
-      <VoucherManagement initialVouchers={vouchers || []} />
-    </div>
+  return (
+    <VoucherManagement
+      initialVouchers={vouchers || []}
+      paginationLimit={paginationLimit}
+    />
   );
 }

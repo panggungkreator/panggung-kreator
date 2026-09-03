@@ -75,10 +75,15 @@ export default async function LogsPage() {
     admin_email: log.admin?.email || "",
   }));
 
+  // Fetch pagination limit setting
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
+
   return (
     <LogsClient 
       initialLogs={formattedLogs} 
-      adminsList={admins} 
+      adminsList={admins}
+      paginationLimit={paginationLimit}
     />
   );
 }

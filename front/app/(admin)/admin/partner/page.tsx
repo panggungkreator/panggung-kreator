@@ -54,5 +54,14 @@ export default async function PartnerPage() {
     created_at: p.created_at,
   }));
 
-  return <PartnerClient initialPartners={formattedPartners} />;
+  // Fetch pagination limit setting
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
+
+  return (
+    <PartnerClient
+      initialPartners={formattedPartners}
+      paginationLimit={paginationLimit}
+    />
+  );
 }

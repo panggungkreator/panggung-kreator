@@ -47,12 +47,12 @@ export const ModalConfirmation: React.FC<ModalConfirmationProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4">
       <div 
         className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" 
         onClick={() => !isLoading && onClose()}
       />
-      <div className="relative bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-150 dark:border-white/5 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in p-8 text-center">
+      <div className="relative bg-white dark:bg-zinc-900 rounded-none sm:rounded-[2rem] border-0 sm:border border-zinc-150 dark:border-white/5 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in p-6 sm:p-8 text-center">
 
         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${iconContainerClass}`}>
           <IconComponent className="w-8 h-8" />

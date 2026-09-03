@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { checkPermission } from "@/lib/check-permission";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { syncDualOperation } from "@/lib/supabase/dual-sync";
 
 export async function getVouchersAction() {
   const cookieStore = await cookies();
@@ -61,14 +62,18 @@ export async function createVoucherAction(data: {
     return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk membuat voucher." };
   }
 
-  const supabaseAdmin = createServiceRoleClient();
-
-  const { error } = await supabaseAdmin.from("vouchers").insert({
+  const payload = {
     code: data.code.toUpperCase(),
     discount_type: data.discount_type,
     discount_value: data.discount_value,
     max_uses: data.max_uses,
     is_active: true
+  };
+
+  const { devResult, error } = await syncDualOperation(async (client) => {
+    const { error: insErr } = await client.from("vouchers").insert(payload);
+    if (insErr) throw insErr;
+    return true;
   });
 
   if (error) {
@@ -92,9 +97,12 @@ export async function deleteVoucherAction(id: string) {
     return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk menghapus voucher." };
   }
 
-  const supabaseAdmin = createServiceRoleClient();
+  const { error } = await syncDualOperation(async (client) => {
+    const { error: delErr } = await client.from("vouchers").delete().eq("id", id);
+    if (delErr) throw delErr;
+    return true;
+  });
 
-  const { error } = await supabaseAdmin.from("vouchers").delete().eq("id", id);
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
@@ -113,9 +121,15 @@ export async function toggleVoucherAction(id: string, currentStatus: boolean) {
     return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk mengedit voucher." };
   }
 
-  const supabaseAdmin = createServiceRoleClient();
+  const { error } = await syncDualOperation(async (client) => {
+    const { error: updErr } = await client
+      .from("vouchers")
+      .update({ is_active: !currentStatus })
+      .eq("id", id);
+    if (updErr) throw updErr;
+    return true;
+  });
 
-  const { error } = await supabaseAdmin.from("vouchers").update({ is_active: !currentStatus }).eq("id", id);
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
@@ -146,14 +160,21 @@ export async function updateVoucherAction(id: string, data: {
     return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk mengedit voucher." };
   }
 
-  const supabaseAdmin = createServiceRoleClient();
-
-  const { error } = await supabaseAdmin.from("vouchers").update({
+  const payload = {
     code: data.code.toUpperCase(),
     discount_type: data.discount_type,
     discount_value: data.discount_value,
     max_uses: data.max_uses
-  }).eq("id", id);
+  };
+
+  const { error } = await syncDualOperation(async (client) => {
+    const { error: updErr } = await client
+      .from("vouchers")
+      .update(payload)
+      .eq("id", id);
+    if (updErr) throw updErr;
+    return true;
+  });
 
   if (error) {
     if (error.code === '23505') return { success: false, error: "Kode voucher sudah ada." };

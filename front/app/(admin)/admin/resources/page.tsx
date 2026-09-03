@@ -52,5 +52,14 @@ export default async function ResourcesPage() {
     created_at: r.created_at,
   }));
 
-  return <ResourcesClient initialResources={formattedResources} />;
+  // Fetch pagination limit setting
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
+
+  return (
+    <ResourcesClient
+      initialResources={formattedResources}
+      paginationLimit={paginationLimit}
+    />
+  );
 }

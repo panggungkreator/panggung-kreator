@@ -7,6 +7,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 import { COLOR_RANGERS } from "@/lib/constants";
+import { syncDualOperation } from "@/lib/supabase/dual-sync";
 
 async function getSupabaseClient() {
   const cookieStore = await cookies();
@@ -194,30 +195,32 @@ export async function saveAdminPermissionsAction(
   permissionRows: { privilege_item_id: string; action_id: string }[]
 ) {
   try {
-    const supabase = createServiceRoleClient();
-
-    // 1. Delete all existing permissions for this admin role
-    const { error: deleteError } = await supabase
-      .from("admin_role_permissions")
-      .delete()
-      .eq("admin_role_id", adminRoleId);
-
-    if (deleteError) throw deleteError;
-
-    // 2. Insert new permissions if any
-    if (permissionRows.length > 0) {
-      const inserts = permissionRows.map(row => ({
-        admin_role_id: adminRoleId,
-        privilege_item_id: row.privilege_item_id,
-        action_id: row.action_id
-      }));
-
-      const { error: insertError } = await supabase
+    // 1. Delete all existing permissions and insert new permissions with dual sync
+    const { error: dualErr } = await syncDualOperation(async (client) => {
+      const { error: deleteError } = await client
         .from("admin_role_permissions")
-        .insert(inserts);
+        .delete()
+        .eq("admin_role_id", adminRoleId);
 
-      if (insertError) throw insertError;
-    }
+      if (deleteError) throw deleteError;
+
+      if (permissionRows.length > 0) {
+        const inserts = permissionRows.map((row) => ({
+          admin_role_id: adminRoleId,
+          privilege_item_id: row.privilege_item_id,
+          action_id: row.action_id,
+        }));
+
+        const { error: insertError } = await client
+          .from("admin_role_permissions")
+          .insert(inserts);
+
+        if (insertError) throw insertError;
+      }
+      return true;
+    });
+
+    if (dualErr) throw dualErr;
 
     revalidatePath("/admin/admins");
     return { success: true };
@@ -277,36 +280,36 @@ export async function approveAdminAction(
       throw authError;
     }
 
-    // 3. Update member record to role = 'admin' and set username
-    const { error: updateMemberError } = await serviceRoleClient
-      .from("members")
-      .update({
-        role: "admin",
-        username: username
-      })
-      .eq("id", adminRole.member_id);
-
-    if (updateMemberError) {
-      throw updateMemberError;
-    }
-
-    // 4. Update admin_role status, label, approved_by, approved_at
+    // 3. Update member record to role = 'admin' and set username, plus update admin_role status with dual sync
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     const approvedBy = currentUser?.id || null;
 
-    const { error: updateRoleError } = await serviceRoleClient
-      .from("admin_roles")
-      .update({
-        status: "active",
-        label: label,
-        approved_by: approvedBy,
-        approved_at: new Date().toISOString()
-      })
-      .eq("id", adminRoleId);
+    const { error: dualErr } = await syncDualOperation(async (client) => {
+      const { error: updateMemberError } = await client
+        .from("members")
+        .update({
+          role: "admin",
+          username: username,
+        })
+        .eq("id", adminRole.member_id);
 
-    if (updateRoleError) {
-      throw updateRoleError;
-    }
+      if (updateMemberError) throw updateMemberError;
+
+      const { error: updateRoleError } = await client
+        .from("admin_roles")
+        .update({
+          status: "active",
+          label: label,
+          approved_by: approvedBy,
+          approved_at: new Date().toISOString(),
+        })
+        .eq("id", adminRoleId);
+
+      if (updateRoleError) throw updateRoleError;
+      return true;
+    });
+
+    if (dualErr) throw dualErr;
 
     // 5. Send Credentials Email via Nodemailer
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
@@ -388,29 +391,27 @@ export async function deleteAdminAction(adminRoleId: string) {
 
     const memberId = adminRole.member_id;
 
-    // 2. Delete privilege rows (admin_role_permissions)
-    const { error: permError } = await serviceRoleClient
-      .from("admin_role_permissions")
-      .delete()
-      .eq("admin_role_id", adminRoleId);
+    // 2. Delete privilege rows, admin_roles record, and members record across both databases
+    const { error: dualErr } = await syncDualOperation(async (client) => {
+      await client
+        .from("admin_role_permissions")
+        .delete()
+        .eq("admin_role_id", adminRoleId);
 
-    if (permError) throw permError;
+      await client
+        .from("admin_roles")
+        .delete()
+        .eq("id", adminRoleId);
 
-    // 3. Delete admin_roles record
-    const { error: roleError } = await serviceRoleClient
-      .from("admin_roles")
-      .delete()
-      .eq("id", adminRoleId);
+      await client
+        .from("members")
+        .delete()
+        .eq("id", memberId);
 
-    if (roleError) throw roleError;
+      return true;
+    });
 
-    // 4. Delete member record from members table
-    const { error: memberError } = await serviceRoleClient
-      .from("members")
-      .delete()
-      .eq("id", memberId);
-
-    if (memberError) throw memberError;
+    if (dualErr) throw dualErr;
 
     // 5. Delete auth user from Supabase Auth
     const { error: authError } = await serviceRoleClient.auth.admin.deleteUser(memberId);

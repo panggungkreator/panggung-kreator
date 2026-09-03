@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -9,18 +9,15 @@ import {
   Calendar,
   X,
   Upload,
-  ArrowLeft
+  ArrowLeft,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/file-compress";
-import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/DatePicker";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/Button";
+import { saveGalleryAlbumAction } from "@/lib/actions/gallery-actions";
+import { toast } from "sonner";
 
 interface Album {
   id: string;
@@ -45,7 +42,7 @@ const CATEGORIES = [
   { value: "mc-practice", label: "MC Practice" },
   { value: "networking", label: "Networking" },
   { value: "content-class", label: "Content Class" },
-  { value: "lainnya", label: "Lainnya" }
+  { value: "lainnya", label: "Lainnya" },
 ];
 
 const getStoragePathFromUrl = (url: string, bucketName: string): string | null => {
@@ -63,13 +60,11 @@ const getStoragePathFromUrl = (url: string, bucketName: string): string | null =
 export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [formError, setFormError] = useState("");
 
   // Form State
   const [title, setTitle] = useState(initialAlbum?.title || "");
   const [category, setCategory] = useState(initialAlbum?.category || "open-mic");
-
-  // Set default date to initialAlbum date or today in YYYY-MM-DD local format
   const [eventDate, setEventDate] = useState(() => {
     if (initialAlbum?.event_date) return initialAlbum.event_date;
     const today = new Date();
@@ -84,69 +79,52 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
   const [previewUrl, setPreviewUrl] = useState(initialAlbum?.hero_image_url || "");
   const [albumLink, setAlbumLink] = useState(initialAlbum?.album_link || "");
   const [description, setDescription] = useState(initialAlbum?.description || "");
-  const [isPublished, setIsPublished] = useState(initialAlbum ? initialAlbum.is_published : true);
-  const [displayOrder, setDisplayOrder] = useState(initialAlbum?.display_order || 0);
+  const [isPublished, setIsPublished] = useState(
+    initialAlbum ? initialAlbum.is_published : true
+  );
 
-  // Slug generator helper
-  const generateSlug = (text: string) => {
-    return text
-      .toString()
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, "-")
-      .replace(/[^\w\-]+/g, "")
-      .replace(/\-\-+/g, "-")
-      .replace(/^-+/, "")
-      .replace(/-+$/, "");
-  };
-
-  // Handle image selection (no immediate upload)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    setHeroImageFile(file);
-
-    // Revoke old blob URL to prevent memory leaks
-    if (previewUrl && previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(previewUrl);
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Hanya file gambar yang diizinkan!");
+        return;
+      }
+      setHeroImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
     }
-
-    setPreviewUrl(URL.createObjectURL(file));
   };
 
-  const handleDeleteImage = () => {
+  const handleRemoveImage = () => {
     setHeroImageFile(null);
-    if (previewUrl && previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(previewUrl);
-    }
     setPreviewUrl("");
   };
 
-  // Handle Form Submit (Insert / Update)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !eventDate) {
-      alert("Judul dan tanggal kegiatan harus diisi!");
+    setFormError("");
+
+    if (!title.trim()) {
+      setFormError("Judul album dokumentasi wajib diisi.");
+      return;
+    }
+
+    if (!eventDate) {
+      setFormError("Tanggal kegiatan wajib diisi.");
       return;
     }
 
     setIsLoading(true);
-    let finalHeroImageUrl = initialHeroImageUrl;
 
     try {
       const supabase = createClient();
+      let finalHeroImageUrl = previewUrl;
 
-      // 1. If a new image was selected locally, compress and upload it now
+      // 1. Upload new image if selected
       if (heroImageFile) {
-        setIsUploading(true);
         try {
-          // Perform initial compression (max 1600x1600, quality 0.7)
-          let compressedFile = await compressImage(heroImageFile, 1600, 1600, 0.7);
-          
-          // If it is still over 1MB, compress further (max 1200x1200, quality 0.6)
-          if (compressedFile.size > 1024 * 1024) {
+          let compressedFile = await compressImage(heroImageFile);
+          if (compressedFile.size > 2 * 1024 * 1024) {
             compressedFile = await compressImage(compressedFile, 1200, 1200, 0.6);
           }
 
@@ -159,66 +137,48 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
             .upload(filePath, compressedFile, {
               cacheControl: "3600",
               upsert: false,
-              contentType: compressedFile.type || "image/jpeg"
+              contentType: compressedFile.type || "image/jpeg",
             });
 
           if (uploadError) throw uploadError;
 
-          // Get public URL
-          const { data: { publicUrl } } = supabase.storage
-            .from("gallery")
-            .getPublicUrl(filePath);
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("gallery").getPublicUrl(filePath);
 
           finalHeroImageUrl = publicUrl;
         } catch (uploadErr: any) {
           console.error("Upload error:", uploadErr);
-          throw new Error("Gagal mengunggah gambar: " + (uploadErr.message || uploadErr));
-        } finally {
-          setIsUploading(false);
+          throw new Error("Gagal mengunggah foto: " + (uploadErr.message || uploadErr));
         }
       } else if (!previewUrl) {
-        // Image was cleared/removed
         finalHeroImageUrl = "";
       }
 
-      const slug = generateSlug(title);
+      // 2. Save album with dual-sync
+      const res = await saveGalleryAlbumAction(
+        {
+          title: title.trim(),
+          category,
+          event_date: eventDate,
+          hero_image_url: finalHeroImageUrl.trim() || null,
+          album_link: albumLink.trim() || null,
+          description: description.trim() || null,
+          is_published: isPublished,
+        },
+        initialAlbum?.id
+      );
 
-      const albumData = {
-        title,
-        slug,
-        category,
-        event_date: eventDate,
-        hero_image_url: finalHeroImageUrl.trim() || null,
-        album_link: albumLink.trim() || null,
-        description: description.trim() || null,
-        is_published: isPublished,
-        display_order: displayOrder,
-        updated_at: new Date().toISOString()
-      };
+      if (!res.success) {
+        throw new Error(res.error || "Gagal menyimpan album galeri.");
+      }
 
-      if (initialAlbum?.id) {
-        // UPDATE
-        const { error } = await supabase
-          .from("gallery_albums")
-          .update(albumData)
-          .eq("id", initialAlbum.id);
-
-        if (error) throw error;
-
-        // Clean up old image from storage if it was replaced or removed
-        if (initialHeroImageUrl && initialHeroImageUrl !== finalHeroImageUrl) {
-          const oldPath = getStoragePathFromUrl(initialHeroImageUrl, "gallery");
-          if (oldPath) {
-            await supabase.storage.from("gallery").remove([oldPath]);
-          }
+      // 3. Clean up old image if replaced or removed
+      if (initialHeroImageUrl && initialHeroImageUrl !== finalHeroImageUrl) {
+        const oldPath = getStoragePathFromUrl(initialHeroImageUrl, "gallery");
+        if (oldPath) {
+          await supabase.storage.from("gallery").remove([oldPath]);
         }
-      } else {
-        // INSERT
-        const { error } = await supabase
-          .from("gallery_albums")
-          .insert([albumData]);
-
-        if (error) throw error;
       }
 
       toast.success(
@@ -228,238 +188,221 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
       );
       router.push("/admin/galeri");
       router.refresh();
-    } catch (error: any) {
-      console.error("Submit error:", error);
-      toast.error("Gagal menyimpan data: " + (error.message || error));
+    } catch (err: any) {
+      console.error("Submit error:", err);
+      const msg = err.message || "Terjadi kesalahan.";
+      setFormError(msg);
+      toast.error("Gagal menyimpan data: " + msg);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-card py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto bg-card border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8">
-
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-6">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin/galeri"
-              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors cursor-pointer"
-            >
-              <ArrowLeft className="w-5 h-5 text-zinc-500" />
-            </Link>
-            <div>
-              <h1 className="text-lg font-black text-zinc-900 dark:text-white uppercase tracking-widest font-title">
-                {initialAlbum ? "EDIT ALBUM DOKUMENTASI" : "TAMBAH ALBUM BARU"}
-              </h1>
-              <p className="text-xs text-zinc-400 font-semibold mt-0.5">
-                Silakan isi data album galeri secara lengkap di bawah ini.
-              </p>
-            </div>
-          </div>
-
-          {/* Mode Indicator Badge */}
+    <div className="space-y-6 pb-28 md:pb-12 text-zinc-800 dark:text-zinc-200">
+      {/* ═══ TOP HEADER ═══ */}
+      <div className="flex items-center justify-between border-b border-border-default/60 pb-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/galeri"
+            className="w-9 h-9 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer shrink-0"
+            title="Kembali ke Galeri"
+          >
+            <ArrowLeft size={16} />
+          </Link>
           <div>
-            {initialAlbum ? (
-              <span className="px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-500/20 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-500/10 font-bold">
-                MODE: EDIT DATA
-              </span>
-            ) : (
-              <span className="px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-500/20 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/10 font-bold">
-                MODE: TAMBAH BARU
-              </span>
-            )}
+            <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted">
+              [ KOMUNITAS ]
+            </span>
+            <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-0.5">
+              {initialAlbum ? "Edit Album Dokumentasi" : "Tambah Album Dokumentasi"}
+            </h1>
+            <p className="text-xs text-text-secondary mt-0.5">
+              Kelola arsip foto kegiatan, Google Drive folder, dan kategori komunitas.
+            </p>
           </div>
         </div>
 
-        {/* Form Body */}
+        <div>
+          {initialAlbum ? (
+            <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-mono">
+              Mode: Edit
+            </span>
+          ) : (
+            <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
+              Mode: Baru
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ═══ FORM CONTAINER ═══ */}
+      <div className="bg-white dark:bg-[#121212] border-0 sm:border border-border-default/70 rounded-none sm:rounded-3xl p-4 sm:p-8 shadow-xs">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Judul */}
-          <div className="space-y-1.5">
-            <Label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-              Judul Album / Nama Kegiatan *
-            </Label>
-            <Input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Contoh: Panggung ke-10"
-              className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition-all font-bold"
-            />
+          {/* Hero Image Upload */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+              Foto Sampul / Banner Kegiatan
+            </label>
+
+            {previewUrl ? (
+              <div className="relative rounded-2xl overflow-hidden border border-border-default aspect-video max-w-md">
+                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors cursor-pointer"
+                  title="Hapus foto"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <label className="border-2 border-dashed border-border-default bg-bg-well/40 hover:bg-bg-well/70 rounded-2xl p-6 flex flex-col items-center justify-center space-y-2 cursor-pointer transition-all max-w-md">
+                <ImageIcon className="w-8 h-8 text-text-muted" />
+                <p className="text-xs font-bold text-text-primary">
+                  Pilih Foto Sampul Dokumentasi
+                </p>
+                <p className="text-[10px] text-text-muted">Maksimal 5MB (JPG, PNG, WEBP)</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </label>
+            )}
           </div>
 
-          {/* Kategori & Tanggal (Sejajar Flex) */}
-          <div className="flex flex-col sm:flex-row gap-6">
+          {/* Form Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border-default/40">
+            {/* Judul */}
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+                Judul Dokumentasi Kegiatan <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Contoh: Open Mic Session #12 - Personal Branding Workshop"
+                className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+              />
+            </div>
+
             {/* Kategori */}
-            <div className="flex-1 space-y-1.5">
-              <Label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-                Kategori Kegiatan *
-              </Label>
-              <Select value={category} onValueChange={(val) => setCategory(val)}>
-                <SelectTrigger className="w-full h-[50px]">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+                Kategori Kegiatan <span className="text-red-500">*</span>
+              </label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="w-full h-10 rounded-xl border-border-default bg-bg-well/50 text-xs font-medium">
                   <SelectValue placeholder="Pilih Kategori" />
                 </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map(cat => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
+                <SelectContent className="rounded-2xl">
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value} className="text-xs">
+                      {c.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Tanggal */}
-            <div className="flex-1 space-y-1.5">
-              <Label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-                Tanggal Kegiatan *
-              </Label>
-              <DatePicker
+            {/* Tanggal Acara */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+                Tanggal Kegiatan <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                required
                 value={eventDate}
-                onChange={setEventDate}
-                placeholder="Pilih Tanggal"
+                onChange={(e) => setEventDate(e.target.value)}
+                className="w-full h-10 px-3.5 text-xs font-bold font-mono rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+              />
+            </div>
+
+            {/* Link Google Drive */}
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+                Tautan Google Drive (Folder Dokumentasi Lengkap)
+              </label>
+              <input
+                type="url"
+                value={albumLink}
+                onChange={(e) => setAlbumLink(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/..."
+                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+              />
+            </div>
+
+            {/* Deskripsi */}
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+                Deskripsi Singkat Acara
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Ringkasan jalannya acara, keseruan peserta, atau poin penting..."
+                rows={3}
+                className="w-full p-3.5 text-xs rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary leading-relaxed"
               />
             </div>
           </div>
 
-          {/* Link Album */}
-          <div className="space-y-1.5">
-            <Label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-              Link Album Lengkap (Google Drive, dll)
-            </Label>
-            <Input
-              type="url"
-              value={albumLink}
-              onChange={(e) => setAlbumLink(e.target.value)}
-              placeholder="https://drive.google.com/..."
-              className="flex h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition-all font-bold"
+          {/* Status Publikasi */}
+          <div className="flex items-center gap-3 pt-2 border-t border-border-default/40">
+            <input
+              type="checkbox"
+              id="isPublished"
+              checked={isPublished}
+              onChange={(e) => setIsPublished(e.target.checked)}
+              className="w-4 h-4 rounded text-zinc-900 focus:ring-0 cursor-pointer"
             />
+            <label
+              htmlFor="isPublished"
+              className="text-xs font-bold text-text-primary cursor-pointer select-none"
+            >
+              Publikasikan album ini langsung ke halaman Galeri Komunitas
+            </label>
           </div>
 
-          {/* Deskripsi */}
-          <div className="space-y-1.5">
-            <Label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-              Deskripsi Singkat (Opsional)
-            </Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              placeholder="Deskripsi singkat kegiatan..."
-              className="flex w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 text-sm text-text-primary placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition-all font-semibold"
-            />
-          </div>
-
-          {/* Hero Image Setup */}
-          <div className="border border-zinc-150 dark:border-zinc-800/80 rounded-2xl p-4 bg-zinc-50/50 dark:bg-zinc-900/30 space-y-4">
-            <Label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-              Hero Image (Foto Bersama / Sampul)
-            </Label>
-
-            <div className="space-y-3">
-              <div className="relative border-2 border-dashed border-zinc-200 dark:border-zinc-805 rounded-xl p-6 text-center hover:bg-zinc-50/10 dark:hover:bg-zinc-850/10 transition-colors">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer animate-none p-0 border-none bg-transparent"
-                />
-                <div className="flex flex-col items-center justify-center gap-2">
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
-                      <span className="text-xs font-bold text-zinc-500">Mengunggah file...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-6 h-6 text-zinc-405" />
-                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-450">
-                        Klik / Tarik foto untuk upload
-                      </span>
-                      <span className="text-[9px] font-semibold text-zinc-400">
-                        PNG, JPG, JPEG (Max. 5MB)
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
+          {/* Error Message */}
+          {formError && (
+            <div className="p-3.5 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{formError}</span>
             </div>
+          )}
 
-            {/* URL Mirror & Image Preview */}
-            {previewUrl && (
-              <div className="mt-3 space-y-2">
-                {!previewUrl.startsWith("blob:") && (
-                  <div className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 truncate">
-                    URL: <span className="font-semibold text-zinc-650 dark:text-zinc-350">{previewUrl}</span>
-                  </div>
-                )}
-                <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = "none";
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleDeleteImage}
-                    className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow-md cursor-pointer h-auto w-auto min-w-0"
-                    title="Hapus gambar"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Status Toggle & Order */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 bg-zinc-50/50 dark:bg-zinc-900/30 p-4 rounded-2xl">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <Input
-                type="checkbox"
-                id="is_published"
-                checked={isPublished}
-                onChange={(e) => setIsPublished(e.target.checked)}
-                className="w-4 h-4 rounded-sm border-zinc-300 text-zinc-900 focus:ring-zinc-900 dark:bg-zinc-800 dark:border-zinc-700 cursor-pointer p-0"
-              />
-              <Label htmlFor="is_published" className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-widest cursor-pointer select-none">
-                Publish Album (Tampilkan di website publik)
-              </Label>
-            </div>
-          </div>
-
-          {/* Footer Actions */}
-          <div className="flex gap-4 pt-6 border-t border-zinc-100 dark:border-zinc-800">
-            <Link href="/admin/galeri" className="flex-1">
-              <Button
+          {/* Submit Action Buttons */}
+          <div className="flex items-center gap-3 pt-4 border-t border-border-default/60">
+            <Link href="/admin/galeri" className="flex-1 sm:flex-initial">
+              <button
                 type="button"
                 disabled={isLoading}
-                className="w-full py-4 text-xs font-bold rounded-full border border-zinc-200 dark:border-zinc-800 bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-650 dark:text-zinc-300 transition-colors uppercase tracking-widest cursor-pointer disabled:opacity-50 h-auto"
+                className="w-full sm:w-32 h-10 rounded-xl border border-border-default text-xs font-bold text-text-secondary hover:bg-bg-well hover:text-text-primary transition-all cursor-pointer disabled:opacity-50"
               >
                 Batal
-              </Button>
+              </button>
             </Link>
-            <Button
+            <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 py-4 text-xs font-bold text-white bg-zinc-900 hover:bg-gray-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-full transition-all shadow-sm flex items-center justify-center gap-1.5 uppercase tracking-widest cursor-pointer disabled:opacity-50 h-auto"
+              className="flex-1 sm:flex-initial sm:w-44 h-10 rounded-xl bg-text-primary text-bg-card hover:opacity-90 text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Menyimpan...</span>
                 </>
               ) : (
-                <span>Simpan</span>
+                <span>{initialAlbum ? "Simpan Perubahan" : "Simpan Album"}</span>
               )}
-            </Button>
+            </button>
           </div>
         </form>
       </div>

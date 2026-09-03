@@ -1,28 +1,31 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useTransition } from "react";
+import Link from "next/link";
 import {
   Plus,
   Edit,
   Trash2,
-  Loader2,
   Image as ImageIcon,
   Link as LinkIcon,
   Calendar,
   X,
-  Eye
+  Eye,
+  Search,
+  SlidersHorizontal,
+  AlertCircle,
+  CheckCircle2,
+  ExternalLink,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DeleteConfirmDialog } from "@/components/ui/DeleteConfirmDialog";
+import AdminPagination from "@/components/admin/AdminPagination";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/Button";
-import Link from "next/link";
+  deleteGalleryAlbumAction,
+  deleteMultipleGalleryAlbumsAction,
+  toggleGalleryAlbumPublishedAction,
+} from "@/lib/actions/gallery-actions";
 import { toast } from "sonner";
 
 interface Album {
@@ -42,6 +45,7 @@ interface Album {
 
 interface GaleriCMSClientProps {
   initialAlbums: Album[];
+  paginationLimit?: number;
 }
 
 const CATEGORIES = [
@@ -50,491 +54,728 @@ const CATEGORIES = [
   { value: "mc-practice", label: "MC Practice" },
   { value: "networking", label: "Networking" },
   { value: "content-class", label: "Content Class" },
-  { value: "lainnya", label: "Lainnya" }
+  { value: "lainnya", label: "Lainnya" },
 ];
 
-export default function GaleriCMSClient({ initialAlbums }: GaleriCMSClientProps) {
+export default function GaleriCMSClient({
+  initialAlbums,
+  paginationLimit = 10,
+}: GaleriCMSClientProps) {
+  const [albums, setAlbums] = useState<Album[]>(initialAlbums);
   const [detailAlbum, setDetailAlbum] = useState<Album | null>(null);
-  const [albumToDelete, setAlbumToDelete] = useState<{
-    id: string;
-    title: string;
-    imageUrl: string | null;
-  } | null>(null);
+  const [albumToDelete, setAlbumToDelete] = useState<Album | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showMultiDeleteDialog, setShowMultiDeleteDialog] = useState(false);
-  const [albums, setAlbums] = useState<Album[]>(initialAlbums || []);
+  const [isPending, startTransition] = useTransition();
 
-  const refreshAlbums = async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("gallery_albums")
-        .select("*")
-        .order("display_order", { ascending: true })
-        .order("event_date", { ascending: false });
+  // Filters
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
 
-      if (error) throw error;
-      if (data) {
-        setAlbums(data as Album[]);
-      }
-    } catch (err: any) {
-      console.error("Error fetching gallery albums:", err);
-      toast.error("Gagal mengambil data album dari database.");
-    }
+  const limit = paginationLimit && paginationLimit > 0 ? paginationLimit : 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, categoryFilter, statusFilter]);
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "-";
+    return new Date(dateStr).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
-  // Sync state with initialAlbums when it changes, or fetch from DB if empty
-  useEffect(() => {
-    if (initialAlbums && initialAlbums.length > 0) {
-      setAlbums(initialAlbums);
-    } else {
-      refreshAlbums();
-    }
-  }, [initialAlbums]);
+  const getCategoryLabel = (val: string) => {
+    const found = CATEGORIES.find((c) => c.value === val);
+    return found ? found.label : val;
+  };
 
-  // Handle Selection and Multi Check
+  // Toggle publish
+  const handleTogglePublish = (id: string, currentStatus: boolean, title: string) => {
+    startTransition(async () => {
+      const res = await toggleGalleryAlbumPublishedAction(id, currentStatus);
+      if (res.success) {
+        setAlbums((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, is_published: !currentStatus } : a))
+        );
+        toast.success(`Status publikasi "${title}" berhasil diubah.`);
+      } else {
+        toast.error("Gagal mengubah status: " + res.error);
+      }
+    });
+  };
+
+  // Single delete
+  const handleConfirmSingleDelete = () => {
+    if (!albumToDelete) return;
+    const { id, title } = albumToDelete;
+    setAlbumToDelete(null);
+
+    startTransition(async () => {
+      const res = await deleteGalleryAlbumAction(id);
+      if (res.success) {
+        setAlbums((prev) => prev.filter((a) => a.id !== id));
+        setSelectedIds((prev) => prev.filter((item) => item !== id));
+        toast.success(`Album "${title}" berhasil dihapus.`);
+      } else {
+        toast.error("Gagal menghapus album: " + res.error);
+      }
+    });
+  };
+
+  // Multi delete
+  const handleConfirmMultiDelete = () => {
+    if (selectedIds.length === 0) return;
+    const ids = [...selectedIds];
+    setShowMultiDeleteDialog(false);
+
+    startTransition(async () => {
+      const res = await deleteMultipleGalleryAlbumsAction(ids);
+      if (res.success) {
+        setAlbums((prev) => prev.filter((a) => !ids.includes(a.id)));
+        setSelectedIds([]);
+        toast.success(`${ids.length} album berhasil dihapus.`);
+      } else {
+        toast.error("Gagal menghapus album: " + res.error);
+      }
+    });
+  };
+
+  // Filtered dataset
+  const filteredAlbums = useMemo(() => {
+    return albums.filter((a) => {
+      const query = search.toLowerCase();
+      const matchesSearch =
+        a.title.toLowerCase().includes(query) ||
+        (a.description && a.description.toLowerCase().includes(query));
+
+      const matchesCategory =
+        categoryFilter === "all" || a.category === categoryFilter;
+
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "published" && a.is_published) ||
+        (statusFilter === "draft" && !a.is_published);
+
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [albums, search, categoryFilter, statusFilter]);
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredAlbums.length / limit));
+  const startIndex = (currentPage - 1) * limit;
+  const endIndex = Math.min(filteredAlbums.length, startIndex + limit);
+  const paginatedAlbums = useMemo(() => {
+    return filteredAlbums.slice(startIndex, endIndex);
+  }, [filteredAlbums, startIndex, endIndex]);
+
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(albums.map(a => a.id));
+      setSelectedIds(filteredAlbums.map((a) => a.id));
     } else {
       setSelectedIds([]);
     }
   };
 
   const handleSelectRow = (id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
-  const handleConfirmMultiDelete = async () => {
-    if (selectedIds.length === 0) return;
-    const idsToDelete = [...selectedIds];
-
-    setShowMultiDeleteDialog(false);
-
-    const albumsToDelete = albums.filter(a => idsToDelete.includes(a.id));
-    const imagePathsToClean = albumsToDelete
-      .map(a => a.hero_image_url)
-      .filter((url): url is string => !!url && url.includes("storage/v1/object/public/gallery/"))
-      .map(url => url.split("/").pop())
-      .filter((name): name is string => !!name);
-
-    try {
-      const supabase = createClient();
-
-      const { error } = await supabase
-        .from("gallery_albums")
-        .delete()
-        .in("id", idsToDelete);
-
-      if (error) throw error;
-
-      setAlbums(prev => prev.filter(item => !idsToDelete.includes(item.id)));
-      setSelectedIds([]);
-      toast.success(`${idsToDelete.length} album galeri berhasil dihapus secara permanen!`);
-
-      if (imagePathsToClean.length > 0) {
-        await supabase.storage.from("gallery").remove(imagePathsToClean);
-      }
-    } catch (error: any) {
-      console.error("Multi-delete error:", error);
-      toast.error("Gagal menghapus data terpilih: " + (error.message || error));
-    }
-  };
-
-  // Handle Delete Album Trigger
-  const handleDeleteClick = (id: string, albumTitle: string, imageUrl: string | null) => {
-    setAlbumToDelete({ id, title: albumTitle, imageUrl });
-  };
-
-  // Execute actual Delete
-  const handleConfirmDelete = async () => {
-    if (!albumToDelete) return;
-    const { id, imageUrl } = albumToDelete;
-
-    // Close confirmation dialog
-    setAlbumToDelete(null);
-
-    try {
-      const supabase = createClient();
-
-      // Delete database record
-      const { error } = await supabase
-        .from("gallery_albums")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-
-      // Optimistically remove from state
-      setAlbums(prev => prev.filter(item => item.id !== id));
-      toast.success("Album galeri berhasil dihapus secara permanen!");
-
-      // Try to clean up storage if it was a Supabase uploaded file
-      if (imageUrl && imageUrl.includes("storage/v1/object/public/gallery/")) {
-        const fileName = imageUrl.split("/").pop();
-        if (fileName) {
-          await supabase.storage.from("gallery").remove([fileName]);
-        }
-      }
-    } catch (error: any) {
-      console.error("Delete error:", error);
-      toast.error("Gagal menghapus data: " + (error.message || error));
-    }
-  };
-
-  // Stop Lenis scroll when modal is open to prevent lag/conflicts
-  useEffect(() => {
-    const win = window as any;
-    if (typeof window !== "undefined" && win.__lenis) {
-      if (detailAlbum) {
-        win.__lenis.stop();
-      } else {
-        win.__lenis.start();
-      }
-    }
-    return () => {
-      if (typeof window !== "undefined" && win.__lenis) {
-        win.__lenis.start();
-      }
-    };
-  }, [detailAlbum]);
-
-  // Helper to format date
-  const formatDateString = (dateStr: string) => {
-    if (!dateStr) return "-";
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric"
-      });
-    } catch (e) {
-      return dateStr;
-    }
-  };
-
-  // Get label for category
-  const getCategoryLabel = (value: string) => {
-    return CATEGORIES.find(c => c.value === value)?.label || value;
-  };
-
   return (
-    <div className="flex flex-col h-full animate-fade-in p-2 md:p-6 text-zinc-800 dark:text-zinc-200">
-
-      {/* Action Header */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-12">
+    <div className="space-y-6 pb-28 md:pb-12 text-zinc-800 dark:text-zinc-200">
+      {/* ═══ TOP HEADER (Ecomora Modern Monochrome Style) ═══ */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-default/60 pb-4">
         <div>
-          <h2 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-wider">
-            Kelola Galeri & Album
-          </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-xs">
-            Daftar album kegiatan komunitas. Album ini akan ditampilkan di halaman Galeri Publik.
+          <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted">
+            [ KOMUNITAS ]
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-0.5">
+            Dokumentasi & Galeri Kegiatan
+          </h1>
+          <p className="text-xs text-text-secondary mt-0.5">
+            Arsip foto dokumentasi, album Google Drive, dan kegiatan kreator.
           </p>
         </div>
+
         <div className="flex items-center gap-3">
-          {selectedIds.length > 0 && (
-            <button
-              onClick={() => setShowMultiDeleteDialog(true)}
-              className="flex items-center gap-1.5 px-6 py-4 text-xs font-bold text-white bg-red-650 hover:bg-red-700 rounded-full transition-all shadow-sm cursor-pointer tracking-wider"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Hapus Terpilih ({selectedIds.length})</span>
-            </button>
-          )}
-          <Link href="/admin/galeri/addGallery" className="flex items-center gap-1.5 px-6 py-4 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 rounded-full transition-all shadow-sm cursor-pointer tracking-wider">
-            <Plus className="w-4 h-4" />
+          {/* Header Quick Search (h-9 rounded-full) */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari judul dokumentasi..."
+              className="w-full h-9 pl-9 pr-8 text-xs rounded-full bg-bg-well/70 border border-border-default focus:border-text-primary focus:outline-none transition-all placeholder:text-text-muted"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary cursor-pointer"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Action Button Header Desktop (h-9 px-4 rounded-full) */}
+          <Link
+            href="/admin/galeri/addGallery"
+            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition-all shadow-xs cursor-pointer shrink-0"
+          >
+            <Plus size={14} className="stroke-[2.5]" />
             <span>Tambah Album</span>
           </Link>
         </div>
       </div>
 
-      {/* Table Area (always full width) */}
-      <div className="w-full bg-bg-card rounded-2xl border border-border-default overflow-hidden">
+      {/* ═══ SUMMARY STATS (Pola 1: Horizontal Scrollable Capsule Pills) ═══ */}
+      <div className="p-1.5 bg-zinc-100/90 dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-white/10 rounded-2xl overflow-x-auto no-scrollbar scroll-smooth flex items-center gap-1.5 shadow-2xs">
+        {/* Semua Album */}
+        <button
+          type="button"
+          onClick={() => {
+            setCategoryFilter("all");
+            setStatusFilter("all");
+          }}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
+            categoryFilter === "all" && statusFilter === "all"
+              ? "bg-white dark:bg-zinc-800 text-text-primary shadow-xs border border-border-default/60"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+          }`}
+        >
+          <span>Semua Album</span>
+          <span className="px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
+            {albums.length}
+          </span>
+        </button>
+
+        {/* Published */}
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter("published");
+            setCategoryFilter("all");
+          }}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
+            statusFilter === "published"
+              ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+          }`}
+        >
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Published</span>
+          <span className="px-2 py-0.5 rounded-full bg-white/20 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
+            {albums.filter((a) => a.is_published).length}
+          </span>
+        </button>
+
+        {/* Draft */}
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter("draft");
+            setCategoryFilter("all");
+          }}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
+            statusFilter === "draft"
+              ? "bg-amber-500 text-white shadow-xs"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+          }`}
+        >
+          <span>Draft</span>
+          <span className="px-2 py-0.5 rounded-full bg-white/20 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
+            {albums.filter((a) => !a.is_published).length}
+          </span>
+        </button>
+
+        {/* Category Pills */}
+        {CATEGORIES.map((cat) => {
+          const count = albums.filter((a) => a.category === cat.value).length;
+          if (count === 0) return null;
+          const isSelected = categoryFilter === cat.value && statusFilter === "all";
+
+          return (
+            <button
+              key={cat.value}
+              type="button"
+              onClick={() => {
+                setCategoryFilter(cat.value);
+                setStatusFilter("all");
+              }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
+                isSelected
+                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                  : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+              }`}
+            >
+              <span>{cat.label}</span>
+              <span className="px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Bulk action bar if items selected */}
+      {selectedIds.length > 0 && (
+        <div className="p-3 bg-zinc-900 text-white rounded-2xl flex items-center justify-between shadow-md">
+          <span className="text-xs font-bold pl-2">
+            {selectedIds.length} album terpilih
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowMultiDeleteDialog(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Trash2 size={13} />
+            <span>Hapus Terpilih</span>
+          </button>
+        </div>
+      )}
+
+      {/* ═══ 1. DESKTOP VIEW: TABLE (hidden on mobile, visible on md/lg) ═══ */}
+      <div className="hidden md:block bg-bg-card border border-border-default/70 rounded-2xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-1 border-collapse text-xs">
+          <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="text-zinc-650 dark:text-zinc-400 font-semibold bg-bg-well/50">
-                <th className="py-4 px-6 border-b border-border-default/70 w-12 text-center">
+                <th className="py-3.5 px-4 border-b border-border-default/70 w-12 text-center">
                   <input
                     type="checkbox"
-                    checked={albums.length > 0 && selectedIds.length === albums.length}
+                    checked={
+                      filteredAlbums.length > 0 &&
+                      selectedIds.length === filteredAlbums.length
+                    }
                     onChange={handleSelectAll}
-                    className="w-4 h-4 text-zinc-900 border-zinc-450 dark:border-zinc-800 rounded focus:ring-0 cursor-pointer"
+                    className="w-4 h-4 rounded text-zinc-900 cursor-pointer"
                   />
                 </th>
-                <th className="py-4 px-6 border-b border-border-default/70">Album / Judul</th>
-                <th className="py-4 px-6 border-b border-border-default/70 w-36">Kategori</th>
-                <th className="py-4 px-6 border-b border-border-default/70 w-48">Tanggal</th>
-                <th className="py-4 px-6 border-b border-border-default/70 w-32">Status</th>
-                <th className="py-4 px-6 text-center border-b border-border-default/70 w-48">Aksi</th>
+                <th className="py-3.5 px-5 border-b border-border-default/70">Album / Dokumentasi</th>
+                <th className="py-3.5 px-4 border-b border-border-default/70">Kategori</th>
+                <th className="py-3.5 px-4 border-b border-border-default/70">Tanggal Acara</th>
+                <th className="py-3.5 px-4 border-b border-border-default/70 text-center">Status</th>
+                <th className="py-3.5 px-4 border-b border-border-default/70 text-center w-28">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {albums.length === 0 ? (
+              {paginatedAlbums.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-zinc-500 font-bold ">
-                    Belum ada data album dokumentasi.
+                  <td colSpan={6} className="p-8 text-center text-text-muted font-semibold">
+                    Tidak ada data album dokumentasi ditemukan.
                   </td>
                 </tr>
               ) : (
-                albums.map((album, index) => {
-                  const isLastRow = index === albums.length - 1;
-                  const cellBorderClass = `${isLastRow ? "" : "border-b"} border-border-default/30 py-4 px-6`;
-
-                  return (
-                    <tr
-                      key={album.id}
-                      className="hover:bg-bg-well/30 transition-colors group"
-                    >
-                      {/* Checkbox */}
-                      <td className={`${cellBorderClass} text-center`}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(album.id)}
-                          onChange={() => handleSelectRow(album.id)}
-                          className="w-4 h-4 text-zinc-900 border-zinc-450 dark:border-zinc-800 rounded focus:ring-0 cursor-pointer"
-                        />
-                      </td>
-
-                      {/* Title & Slug */}
-                      <td className={cellBorderClass}>
-                        <div className="font-extrabold text-sm uppercase tracking-wide text-zinc-900 dark:text-white max-w-sm truncate">{album.title}</div>
-                        {album.description && (
-                          <p className="text-[11px] text-text-secondary truncate mt-1 max-w-sm font-medium">{album.description}</p>
+                paginatedAlbums.map((album) => (
+                  <tr
+                    key={album.id}
+                    className="border-b border-border-default/40 last:border-b-0 hover:bg-bg-well/30 transition-colors"
+                  >
+                    <td className="py-3 px-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(album.id)}
+                        onChange={() => handleSelectRow(album.id)}
+                        className="w-4 h-4 rounded text-zinc-900 cursor-pointer"
+                      />
+                    </td>
+                    <td className="py-3 px-5">
+                      <div className="flex items-center gap-3">
+                        {album.hero_image_url ? (
+                          <img
+                            src={album.hero_image_url}
+                            alt={album.title}
+                            className="w-10 h-10 rounded-xl object-cover border border-border-default/50 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-bg-well border border-border-default/50 flex items-center justify-center shrink-0 text-text-muted">
+                            <ImageIcon size={16} />
+                          </div>
                         )}
-                        {album.album_link && (
-                          <a
-                            href={album.album_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-sky-600 dark:text-sky-400 font-bold hover:underline inline-flex items-center gap-1 mt-1.5"
-                          >
-                            <LinkIcon className="w-3 h-3" /> Google Drive Link
-                          </a>
-                        )}
-                      </td>
-
-                      {/* Category */}
-                      <td className={cellBorderClass}>
-                        <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-md">
-                          {getCategoryLabel(album.category)}
-                        </span>
-                      </td>
-
-                      {/* Date */}
-                      <td className={cellBorderClass}>
-                        <div className="flex items-center gap-1.5 font-semibold text-zinc-650 dark:text-zinc-300">
-                          <span>{formatDateString(album.event_date)}</span>
+                        <div className="min-w-0">
+                          <span className="font-bold text-text-primary text-xs truncate block">
+                            {album.title}
+                          </span>
+                          {album.description && (
+                            <p className="text-[11px] text-text-secondary truncate max-w-sm">
+                              {album.description}
+                            </p>
+                          )}
+                          {album.album_link && (
+                            <a
+                              href={album.album_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-sky-600 dark:text-sky-400 font-bold hover:underline inline-flex items-center gap-1 mt-0.5"
+                            >
+                              <LinkIcon size={10} /> Google Drive
+                            </a>
+                          )}
                         </div>
-                      </td>
-
-                      {/* Status */}
-                      <td className={cellBorderClass}>
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${album.is_published
-                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
-                          : "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
-                          }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${album.is_published ? "bg-emerald-500" : "bg-amber-500"}`} />
-                          {album.is_published ? "Published" : "Draft"}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className={cellBorderClass}>
-                        <div className="flex justify-center items-center gap-2">
-                          <button
-                            onClick={() => setDetailAlbum(album)}
-                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-primary bg-bg-well hover:bg-border-default/50 border border-border-default rounded-full cursor-pointer flex items-center justify-center gap-1"
-                            title="Detail"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          <Link href={`/admin/galeri/addGallery?id=${album.id}`}>
-                            <Button className="p-2 text-text-secondary hover:text-text-primary bg-bg-well hover:bg-border-default/50 border border-border-default rounded-full cursor-pointer flex items-center justify-center h-auto shadow-none">
-                              <Edit className="w-3.5 h-3.5" />
-                            </Button>
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteClick(album.id, album.title, album.hero_image_url)}
-                            className="p-2 text-[#b91c1c] hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-full cursor-pointer flex items-center justify-center"
-                            title="Hapus"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-bg-well text-text-secondary border border-border-default/50">
+                        {getCategoryLabel(album.category)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-[11px] text-text-secondary">
+                      {formatDate(album.event_date)}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleTogglePublish(album.id, album.is_published, album.title)
+                        }
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                          album.is_published
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                            : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
+                        }`}
+                      >
+                        {album.is_published ? "Published" : "Draft"}
+                      </button>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setDetailAlbum(album)}
+                          className="p-1.5 rounded-lg border border-border-default hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                          title="Detail"
+                        >
+                          <Eye size={13} />
+                        </button>
+                        <Link
+                          href={`/admin/galeri/addGallery?id=${album.id}`}
+                          className="p-1.5 rounded-lg border border-border-default hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                          title="Edit"
+                        >
+                          <Edit size={13} />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setAlbumToDelete(album)}
+                          className="p-1.5 rounded-lg border border-border-default/60 hover:bg-red-500/10 text-red-500 transition-colors cursor-pointer"
+                          title="Hapus"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Detail Modal */}
-      <Dialog open={!!detailAlbum} onOpenChange={(open) => !open && setDetailAlbum(null)}>
-        <DialogContent className="max-w-2xl" data-lenis-prevent>
-          <DialogHeader>
-            <DialogTitle>DETAIL ALBUM DOKUMENTASI</DialogTitle>
-          </DialogHeader>
-
-          {detailAlbum && (
-            <>
-              <div className="overflow-y-auto space-y-6 flex-1 pr-1 -mr-3 pb-4 max-h-[60vh]">
-                {/* Cover Image */}
-                <div className="h-64 w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden relative flex items-center justify-center">
-                  {detailAlbum.hero_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={detailAlbum.hero_image_url}
-                      alt={detailAlbum.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <ImageIcon className="w-16 h-16 text-zinc-400" />
-                  )}
+      {/* ═══ 2. MOBILE VIEW: CARDS (visible on mobile, hidden on md/lg) ═══ */}
+      <div className="md:hidden space-y-3.5">
+        {paginatedAlbums.length === 0 ? (
+          <div className="bg-bg-card border border-border-default/70 rounded-3xl p-8 text-center text-text-muted shadow-xs">
+            <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-xs font-medium">Tidak ada data album dokumentasi.</p>
+          </div>
+        ) : (
+          paginatedAlbums.map((album) => (
+            <div
+              key={album.id}
+              className="bg-white dark:bg-[#121212] border border-border-default/70 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-3xl p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between active:scale-[0.99] space-y-3"
+            >
+              {/* Top Row: Category + Published Switch + Date */}
+              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border-default/40">
+                <span className="px-2.5 py-0.5 rounded-full bg-bg-well text-[10px] font-bold uppercase tracking-wider text-text-secondary border border-border-default/50">
+                  {getCategoryLabel(album.category)}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-text-muted font-mono">
+                    {formatDate(album.event_date)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleTogglePublish(album.id, album.is_published, album.title)
+                    }
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer ${
+                      album.is_published
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                        : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
+                    }`}
+                  >
+                    {album.is_published ? "Published" : "Draft"}
+                  </button>
                 </div>
+              </div>
 
-                {/* Title & Info */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-wide leading-snug">
-                      {detailAlbum.title}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-3 mt-4">
-                      <span className="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-full border border-zinc-200/50 dark:border-zinc-700/50">
-                        {getCategoryLabel(detailAlbum.category)}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-455 font-bold bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full border border-zinc-200/50 dark:border-zinc-700/50">
-                        <Calendar size={13} className="text-zinc-400" />
-                        <span>{formatDateString(detailAlbum.event_date)}</span>
-                      </span>
-                      <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${detailAlbum.is_published
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-500/20 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/10"
-                        : "bg-amber-50 text-amber-700 border-amber-500/20 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-500/10"
-                        }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${detailAlbum.is_published ? "bg-emerald-500" : "bg-amber-500"}`} />
-                        {detailAlbum.is_published ? "Published" : "Draft"}
-                      </span>
-                    </div>
+              {/* Middle Row: Photo + Info */}
+              <div className="flex gap-3 items-start my-1">
+                {album.hero_image_url ? (
+                  <img
+                    src={album.hero_image_url}
+                    alt={album.title}
+                    className="w-16 h-16 rounded-2xl object-cover border border-border-default/50 shrink-0"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-bg-well border border-border-default/50 flex items-center justify-center shrink-0 text-text-muted">
+                    <ImageIcon size={20} />
                   </div>
+                )}
 
-                  {detailAlbum.description && (
-                    <div className="space-y-1.5 bg-zinc-50/50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-zinc-440 dark:text-zinc-500 block">Deskripsi Kegiatan</span>
-                      <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-semibold">
-                        {detailAlbum.description}
-                      </p>
-                    </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-black tracking-tight text-text-primary truncate">
+                    {album.title}
+                  </h3>
+                  {album.description && (
+                    <p className="text-xs text-text-secondary mt-0.5 line-clamp-2 leading-relaxed">
+                      {album.description}
+                    </p>
                   )}
-
-                  {detailAlbum.album_link && (
-                    <div className="pt-2">
-                      <a
-                        href={detailAlbum.album_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3.5 text-xs font-black uppercase tracking-widest text-[#0369a1] bg-[#e0f2fe] hover:bg-[#bae6fd] dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-950/30 rounded-full transition-all cursor-pointer border border-sky-500/10"
-                      >
-                        <LinkIcon size={14} />
-                        <span>Buka Album Google Drive</span>
-                      </a>
-                    </div>
+                  {album.album_link && (
+                    <a
+                      href={album.album_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-sky-600 dark:text-sky-400 font-bold hover:underline inline-flex items-center gap-1 mt-1"
+                    >
+                      <LinkIcon size={11} /> Google Drive Folder
+                    </a>
                   )}
                 </div>
               </div>
 
-              <DialogFooter className="bg-zinc-50/50 dark:bg-zinc-900/20">
-                <Link href={`/admin/galeri/addGallery?id=${detailAlbum.id}`}>
-                  <Button
-                    onClick={() => setDetailAlbum(null)}
-                    className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-full cursor-pointer flex items-center gap-1.5 transition-colors font-semibold h-auto shadow-none"
-                  >
-                    <Edit size={14} />
-                    <span>Edit</span>
-                  </Button>
-                </Link>
-                <Button
-                  onClick={() => setDetailAlbum(null)}
-                  className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-zinc-900 hover:bg-[#2c2c2c] dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-full cursor-pointer transition-colors h-auto"
+              {/* Bottom Row: Actions */}
+              <div className="pt-2.5 border-t border-border-default/40 flex items-center justify-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setDetailAlbum(album)}
+                  className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
+                  title="Detail Album"
                 >
-                  Tutup
-                </Button>
-              </DialogFooter>
-            </>
+                  <Eye size={13} />
+                </button>
+                <Link
+                  href={`/admin/galeri/addGallery?id=${album.id}`}
+                  className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
+                  title="Edit Album"
+                >
+                  <Edit size={13} />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setAlbumToDelete(album)}
+                  className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-red-500/10 text-red-500 hover:text-red-600 active:scale-95 transition-all cursor-pointer"
+                  title="Hapus Album"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* ═══ PAGINATION CONTROLS (Reusable AdminPagination Component) ═══ */}
+      <AdminPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredAlbums.length}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        limit={limit}
+        itemLabel="album"
+        onPageChange={setCurrentPage}
+      />
+
+      {/* ═══ FLOATING BOTTOM CONTROLS (Compact Proportional Dock Persis admin-mobile.md) ═══ */}
+      <div className="md:hidden fixed bottom-6 inset-x-0 z-30 pointer-events-none flex justify-center px-4">
+        <div className="pointer-events-auto bg-zinc-900/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-2 text-white">
+          {/* Category Filter Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer relative ${
+                  categoryFilter !== "all" || statusFilter !== "all" ? "text-white bg-zinc-800" : ""
+                }`}
+                title="Filter Kategori Galeri"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                {(categoryFilter !== "all" || statusFilter !== "all") && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#BAFF6A]" />
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="center"
+              className="w-64 p-3.5 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-3 mb-2 z-50 max-h-72 overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-border-default/50 pb-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted">
+                  Filter Galeri
+                </span>
+                {(categoryFilter !== "all" || statusFilter !== "all") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCategoryFilter("all");
+                      setStatusFilter("all");
+                    }}
+                    className="text-[10px] font-bold text-red-500 hover:underline cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                  Kategori
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCategoryFilter("all")}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                      categoryFilter === "all"
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                        : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
+                    }`}
+                  >
+                    Semua
+                  </button>
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() => setCategoryFilter(cat.value)}
+                      className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                        categoryFilter === cat.value
+                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                          : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Right Action: Tambah Album */}
+          <Link
+            href="/admin/galeri/addGallery"
+            className="h-9 px-4 rounded-full bg-white text-zinc-900 dark:bg-white dark:text-zinc-900 hover:bg-zinc-100 flex items-center gap-1.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+            title="Tambah Album Baru"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Tambah</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* ═══ DETAIL MODAL (Mobile Responsive rounded-none sm:rounded-3xl border-0 sm:border) ═══ */}
+      <Dialog open={Boolean(detailAlbum)} onOpenChange={(open) => !open && setDetailAlbum(null)}>
+        <DialogContent className="max-w-xl bg-white dark:bg-zinc-950 border-0 sm:border border-border-default p-6 rounded-none sm:rounded-3xl">
+          <DialogHeader className="pb-3 border-b border-border-default/60">
+            <DialogTitle className="text-base font-black text-text-primary">
+              Detail Album Kegiatan
+            </DialogTitle>
+          </DialogHeader>
+
+          {detailAlbum && (
+            <div className="space-y-4 pt-2 text-xs">
+              {detailAlbum.hero_image_url && (
+                <div className="rounded-2xl overflow-hidden border border-border-default aspect-video max-h-56">
+                  <img
+                    src={detailAlbum.hero_image_url}
+                    alt={detailAlbum.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="px-2.5 py-0.5 rounded-full bg-bg-well text-[10px] font-bold text-text-secondary border border-border-default/50 uppercase">
+                    {getCategoryLabel(detailAlbum.category)}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      detailAlbum.is_published
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                        : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
+                    }`}
+                  >
+                    {detailAlbum.is_published ? "Published" : "Draft"}
+                  </span>
+                </div>
+                <h3 className="text-base font-extrabold text-text-primary">
+                  {detailAlbum.title}
+                </h3>
+                <p className="text-text-muted font-mono text-[11px] mt-0.5">
+                  Tanggal Kegiatan: {formatDate(detailAlbum.event_date)}
+                </p>
+              </div>
+
+              {detailAlbum.description && (
+                <div className="p-3 bg-bg-well/50 rounded-xl border border-border-default/40">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block mb-1">
+                    Deskripsi
+                  </span>
+                  <p className="text-text-secondary leading-relaxed">
+                    {detailAlbum.description}
+                  </p>
+                </div>
+              )}
+
+              {detailAlbum.album_link && (
+                <div className="pt-2">
+                  <a
+                    href={detailAlbum.album_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full h-10 rounded-xl bg-text-primary text-bg-card hover:opacity-90 flex items-center justify-center gap-2 font-bold text-xs shadow-xs"
+                  >
+                    <ExternalLink size={14} />
+                    <span>Buka Google Drive Folder Dokumentasi</span>
+                  </a>
+                </div>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!albumToDelete} onOpenChange={(open) => !open && setAlbumToDelete(null)}>
-        <DialogContent className="max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 rounded-[24px]">
-          <DialogHeader className="pb-2 mb-0 border-b-0">
-            <DialogTitle className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-wider">
-              Hapus Album Dokumentasi
-            </DialogTitle>
-          </DialogHeader>
+      {/* ═══ DELETE CONFIRM DIALOG (Single) ═══ */}
+      <DeleteConfirmDialog
+        isOpen={Boolean(albumToDelete)}
+        onOpenChange={(open) => !open && setAlbumToDelete(null)}
+        title="Hapus Album Dokumentasi"
+        description={`Apakah Anda yakin ingin menghapus album "${albumToDelete?.title}"? Tindakan ini tidak dapat dibatalkan.`}
+        onConfirm={handleConfirmSingleDelete}
+      />
 
-          <div className="text-sm text-zinc-650 dark:text-zinc-400 font-medium leading-relaxed px-1">
-            Apakah Anda yakin ingin menghapus album &ldquo;<span className="font-extrabold text-zinc-950 dark:text-white underline decoration-red-500 decoration-2">{albumToDelete?.title}</span>&rdquo; secara permanen?
-            <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500 font-bold">
-              File foto utama di storage juga akan dibersihkan secara otomatis.
-            </p>
-          </div>
-
-          <div className="flex flex-row justify-end gap-3 pt-4 px-1">
-            <Button
-              onClick={() => setAlbumToDelete(null)}
-              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-full cursor-pointer h-auto shadow-none"
-            >
-              Batal
-            </Button>
-            <Button
-              onClick={handleConfirmDelete}
-              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 rounded-full cursor-pointer h-auto border-0 shadow-sm"
-            >
-              Hapus
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Multi-Delete Confirmation Dialog */}
-      <Dialog open={showMultiDeleteDialog} onOpenChange={setShowMultiDeleteDialog}>
-        <DialogContent className="max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 rounded-[24px]">
-          <DialogHeader className="pb-2 mb-0 border-b-0">
-            <DialogTitle className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-wider">
-              Hapus Album Terpilih
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="text-sm text-zinc-650 dark:text-zinc-400 font-medium leading-relaxed px-1">
-            Apakah Anda yakin ingin menghapus <span className="font-black text-zinc-950 dark:text-white">{selectedIds.length} album</span> secara permanen?
-            <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500 font-bold">
-              File foto utama di storage untuk album-album ini juga akan dibersihkan secara otomatis.
-            </p>
-          </div>
-
-          <div className="flex flex-row justify-end gap-3 pt-4 px-1">
-            <Button
-              onClick={() => setShowMultiDeleteDialog(false)}
-              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-full cursor-pointer h-auto shadow-none"
-            >
-              Batal
-            </Button>
-            <Button
-              onClick={handleConfirmMultiDelete}
-              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 rounded-full cursor-pointer h-auto border-0 shadow-sm"
-            >
-              Hapus
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
+      {/* ═══ DELETE CONFIRM DIALOG (Multiple) ═══ */}
+      <DeleteConfirmDialog
+        isOpen={showMultiDeleteDialog}
+        onOpenChange={setShowMultiDeleteDialog}
+        title="Hapus Album Terpilih"
+        description={`Apakah Anda yakin ingin menghapus ${selectedIds.length} album dokumentasi terpilih secara permanen?`}
+        onConfirm={handleConfirmMultiDelete}
+      />
     </div>
   );
 }

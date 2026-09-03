@@ -105,12 +105,17 @@ export default async function MentoringPage() {
     package_name: s.packages?.name || "TIDAK ADA PAKET",
   }));
 
+  // Fetch pagination limit setting
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
+
   return (
     <MentoringClient
       initialSessions={formattedSessions}
       members={members}
       mentors={mentors}
       packages={packages}
+      paginationLimit={paginationLimit}
     />
   );
 }

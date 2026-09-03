@@ -38,5 +38,14 @@ export default async function GaleriCMSPage() {
     console.error("Error fetching gallery albums for admin:", error);
   }
 
-  return <GaleriCMSClient initialAlbums={albums || []} />;
+  // Fetch pagination limit setting
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
+
+  return (
+    <GaleriCMSClient
+      initialAlbums={albums || []}
+      paginationLimit={paginationLimit}
+    />
+  );
 }

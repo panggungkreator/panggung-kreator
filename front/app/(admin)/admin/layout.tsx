@@ -550,7 +550,7 @@ export default function AdminLayout({
         {/* Mobile Sidebar Backdrop */}
         {!isNoSidebarPage && isSidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/40 z-30 lg:hidden animate-fade-in"
+            className="fixed inset-0 bg-black/40 z-40 lg:hidden animate-fade-in"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
@@ -559,12 +559,13 @@ export default function AdminLayout({
         {!isNoSidebarPage && (
           <aside
             data-lenis-prevent
-            className={`w-56 flex-shrink-0 flex flex-col bg-bg-sidebar border-r border-border-default overflow-y-auto no-scrollbar transition-all duration-300 z-40
+            className={`w-56 flex-shrink-0 flex flex-col bg-bg-sidebar border-r border-border-default overflow-y-auto no-scrollbar transition-all duration-300 z-50
               ${isSidebarOpen
                 ? "translate-x-0 fixed left-0 top-18 bottom-0 bg-bg-sidebar shadow-2xl"
                 : "-translate-x-full fixed left-0 top-18 bottom-0 lg:translate-x-0 lg:static lg:h-full"
               }`}
           >
+
             {isLoadingUser ? (
               <nav className="py-5 space-y-6 px-4 animate-pulse select-none">
                 {/* Dashboard skeleton */}

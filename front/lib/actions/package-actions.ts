@@ -104,6 +104,18 @@ export async function createPackageAction(packageData: any) {
 
     await ensureOneDefaultPackage(supabase);
 
+    // Synchronize to Production Supabase (wmuzvefmrbgffftkpdnx) per Rule 2
+    try {
+      const { getProdClient } = await import("@/lib/supabase/dual-sync");
+      const prodSupabase = getProdClient();
+      if (prodSupabase) {
+        await prodSupabase.from("packages").insert([data]);
+        await ensureOneDefaultPackage(prodSupabase);
+      }
+    } catch (prodErr) {
+      console.warn("Sync package create to prod failed:", prodErr);
+    }
+
     revalidatePath("/");
     revalidatePath("/admin/packages");
     return { success: true, data };
@@ -131,14 +143,27 @@ export async function updatePackageAction(id: string, packageData: any) {
       return { success: false, error: "Akses ditolak" };
     }
 
+    const updatePayload = { ...packageData, updated_at: new Date().toISOString() };
     const { error } = await supabase
       .from("packages")
-      .update({ ...packageData, updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq("id", id);
 
     if (error) throw error;
 
     await ensureOneDefaultPackage(supabase);
+
+    // Synchronize to Production Supabase (wmuzvefmrbgffftkpdnx) per Rule 2
+    try {
+      const { getProdClient } = await import("@/lib/supabase/dual-sync");
+      const prodSupabase = getProdClient();
+      if (prodSupabase) {
+        await prodSupabase.from("packages").update(updatePayload).eq("id", id);
+        await ensureOneDefaultPackage(prodSupabase);
+      }
+    } catch (prodErr) {
+      console.warn("Sync package update to prod failed:", prodErr);
+    }
 
     revalidatePath("/");
     revalidatePath("/admin/packages");
@@ -176,6 +201,18 @@ export async function deletePackageAction(id: string) {
 
     await ensureOneDefaultPackage(supabase);
 
+    // Synchronize to Production Supabase (wmuzvefmrbgffftkpdnx) per Rule 2
+    try {
+      const { getProdClient } = await import("@/lib/supabase/dual-sync");
+      const prodSupabase = getProdClient();
+      if (prodSupabase) {
+        await prodSupabase.from("packages").delete().eq("id", id);
+        await ensureOneDefaultPackage(prodSupabase);
+      }
+    } catch (prodErr) {
+      console.warn("Sync package delete to prod failed:", prodErr);
+    }
+
     revalidatePath("/");
     revalidatePath("/admin/packages");
     return { success: true };
@@ -203,12 +240,27 @@ export async function updatePackagesOrderAction(orderedPackages: { id: string; o
       return { success: false, error: "Akses ditolak" };
     }
 
-    // Update in parallel
+    // Update in parallel on dev
     await Promise.all(
       orderedPackages.map((pkg) => 
         supabase.from("packages").update({ order_index: pkg.order_index }).eq("id", pkg.id)
       )
     );
+
+    // Synchronize to Production Supabase (wmuzvefmrbgffftkpdnx) per Rule 2
+    try {
+      const { getProdClient } = await import("@/lib/supabase/dual-sync");
+      const prodSupabase = getProdClient();
+      if (prodSupabase) {
+        await Promise.all(
+          orderedPackages.map((pkg) => 
+            prodSupabase.from("packages").update({ order_index: pkg.order_index }).eq("id", pkg.id)
+          )
+        );
+      }
+    } catch (prodErr) {
+      console.warn("Sync package order to prod failed:", prodErr);
+    }
 
     revalidatePath("/");
     revalidatePath("/admin/packages");
@@ -237,11 +289,23 @@ export async function setDefaultPackageAction(id: string) {
       return { success: false, error: "Akses ditolak" };
     }
 
-    // Set target to true, others to false
+    // Set target to true, others to false on dev
     await supabase.from("packages").update({ is_default: false }).neq("id", id);
     const { error } = await supabase.from("packages").update({ is_default: true }).eq("id", id);
 
     if (error) throw error;
+
+    // Synchronize to Production Supabase (wmuzvefmrbgffftkpdnx) per Rule 2
+    try {
+      const { getProdClient } = await import("@/lib/supabase/dual-sync");
+      const prodSupabase = getProdClient();
+      if (prodSupabase) {
+        await prodSupabase.from("packages").update({ is_default: false }).neq("id", id);
+        await prodSupabase.from("packages").update({ is_default: true }).eq("id", id);
+      }
+    } catch (prodErr) {
+      console.warn("Sync package set default to prod failed:", prodErr);
+    }
 
     revalidatePath("/");
     revalidatePath("/admin/packages");

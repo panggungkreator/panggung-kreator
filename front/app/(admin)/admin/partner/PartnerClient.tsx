@@ -1,37 +1,62 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Briefcase,
   Globe,
-  Link2,
   User,
   Phone,
   Plus,
   Trash2,
   Edit,
   Search,
-  ChevronDown,
   AlertCircle,
-  RotateCcw,
-  Loader,
-  CheckCircle,
-  ArrowUp,
-  ArrowDown,
+  X,
   Star,
-  Eye
+  Eye,
+  SlidersHorizontal,
+  ExternalLink,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
+
+function InstagramIcon({ size = 13, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+    </svg>
+  );
+}
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DeleteConfirmDialog } from "@/components/ui/DeleteConfirmDialog";
+import AdminPagination from "@/components/admin/AdminPagination";
+import {
+  deletePartnerAction,
+  togglePartnerFeaturedAction,
+  togglePartnerActiveAction,
+  updatePartnersOrderAction,
+} from "@/lib/actions/partner-actions";
+import { toast } from "sonner";
 
 interface Partner {
   id: string;
   name: string;
   type: string;
+  logo_url: string;
   website_url: string;
   instagram_url: string;
   contact_person: string;
@@ -46,424 +71,455 @@ interface Partner {
 
 interface PartnerClientProps {
   initialPartners: Partner[];
+  paginationLimit?: number;
 }
 
-export default function PartnerClient({ initialPartners }: PartnerClientProps) {
+const PARTNER_TYPES = [
+  { value: "kafe", label: "Kafe / Venue" },
+  { value: "kampus", label: "Kampus / Sekolah" },
+  { value: "brand", label: "Brand / Bisnis" },
+  { value: "media", label: "Media Partner" },
+  { value: "sponsor", label: "Sponsor" },
+  { value: "lainnya", label: "Lainnya" },
+];
+
+export default function PartnerClient({
+  initialPartners,
+  paginationLimit = 10,
+}: PartnerClientProps) {
   const [partners, setPartners] = useState<Partner[]>(initialPartners);
   const [partnerToDelete, setPartnerToDelete] = useState<Partner | null>(null);
   const [partnerDetail, setPartnerDetail] = useState<Partner | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   // Filters
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const limit = paginationLimit && paginationLimit > 0 ? paginationLimit : 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, typeFilter, statusFilter]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "-";
     return new Date(dateStr).toLocaleDateString("id-ID", {
       day: "2-digit",
       month: "short",
-      year: "numeric"
+      year: "numeric",
     });
   };
 
-  const refreshPartners = async () => {
-    try {
-      const supabase = createClient();
-      const { data: raw } = await supabase
-        .from("partners")
-        .select("*")
-        .order("order_index", { ascending: true })
-        .order("name", { ascending: true });
-
-      if (raw) {
-        const formatted = raw.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          type: p.type || "kafe",
-          website_url: p.website_url || "",
-          instagram_url: p.instagram_url || "",
-          contact_person: p.contact_person || "",
-          contact_wa: p.contact_wa || "",
-          description: p.description || "",
-          partnership_since: p.partnership_since || "",
-          is_active: p.is_active ?? true,
-          is_featured: p.is_featured ?? false,
-          order_index: p.order_index || 0,
-          created_at: p.created_at,
-        }));
-        setPartners(formatted);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  const getTypeLabel = (type: string) => {
+    const found = PARTNER_TYPES.find((t) => t.value === type);
+    return found ? found.label : type;
   };
 
   // Toggle Featured Inline
-  const handleToggleFeatured = async (partnerId: string, currentStatus: boolean, name: string) => {
-    try {
-      const supabase = createClient();
-      const next = !currentStatus;
-      const { error } = await supabase
-        .from("partners")
-        .update({ is_featured: next })
-        .eq("id", partnerId);
-
-      if (error) {
-        toast.error("Gagal memperbarui rekomendasi: " + error.message);
-      } else {
-        toast.success(`Status rekomendasi "${name}" berhasil diperbarui!`);
-        setPartners(prev =>
-          prev.map(p => (p.id === partnerId ? { ...p, is_featured: next } : p))
+  const handleToggleFeatured = (partnerId: string, currentStatus: boolean, name: string) => {
+    startTransition(async () => {
+      const res = await togglePartnerFeaturedAction(partnerId, currentStatus);
+      if (res.success) {
+        setPartners((prev) =>
+          prev.map((p) => (p.id === partnerId ? { ...p, is_featured: !currentStatus } : p))
         );
+        toast.success(`Status rekomendasi "${name}" berhasil diperbarui!`);
+      } else {
+        toast.error("Gagal mengubah rekomendasi: " + res.error);
       }
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Terjadi kesalahan: " + (err.message || err));
-    }
+    });
   };
 
   // Toggle Active Inline
-  const handleToggleActive = async (partnerId: string, currentStatus: boolean, name: string) => {
-    try {
-      const supabase = createClient();
-      const next = !currentStatus;
-      const { error } = await supabase
-        .from("partners")
-        .update({ is_active: next })
-        .eq("id", partnerId);
-
-      if (error) {
-        toast.error("Gagal memperbarui status keaktifan: " + error.message);
-      } else {
-        toast.success(`Status keaktifan "${name}" berhasil diperbarui!`);
-        setPartners(prev =>
-          prev.map(p => (p.id === partnerId ? { ...p, is_active: next } : p))
+  const handleToggleActive = (partnerId: string, currentStatus: boolean, name: string) => {
+    startTransition(async () => {
+      const res = await togglePartnerActiveAction(partnerId, currentStatus);
+      if (res.success) {
+        setPartners((prev) =>
+          prev.map((p) => (p.id === partnerId ? { ...p, is_active: !currentStatus } : p))
         );
+        toast.success(`Status aktif "${name}" berhasil diubah.`);
+      } else {
+        toast.error("Gagal mengubah status aktif: " + res.error);
       }
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Terjadi kesalahan: " + (err.message || err));
-    }
+    });
   };
 
-  // Move Order Index (Re-ordering tool)
-  const handleMoveOrder = async (index: number, direction: "up" | "down") => {
-    const targetIdx = direction === "up" ? index - 1 : index + 1;
-    if (targetIdx < 0 || targetIdx >= filteredPartners.length) return;
+  // Move Order Up/Down
+  const handleMoveOrder = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= filteredPartners.length) return;
 
-    const currentItem = filteredPartners[index];
-    const neighborItem = filteredPartners[targetIdx];
+    const reordered = [...filteredPartners];
+    const temp = reordered[index];
+    reordered[index] = reordered[targetIndex];
+    reordered[targetIndex] = temp;
 
-    try {
-      const supabase = createClient();
+    const payload = reordered.map((p, idx) => ({
+      id: p.id,
+      order_index: idx + 1,
+    }));
 
-      // Swap order indices in Supabase
-      const { error: err1 } = await supabase
-        .from("partners")
-        .update({ order_index: neighborItem.order_index })
-        .eq("id", currentItem.id);
+    setPartners((prev) => {
+      const copy = [...prev];
+      payload.forEach((item) => {
+        const found = copy.find((c) => c.id === item.id);
+        if (found) found.order_index = item.order_index;
+      });
+      return copy.sort((a, b) => a.order_index - b.order_index);
+    });
 
-      const { error: err2 } = await supabase
-        .from("partners")
-        .update({ order_index: currentItem.order_index })
-        .eq("id", neighborItem.id);
-
-      if (err1 || err2) throw new Error("Gagal mengurutkan.");
-
-      await refreshPartners();
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message);
-    }
+    startTransition(async () => {
+      await updatePartnersOrderAction(payload);
+    });
   };
 
-  // Trigger Delete Partner Modal
-  const handleDeletePartner = (partner: Partner) => {
-    setPartnerToDelete(partner);
-  };
-
-  // Handle Confirm Delete Partner
-  const handleConfirmDelete = async () => {
+  // Confirm Delete
+  const handleConfirmDelete = () => {
     if (!partnerToDelete) return;
-    const partner = partnerToDelete;
+    const { id, name } = partnerToDelete;
     setPartnerToDelete(null);
 
-    try {
-      const supabase = createClient();
-
-
-
-      // Delete DB record
-      const { error } = await supabase
-        .from("partners")
-        .delete()
-        .eq("id", partner.id);
-
-      if (error) throw new Error(error.message);
-
-      toast.success("Partner berhasil dihapus secara permanen!");
-      await refreshPartners();
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Gagal menghapus partner: " + err.message);
-    }
+    startTransition(async () => {
+      const res = await deletePartnerAction(id);
+      if (res.success) {
+        setPartners((prev) => prev.filter((p) => p.id !== id));
+        toast.success(`Partner "${name}" berhasil dihapus.`);
+      } else {
+        toast.error("Gagal menghapus partner: " + res.error);
+      }
+    });
   };
 
   // Filtered dataset
   const filteredPartners = useMemo(() => {
     return partners.filter((p) => {
+      const query = search.toLowerCase();
       const matchesSearch =
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.description.toLowerCase().includes(search.toLowerCase());
+        p.name.toLowerCase().includes(query) ||
+        p.description.toLowerCase().includes(query) ||
+        p.contact_person.toLowerCase().includes(query);
 
-      const matchesType =
-        typeFilter === "all" || p.type === typeFilter;
+      const matchesType = typeFilter === "all" || p.type === typeFilter;
 
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "active" && p.is_active) ||
-        (statusFilter === "inactive" && !p.is_active);
+        (statusFilter === "inactive" && !p.is_active) ||
+        (statusFilter === "featured" && p.is_featured);
 
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [partners, search, typeFilter, statusFilter]);
 
-  return (
-    <div className="space-y-6">
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredPartners.length / limit));
+  const startIndex = (currentPage - 1) * limit;
+  const endIndex = Math.min(filteredPartners.length, startIndex + limit);
+  const paginatedPartners = useMemo(() => {
+    return filteredPartners.slice(startIndex, endIndex);
+  }, [filteredPartners, startIndex, endIndex]);
 
-      {/* Page Header */}
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-4 border-b border-border-default">
+  return (
+    <div className="space-y-6 pb-28 md:pb-12 text-zinc-800 dark:text-zinc-200">
+      {/* ═══ TOP HEADER (Ecomora Modern Monochrome Style) ═══ */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-default/60 pb-4">
         <div>
           <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted">
             [ KOMUNITAS ]
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-1">
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-0.5">
             Partner & Kolaborator
           </h1>
+          <p className="text-xs text-text-secondary mt-0.5">
+            Kelola kemitraan strategis dengan kafe, kampus, brand, dan sponsor komunitas.
+          </p>
         </div>
-        <div>
-          <Link
-            href="/admin/partner/addPartner"
-            className="flex items-center gap-1.5 px-6 py-4 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 rounded-full transition-all shadow-sm cursor-pointer tracking-wider"
-          >
-            <Plus size={14} />
-            Tambah Partner Baru
-          </Link>
-        </div>
-      </div>
 
-      {/* Filter toolbar */}
-      <div className="py-5 space-y-4">
-        <div className="flex gap-4">
-
-          {/* Search Box */}
-          <div className="relative">
-            <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
-              <Search className="w-4 h-4" />
-            </span>
+        <div className="flex items-center gap-3">
+          {/* Header Quick Search (h-9 rounded-full) */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari partner..."
-              className="bg-bg-well border border-gray-400 rounded-full py-4 pl-9 pr-4 text-xs w-full text-text-primary focus:outline-none focus:border-text-primary transition-colors"
+              placeholder="Cari partner, kontak..."
+              className="w-full h-9 pl-9 pr-8 text-xs rounded-full bg-bg-well/70 border border-border-default focus:border-text-primary focus:outline-none transition-all placeholder:text-text-muted"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary cursor-pointer"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
 
-          {/* Type Filter */}
-          <div className="relative">
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-[50px] border-gray-400">
-                <SelectValue placeholder="Semua Partner" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Partner</SelectItem>
-                <SelectItem value="kafe">Kafe</SelectItem>
-                <SelectItem value="kampus">Kampus / Sekolah</SelectItem>
-                <SelectItem value="brand">Brand / Bisnis</SelectItem>
-                <SelectItem value="media">Media Partner</SelectItem>
-                <SelectItem value="sponsor">Sponsor</SelectItem>
-                <SelectItem value="lainnya">Lainnya</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Status Filter */}
-          <div className="relative">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-[50px] border-gray-400">
-                <SelectValue placeholder="Semua Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="active">Aktif</SelectItem>
-                <SelectItem value="inactive">Nonaktif</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
+          {/* Action Button Header Desktop (h-9 px-4 rounded-full) */}
+          <Link
+            href="/admin/partner/addPartner"
+            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition-all shadow-xs cursor-pointer shrink-0"
+          >
+            <Plus size={14} className="stroke-[2.5]" />
+            <span>Tambah Partner</span>
+          </Link>
         </div>
       </div>
 
-      {/* Grid Boxed Table of Partners */}
-      <div className="bg-bg-card border border-border-default rounded-2xl">
+      {/* ═══ SUMMARY STATS (Pola 1: Horizontal Scrollable Capsule Pills) ═══ */}
+      <div className="p-1.5 bg-zinc-100/90 dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-white/10 rounded-2xl overflow-x-auto no-scrollbar scroll-smooth flex items-center gap-1.5 shadow-2xs">
+        {/* Semua Partner */}
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter("all");
+            setTypeFilter("all");
+          }}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
+            statusFilter === "all" && typeFilter === "all"
+              ? "bg-white dark:bg-zinc-800 text-text-primary shadow-xs border border-border-default/60"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+          }`}
+        >
+          <span>Semua Partner</span>
+          <span className="px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
+            {partners.length}
+          </span>
+        </button>
 
+        {/* Status Aktif */}
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter("active");
+            setTypeFilter("all");
+          }}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
+            statusFilter === "active"
+              ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+          }`}
+        >
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Aktif</span>
+          <span className="px-2 py-0.5 rounded-full bg-white/20 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
+            {partners.filter((p) => p.is_active).length}
+          </span>
+        </button>
+
+        {/* Featured */}
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter("featured");
+            setTypeFilter("all");
+          }}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
+            statusFilter === "featured"
+              ? "bg-amber-500 text-white shadow-xs"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+          }`}
+        >
+          <Star size={12} className="fill-current" />
+          <span>Featured</span>
+          <span className="px-2 py-0.5 rounded-full bg-white/20 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
+            {partners.filter((p) => p.is_featured).length}
+          </span>
+        </button>
+
+        {/* Type pills */}
+        {PARTNER_TYPES.map((t) => {
+          const count = partners.filter((p) => p.type === t.value).length;
+          if (count === 0) return null;
+          const isSelected = typeFilter === t.value && statusFilter === "all";
+          return (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => {
+                setTypeFilter(t.value);
+                setStatusFilter("all");
+              }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
+                isSelected
+                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                  : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+              }`}
+            >
+              <span>{t.label}</span>
+              <span className="px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ═══ 1. DESKTOP VIEW: TABLE (hidden on mobile, visible on md/lg) ═══ */}
+      <div className="hidden md:block bg-bg-card border border-border-default/70 rounded-2xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="text-zinc-650 dark:text-zinc-400 font-semibold">
-                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50 text-center">Urutan</th>
-                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Nama</th>
-                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Tipe</th>
-                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Kontak Person</th>
-                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">WhatsApp</th>
-                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Sosmed & Web</th>
-                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Featured</th>
-                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50">Status Aktif</th>
-                <th className="py-4 px-6 border-b border-border-default/70 bg-bg-well/50 text-center">Aksi</th>
+              <tr className="text-zinc-650 dark:text-zinc-400 font-semibold bg-bg-well/50">
+                <th className="py-3.5 px-4 border-b border-border-default/70 w-16 text-center">Urutan</th>
+                <th className="py-3.5 px-5 border-b border-border-default/70">Partner</th>
+                <th className="py-3.5 px-4 border-b border-border-default/70">Tipe</th>
+                <th className="py-3.5 px-4 border-b border-border-default/70">Kontak CP</th>
+                <th className="py-3.5 px-4 border-b border-border-default/70 text-center">Featured</th>
+                <th className="py-3.5 px-4 border-b border-border-default/70 text-center">Status</th>
+                <th className="py-3.5 px-4 border-b border-border-default/70 text-center w-28">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {filteredPartners.length === 0 ? (
+              {paginatedPartners.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-8 text-center text-text-muted font-semibold">
+                  <td colSpan={7} className="p-8 text-center text-text-muted font-semibold">
                     Tidak ada data partner ditemukan.
                   </td>
                 </tr>
               ) : (
-                filteredPartners.map((p, index) => {
-                  const isLastRow = index === filteredPartners.length - 1;
-                  const cellBorderClass = `${isLastRow ? "" : "border-b"} border-r border-border-default/30 last:border-r-0 py-4 px-6`;
-
+                paginatedPartners.map((p, index) => {
+                  const globalIdx = startIndex + index;
                   return (
                     <tr
                       key={p.id}
-                      className="hover:bg-bg-well/30 transition-colors group"
+                      className="border-b border-border-default/40 last:border-b-0 hover:bg-bg-well/30 transition-colors"
                     >
-                      {/* Order Controls */}
-                      <td className={cellBorderClass}>
-                        <div className="flex flex-col items-center gap-1">
+                      {/* Urutan Up/Down */}
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex flex-col items-center gap-0.5">
                           <button
-                            onClick={() => handleMoveOrder(index, "up")}
-                            disabled={index === 0}
-                            className="p-1 border border-border-default rounded hover:bg-bg-well text-text-secondary disabled:opacity-30 cursor-pointer"
+                            type="button"
+                            onClick={() => handleMoveOrder(globalIdx, "up")}
+                            disabled={globalIdx === 0}
+                            className="p-1 rounded hover:bg-bg-well text-text-secondary disabled:opacity-20 cursor-pointer"
+                            title="Naikkan urutan"
                           >
-                            <ArrowUp size={11} />
+                            <ChevronUp size={12} />
                           </button>
-                          <span className="font-bold text-[10px] text-text-primary">#{p.order_index}</span>
+                          <span className="font-mono text-[10px] text-text-muted font-bold">
+                            {p.order_index}
+                          </span>
                           <button
-                            onClick={() => handleMoveOrder(index, "down")}
-                            disabled={index === filteredPartners.length - 1}
-                            className="p-1 border border-border-default rounded hover:bg-bg-well text-text-secondary disabled:opacity-30 cursor-pointer"
+                            type="button"
+                            onClick={() => handleMoveOrder(globalIdx, "down")}
+                            disabled={globalIdx === filteredPartners.length - 1}
+                            className="p-1 rounded hover:bg-bg-well text-text-secondary disabled:opacity-20 cursor-pointer"
+                            title="Turunkan urutan"
                           >
-                            <ArrowDown size={11} />
+                            <ChevronDown size={12} />
                           </button>
                         </div>
                       </td>
 
-                      {/* Name */}
-                      <td className={cellBorderClass}>
+                      {/* Partner Name & Logo */}
+                      <td className="py-3 px-5">
                         <div className="flex items-center gap-3">
-                          <div>
-                            <button
-                              onClick={() => setPartnerDetail(p)}
-                              className="font-bold text-text-primary hover:underline block text-sm leading-tight text-left cursor-pointer"
-                            >
+                          {p.logo_url ? (
+                            <img
+                              src={p.logo_url}
+                              alt={p.name}
+                              className="w-9 h-9 rounded-xl object-cover border border-border-default/50 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-xl bg-bg-well border border-border-default/50 flex items-center justify-center shrink-0 text-text-muted font-bold text-xs">
+                              {p.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <span className="font-bold text-text-primary text-xs truncate block">
                               {p.name}
-                            </button>
+                            </span>
                             {p.description && (
-                              <span className="block text-[10px] text-text-secondary font-medium mt-0.5 max-w-[160px] truncate" title={p.description}>
+                              <p className="text-[11px] text-text-secondary truncate max-w-xs">
                                 {p.description}
-                              </span>
+                              </p>
                             )}
                           </div>
                         </div>
                       </td>
 
                       {/* Type */}
-                      <td className={cellBorderClass}>
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full inline-block uppercase bg-bg-well border border-border-default text-text-secondary">
-                          {p.type.replace("_", " ")}
+                      <td className="py-3 px-4">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-bg-well text-text-secondary border border-border-default/50">
+                          {getTypeLabel(p.type)}
                         </span>
                       </td>
 
-                      {/* Contact Person */}
-                      <td className={`${cellBorderClass} font-semibold text-text-primary`}>
-                        {p.contact_person || "-"}
-                      </td>
-
-                      {/* WhatsApp */}
-                      <td className={`${cellBorderClass} text-text-secondary font-medium`}>
-                        {p.contact_wa || "-"}
-                      </td>
-
-                      {/* Web links */}
-                      <td className={cellBorderClass}>
-                        <div className="flex gap-2">
-                          {p.website_url && (
-                            <a href={p.website_url} target="_blank" rel="noopener noreferrer" className="p-1.5 border border-border-default hover:bg-bg-well rounded text-text-secondary hover:text-text-primary">
-                              <Globe size={13} />
-                            </a>
+                      {/* Kontak CP */}
+                      <td className="py-3 px-4">
+                        <div className="text-[11px] space-y-0.5">
+                          <p className="font-semibold text-text-primary">
+                            {p.contact_person || "-"}
+                          </p>
+                          {p.contact_wa && (
+                            <p className="text-text-muted font-mono">{p.contact_wa}</p>
                           )}
-                          {p.instagram_url && (
-                            <a href={`https://instagram.com/${p.instagram_url}`} target="_blank" rel="noopener noreferrer" className="p-1.5 border border-border-default hover:bg-bg-well rounded text-text-secondary hover:text-text-primary">
-                              <Link2 size={13} />
-                            </a>
-                          )}
-                          {!p.website_url && !p.instagram_url && <span className="text-text-muted">-</span>}
                         </div>
                       </td>
 
-                      {/* Featured Star toggle */}
-                      <td className={cellBorderClass}>
+                      {/* Featured */}
+                      <td className="py-3 px-4 text-center">
                         <button
+                          type="button"
                           onClick={() => handleToggleFeatured(p.id, p.is_featured, p.name)}
-                          className={`p-1.5 border rounded-lg cursor-pointer ${p.is_featured
-                            ? "bg-amber-500/10 border-amber-500/30 text-amber-500"
-                            : "border-border-default text-text-muted hover:text-text-secondary"
-                            }`}
-                          title="Tandai Unggulan (Featured)"
+                          className={`p-1.5 rounded-full transition-all cursor-pointer ${
+                            p.is_featured
+                              ? "text-amber-500 hover:text-amber-600 bg-amber-500/10"
+                              : "text-zinc-300 hover:text-zinc-400 dark:text-zinc-700"
+                          }`}
+                          title={p.is_featured ? "Hapus dari rekomendasi" : "Jadikan rekomendasi"}
                         >
-                          <Star size={13} className={p.is_featured ? "fill-current" : ""} />
+                          <Star size={15} className={p.is_featured ? "fill-amber-500" : ""} />
                         </button>
                       </td>
 
-                      {/* Active Status toggle */}
-                      <td className={cellBorderClass}>
+                      {/* Status Aktif */}
+                      <td className="py-3 px-4 text-center">
                         <button
+                          type="button"
                           onClick={() => handleToggleActive(p.id, p.is_active, p.name)}
-                          className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer border ${p.is_active
-                            ? "bg-[#dcfce7] text-[#15803d] hover:bg-[#bbf7d0] border-emerald-200/20"
-                            : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 border-zinc-200/30"
-                            }`}
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                            p.is_active
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                              : "bg-zinc-500/10 text-zinc-500 border border-zinc-500/20"
+                          }`}
                         >
                           {p.is_active ? "Aktif" : "Nonaktif"}
                         </button>
                       </td>
 
-                      <td className={cellBorderClass}>
-                        <div className="flex items-center justify-center gap-2">
+                      {/* Aksi */}
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
                           <button
+                            type="button"
                             onClick={() => setPartnerDetail(p)}
-                            className="p-1.5 text-text-secondary hover:text-text-primary bg-bg-well hover:bg-border-default/50 border border-border-default rounded-lg cursor-pointer flex items-center justify-center"
+                            className="p-1.5 rounded-lg border border-border-default hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                             title="Detail Partner"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye size={13} />
                           </button>
                           <Link
                             href={`/admin/partner/addPartner?id=${p.id}`}
-                            className="p-1.5 text-text-secondary hover:text-text-primary bg-bg-well hover:bg-border-default/50 border border-border-default rounded-lg cursor-pointer flex items-center justify-center"
+                            className="p-1.5 rounded-lg border border-border-default hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                             title="Edit Partner"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit size={13} />
                           </Link>
                           <button
-                            onClick={() => handleDeletePartner(p)}
-                            className="p-1.5 text-[#b91c1c] hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer"
+                            type="button"
+                            onClick={() => setPartnerToDelete(p)}
+                            className="p-1.5 rounded-lg border border-border-default/60 hover:bg-red-500/10 text-red-500 transition-colors cursor-pointer"
                             title="Hapus Partner"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </td>
@@ -476,137 +532,349 @@ export default function PartnerClient({ initialPartners }: PartnerClientProps) {
         </div>
       </div>
 
-      <DeleteConfirmDialog
-        isOpen={!!partnerToDelete}
-        onOpenChange={(open) => !open && setPartnerToDelete(null)}
-        title="Hapus Partner"
-        description={
-          <>
-            Apakah Anda yakin ingin menghapus partner &ldquo;<span className="font-extrabold text-zinc-950 dark:text-white underline decoration-red-500 decoration-2">{partnerToDelete?.name}</span>&rdquo; secara permanen?
-            <p className="mt-2 text-xs text-zinc-455 dark:text-zinc-500 font-bold">
-              File logo partner di storage juga akan dibersihkan secara otomatis.
-            </p>
-          </>
-        }
-        onConfirm={handleConfirmDelete}
+      {/* ═══ 2. MOBILE VIEW: CARDS (visible on mobile, hidden on md/lg) ═══ */}
+      <div className="md:hidden space-y-3.5">
+        {paginatedPartners.length === 0 ? (
+          <div className="bg-bg-card border border-border-default/70 rounded-3xl p-8 text-center text-text-muted shadow-xs">
+            <Briefcase className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-xs font-medium">Tidak ada data partner ditemukan.</p>
+          </div>
+        ) : (
+          paginatedPartners.map((p) => (
+            <div
+              key={p.id}
+              className="bg-white dark:bg-[#121212] border border-border-default/70 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-3xl p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between active:scale-[0.99] space-y-3"
+            >
+              {/* Top Row: Type Pill + Featured + Status */}
+              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border-default/40">
+                <span className="px-2.5 py-0.5 rounded-full bg-bg-well text-[10px] font-bold uppercase tracking-wider text-text-secondary border border-border-default/50">
+                  {getTypeLabel(p.type)}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFeatured(p.id, p.is_featured, p.name)}
+                    className="p-1 text-amber-500 cursor-pointer"
+                    title="Featured"
+                  >
+                    <Star size={14} className={p.is_featured ? "fill-amber-500" : "text-zinc-300"} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(p.id, p.is_active, p.name)}
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer ${
+                      p.is_active
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                        : "bg-zinc-500/10 text-zinc-500 border border-zinc-500/20"
+                    }`}
+                  >
+                    {p.is_active ? "Aktif" : "Nonaktif"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Middle Row: Logo + Info */}
+              <div className="flex gap-3 items-start my-1">
+                {p.logo_url ? (
+                  <img
+                    src={p.logo_url}
+                    alt={p.name}
+                    className="w-12 h-12 rounded-2xl object-cover border border-border-default/50 shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-2xl bg-bg-well border border-border-default/50 flex items-center justify-center shrink-0 text-text-muted font-bold text-sm">
+                    {p.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-black tracking-tight text-text-primary truncate">
+                    {p.name}
+                  </h3>
+                  {p.description && (
+                    <p className="text-xs text-text-secondary mt-0.5 line-clamp-2 leading-relaxed">
+                      {p.description}
+                    </p>
+                  )}
+                  {p.contact_person && (
+                    <p className="text-[11px] text-text-muted mt-1 truncate">
+                      CP: <span className="font-semibold text-text-primary">{p.contact_person}</span>{" "}
+                      {p.contact_wa && `(${p.contact_wa})`}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom Row: Social links & Actions */}
+              <div className="pt-2.5 border-t border-border-default/40 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {p.website_url && (
+                    <a
+                      href={p.website_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 rounded-full border border-border-default hover:bg-bg-well text-text-secondary hover:text-text-primary"
+                      title="Website"
+                    >
+                      <Globe size={13} />
+                    </a>
+                  )}
+                  {p.instagram_url && (
+                    <a
+                      href={p.instagram_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 rounded-full border border-border-default hover:bg-bg-well text-text-secondary hover:text-text-primary"
+                      title="Instagram"
+                    >
+                      <InstagramIcon size={13} />
+                    </a>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setPartnerDetail(p)}
+                    className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
+                    title="Detail Partner"
+                  >
+                    <Eye size={13} />
+                  </button>
+                  <Link
+                    href={`/admin/partner/addPartner?id=${p.id}`}
+                    className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
+                    title="Edit Partner"
+                  >
+                    <Edit size={13} />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setPartnerToDelete(p)}
+                    className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-red-500/10 text-red-500 hover:text-red-600 active:scale-95 transition-all cursor-pointer"
+                    title="Hapus Partner"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* ═══ PAGINATION CONTROLS (Reusable AdminPagination Component) ═══ */}
+      <AdminPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredPartners.length}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        limit={limit}
+        itemLabel="partner"
+        onPageChange={setCurrentPage}
       />
 
-      {/* Partner Detail Dialog */}
-      <Dialog open={!!partnerDetail} onOpenChange={(open) => !open && setPartnerDetail(null)}>
-        <DialogContent className="max-w-md sm:max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 text-zinc-800 dark:text-zinc-200 shadow-2xl">
-          <DialogHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-widest bg-zinc-100 dark:bg-zinc-900 px-3 h-6 flex items-center rounded-full text-zinc-500 dark:text-zinc-400 font-mono">
-                Detail Partner
-              </span>
-              {partnerDetail?.is_featured && (
-                <span className="px-2.5 h-6 flex items-center rounded bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[9px] font-black uppercase tracking-widest gap-1">
-                  <Star size={10} className="fill-current" />
-                  Featured
+      {/* ═══ FLOATING BOTTOM CONTROLS (Compact Proportional Dock Persis admin-mobile.md) ═══ */}
+      <div className="md:hidden fixed bottom-6 inset-x-0 z-30 pointer-events-none flex justify-center px-4">
+        <div className="pointer-events-auto bg-zinc-900/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-2 text-white">
+          {/* Type Filter Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer relative ${
+                  typeFilter !== "all" || statusFilter !== "all" ? "text-white bg-zinc-800" : ""
+                }`}
+                title="Filter Partner"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                {(typeFilter !== "all" || statusFilter !== "all") && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#BAFF6A]" />
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="center"
+              className="w-64 p-3.5 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-3 mb-2 z-50 max-h-72 overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-border-default/50 pb-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted">
+                  Filter Partner
                 </span>
-              )}
-              <span className={`px-2.5 h-6 flex items-center rounded-full text-[9px] font-black uppercase tracking-widest border ${partnerDetail?.is_active
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-                : "bg-zinc-500/10 border-zinc-500/30 text-zinc-500"
-                }`}>
-                {partnerDetail?.is_active ? "Aktif" : "Nonaktif"}
-              </span>
-            </div>
-            <DialogTitle className="text-xl font-black text-zinc-900 dark:text-white mt-3 uppercase tracking-wider font-title leading-tight">
-              {partnerDetail?.name}
+                {(typeFilter !== "all" || statusFilter !== "all") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTypeFilter("all");
+                      setStatusFilter("all");
+                    }}
+                    className="text-[10px] font-bold text-red-500 hover:underline cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                  Kategori
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setTypeFilter("all")}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                      typeFilter === "all"
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                        : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
+                    }`}
+                  >
+                    Semua
+                  </button>
+                  {PARTNER_TYPES.map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setTypeFilter(t.value)}
+                      className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                        typeFilter === t.value
+                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                          : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Right Action: Tambah Partner */}
+          <Link
+            href="/admin/partner/addPartner"
+            className="h-9 px-4 rounded-full bg-white text-zinc-900 dark:bg-white dark:text-zinc-900 hover:bg-zinc-100 flex items-center gap-1.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+            title="Tambah Partner Baru"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Tambah</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* ═══ DETAIL MODAL (Mobile Responsive rounded-none sm:rounded-3xl border-0 sm:border) ═══ */}
+      <Dialog open={Boolean(partnerDetail)} onOpenChange={(open) => !open && setPartnerDetail(null)}>
+        <DialogContent className="max-w-lg bg-white dark:bg-zinc-950 border-0 sm:border border-border-default p-6 rounded-none sm:rounded-3xl">
+          <DialogHeader className="pb-3 border-b border-border-default/60">
+            <DialogTitle className="text-base font-black text-text-primary">
+              Detail Partner & Kolaborator
             </DialogTitle>
           </DialogHeader>
 
           {partnerDetail && (
-            <div className="space-y-5">
+            <div className="space-y-4 pt-2 text-xs">
+              <div className="flex items-center gap-3">
+                {partnerDetail.logo_url ? (
+                  <img
+                    src={partnerDetail.logo_url}
+                    alt={partnerDetail.name}
+                    className="w-14 h-14 rounded-2xl object-cover border border-border-default/50"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-bg-well border border-border-default/50 flex items-center justify-center text-text-muted font-bold text-lg">
+                    {partnerDetail.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-extrabold text-sm text-text-primary">
+                    {partnerDetail.name}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="px-2 py-0.5 rounded-full bg-bg-well text-[10px] font-bold text-text-secondary border border-border-default/50 uppercase">
+                      {getTypeLabel(partnerDetail.type)}
+                    </span>
+                    {partnerDetail.is_featured && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-bold flex items-center gap-1">
+                        <Star size={10} className="fill-current" /> Featured
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-              {/* Deskripsi */}
-              {partnerDetail.description ? (
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Deskripsi</span>
-                  <p className="text-[12px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium">
+              {partnerDetail.description && (
+                <div className="p-3 bg-bg-well/50 rounded-xl border border-border-default/40">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block mb-1">
+                    Deskripsi
+                  </span>
+                  <p className="text-text-secondary leading-relaxed">
                     {partnerDetail.description}
                   </p>
                 </div>
-              ) : (
-                <p className="text-xs text-zinc-400 italic">Tidak ada deskripsi untuk partner ini.</p>
               )}
-              {/* Kategori Badge */}
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-zinc-900 dark:bg-yellow-100 text-white dark:text-zinc-900 uppercase tracking-widest">
-                  {partnerDetail.type.replace("_", " ")}
-                </span>
-              </div>
-              {/* Kontak Person Section */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Kontak Person</span>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                    <User className="w-4 h-4 text-zinc-400" />
-                    <span>{partnerDetail.contact_person || "-"}</span>
-                  </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-bg-well/50 rounded-xl border border-border-default/40">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block mb-1">
+                    Contact Person
+                  </span>
+                  <p className="font-semibold text-text-primary">
+                    {partnerDetail.contact_person || "-"}
+                  </p>
+                  <p className="text-text-muted font-mono text-[11px]">
+                    {partnerDetail.contact_wa || "-"}
+                  </p>
                 </div>
 
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">WhatsApp</span>
-                  <div className="flex items-center gap-2 text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
-                    <Phone className="w-4 h-4 text-zinc-400" />
-                    <span>{partnerDetail.contact_wa || "-"}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sosial Media & Tautan Section */}
-              <div className="space-y-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Tautan & Sosial Media</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Website */}
-                  {partnerDetail.website_url ? (
-                    <a
-                      href={partnerDetail.website_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors text-xs font-semibold text-zinc-700 dark:text-zinc-350"
-                    >
-                      <Globe className="w-4 h-4 text-zinc-400 shrink-0" />
-                      <span className="truncate">{partnerDetail.website_url.replace(/^https?:\/\//, "")}</span>
-                    </a>
-                  ) : (
-                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-950/20 text-xs font-semibold text-zinc-400 italic">
-                      <Globe className="w-4 h-4 text-zinc-300 shrink-0" />
-                      <span>Website tidak ada</span>
-                    </div>
-                  )}
-
-                  {/* Instagram */}
-                  {partnerDetail.instagram_url ? (
-                    <a
-                      href={`https://instagram.com/${partnerDetail.instagram_url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors text-xs font-semibold text-zinc-700 dark:text-zinc-350 font-mono"
-                    >
-                      <Link2 className="w-4 h-4 text-zinc-400 shrink-0" />
-                      <span>@{partnerDetail.instagram_url}</span>
-                    </a>
-                  ) : (
-                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-950/20 text-xs font-semibold text-zinc-400 italic">
-                      <Link2 className="w-4 h-4 text-zinc-300 shrink-0" />
-                      <span>Instagram tidak ada</span>
-                    </div>
-                  )}
+                <div className="p-3 bg-bg-well/50 rounded-xl border border-border-default/40">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block mb-1">
+                    Kemitraan Sejak
+                  </span>
+                  <p className="font-semibold text-text-primary">
+                    {formatDate(partnerDetail.partnership_since)}
+                  </p>
                 </div>
               </div>
 
-              {/* Footer Meta */}
-              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center text-[10px] text-zinc-400 font-semibold font-mono">
-                <span>Dibuat: {formatDate(partnerDetail.created_at)}</span>
+              <div className="flex items-center gap-2 pt-2">
+                {partnerDetail.website_url && (
+                  <a
+                    href={partnerDetail.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 h-9 rounded-xl border border-border-default hover:bg-bg-well text-text-secondary hover:text-text-primary flex items-center justify-center gap-1.5 font-bold text-[11px]"
+                  >
+                    <Globe size={13} />
+                    <span>Website</span>
+                  </a>
+                )}
+                {partnerDetail.instagram_url && (
+                  <a
+                    href={partnerDetail.instagram_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 h-9 rounded-xl border border-border-default hover:bg-bg-well text-text-secondary hover:text-text-primary flex items-center justify-center gap-1.5 font-bold text-[11px]"
+                  >
+                    <InstagramIcon size={13} />
+                    <span>Instagram</span>
+                  </a>
+                )}
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
+      {/* ═══ DELETE CONFIRM DIALOG (Kustom Tanpa window.confirm) ═══ */}
+      <DeleteConfirmDialog
+        isOpen={Boolean(partnerToDelete)}
+        onOpenChange={(open) => !open && setPartnerToDelete(null)}
+        title="Hapus Partner"
+        description={`Apakah Anda yakin ingin menghapus partner "${partnerToDelete?.name}"? Data partner ini akan dihapus secara permanen.`}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

@@ -36,5 +36,14 @@ export default async function PackagesPage() {
     console.error("Error fetching packages for admin:", error);
   }
 
-  return <PackagesClient initialPackages={packages || []} />;
+  // Tarik batas limit pagination dari pengaturan sistem (default: 10)
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
+
+  return (
+    <PackagesClient
+      initialPackages={packages || []}
+      paginationLimit={paginationLimit}
+    />
+  );
 }

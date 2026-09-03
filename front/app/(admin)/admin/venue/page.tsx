@@ -53,5 +53,14 @@ export default async function VenuePage() {
     created_at: v.created_at,
   }));
 
-  return <VenueClient initialVenues={formattedVenues} />;
+  // Fetch pagination limit setting
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
+
+  return (
+    <VenueClient
+      initialVenues={formattedVenues}
+      paginationLimit={paginationLimit}
+    />
+  );
 }

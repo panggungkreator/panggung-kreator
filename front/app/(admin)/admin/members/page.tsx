@@ -85,5 +85,15 @@ export default async function MembersPage() {
     console.error("Error fetching packages for admin map:", pkgError);
   }
 
-  return <MembersClient initialMembers={members || []} packages={packages || []} />;
+  // Tarik batas limit pagination dari pengaturan sistem (default: 10)
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
+
+  return (
+    <MembersClient
+      initialMembers={members || []}
+      packages={packages || []}
+      paginationLimit={paginationLimit}
+    />
+  );
 }

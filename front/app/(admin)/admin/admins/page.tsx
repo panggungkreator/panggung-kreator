@@ -79,5 +79,14 @@ export default async function AdminsPage() {
       return true;
     });
 
-  return <AdminsClient initialAdmins={formattedAdmins} />;
+  // Fetch pagination limit setting
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
+
+  return (
+    <AdminsClient
+      initialAdmins={formattedAdmins}
+      paginationLimit={paginationLimit}
+    />
+  );
 }

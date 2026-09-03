@@ -2,6 +2,67 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { syncDualOperation } from "@/lib/supabase/dual-sync";
+
+// ═══ PAGINATION LIMIT SETTINGS ═══
+
+export async function getPaginationLimitSettingAction(): Promise<number> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "pagination_limit")
+      .maybeSingle();
+
+    if (error) {
+      console.warn("system_settings pagination_limit error:", error.message);
+    }
+
+    if (data && data.value) {
+      const parsed = parseInt(String(data.value), 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn("getPaginationLimitSettingAction fallback to 10:", err);
+  }
+  return 10;
+}
+
+export async function savePaginationLimitSettingAction(limit: number) {
+  try {
+    const safeLimit = Math.max(1, Math.min(100, limit || 10));
+    const now = new Date().toISOString();
+
+    const { devResult, error } = await syncDualOperation(async (client) => {
+      const { error: upsertErr } = await client
+        .from("system_settings")
+        .upsert(
+          {
+            key: "pagination_limit",
+            value: String(safeLimit),
+            updated_at: now,
+          },
+          { onConflict: "key" }
+        );
+      if (upsertErr) throw upsertErr;
+      return true;
+    });
+
+    if (error) {
+      return { success: false, error: error.message || "Gagal menyimpan limit pagination." };
+    }
+
+    return { success: true, limit: safeLimit };
+  } catch (err: any) {
+    console.error("savePaginationLimitSettingAction error:", err);
+    return { success: false, error: err.message || "Gagal menyimpan pagination limit." };
+  }
+}
+
+// ═══ ATTENDANCE EMAIL SETTINGS ═══
 
 export interface ReferralCommissionSettings {
   mode: "flat" | "percentage";
@@ -33,22 +94,21 @@ export async function getAttendanceEmailSettingAction(): Promise<boolean> {
 
 export async function saveAttendanceEmailSettingAction(enabled: boolean) {
   try {
-    const supabase = createServiceRoleClient();
-    const { error } = await supabase
-      .from("system_settings")
-      .upsert(
-        {
-          key: "attendance_email_enabled",
-          value: enabled ? "true" : "false",
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "key" }
-      );
-
-    if (error) {
-      console.error("Supabase upsert error:", error.message);
-      return { success: false, error: error.message };
-    }
+    const now = new Date().toISOString();
+    await syncDualOperation(async (client) => {
+      const { error } = await client
+        .from("system_settings")
+        .upsert(
+          {
+            key: "attendance_email_enabled",
+            value: enabled ? "true" : "false",
+            updated_at: now,
+          },
+          { onConflict: "key" }
+        );
+      if (error) throw error;
+      return true;
+    });
 
     return { success: true, enabled };
   } catch (err: any) {
@@ -95,7 +155,6 @@ export async function getReferralCommissionSettingsAction(): Promise<ReferralCom
 
 export async function saveReferralCommissionSettingsAction(settings: ReferralCommissionSettings) {
   try {
-    const supabase = createServiceRoleClient();
     const now = new Date().toISOString();
     const rows = [
       { key: "referral_reward_mode", value: settings.mode, updated_at: now },
@@ -103,14 +162,13 @@ export async function saveReferralCommissionSettingsAction(settings: ReferralCom
       { key: "referral_reward_percentage", value: settings.percentage, updated_at: now },
     ];
 
-    const { error } = await supabase
-      .from("system_settings")
-      .upsert(rows, { onConflict: "key" });
-
-    if (error) {
-      console.error("saveReferralCommissionSettingsAction upsert error:", error.message);
-      return { success: false, error: error.message };
-    }
+    await syncDualOperation(async (client) => {
+      const { error } = await client
+        .from("system_settings")
+        .upsert(rows, { onConflict: "key" });
+      if (error) throw error;
+      return true;
+    });
 
     return { success: true, settings };
   } catch (err: any) {
@@ -166,7 +224,6 @@ export async function getTabVisibilitySettingsAction(): Promise<TabVisibilitySet
 
 export async function saveTabVisibilitySettingsAction(settings: TabVisibilitySettings) {
   try {
-    const supabase = createServiceRoleClient();
     const now = new Date().toISOString();
     const rows = [
       { key: "tab_attendance_enabled", value: settings.tab_attendance_enabled ? "true" : "false", updated_at: now },
@@ -174,14 +231,13 @@ export async function saveTabVisibilitySettingsAction(settings: TabVisibilitySet
       { key: "tab_affiliate_enabled", value: settings.tab_affiliate_enabled ? "true" : "false", updated_at: now },
     ];
 
-    const { error } = await supabase
-      .from("system_settings")
-      .upsert(rows, { onConflict: "key" });
-
-    if (error) {
-      console.error("saveTabVisibilitySettingsAction upsert error:", error.message);
-      return { success: false, error: error.message };
-    }
+    await syncDualOperation(async (client) => {
+      const { error } = await client
+        .from("system_settings")
+        .upsert(rows, { onConflict: "key" });
+      if (error) throw error;
+      return true;
+    });
 
     return { success: true, settings };
   } catch (err: any) {
@@ -189,4 +245,5 @@ export async function saveTabVisibilitySettingsAction(settings: TabVisibilitySet
     return { success: false, error: err.message || "Gagal menyimpan ke database." };
   }
 }
+
 

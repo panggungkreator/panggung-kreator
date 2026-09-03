@@ -179,16 +179,29 @@ export default function AdminDetailClient({
   const colorLabel = COLOR_RANGERS[admin.color as ColorRangerSlug]?.label || admin.color;
 
   return (
-    <div className="max-w-6xl mx-auto py-6 px-4 space-y-6">
-      {/* Back Button */}
-      <div>
-        <Link
-          href="/admin/admins"
-          className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors font-semibold"
-        >
-          <ArrowLeft size={14} />
-          <span>Kembali ke Daftar Admin</span>
-        </Link>
+    <div className="space-y-6 pb-28 md:pb-12 text-zinc-800 dark:text-zinc-200">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border-default/60 pb-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/admins"
+            className="w-9 h-9 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer shrink-0"
+            title="Kembali ke Daftar Admin"
+          >
+            <ArrowLeft size={16} />
+          </Link>
+          <div>
+            <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted">
+              [ SYSTEM ]
+            </span>
+            <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-0.5">
+              Detail & Hak Akses Admin
+            </h1>
+            <p className="text-xs text-text-secondary mt-0.5">
+              Konfigurasi privilege modul CMS dan status persetujuan akun administrator.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Main Grid: Info Profile & Actions */}

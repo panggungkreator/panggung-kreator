@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+
 import {
   Calendar,
   MapPin,
@@ -23,7 +26,13 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/ui/DeleteConfirmDialog";
+import { ModalConfirmation } from "@/components/ui/Modal-Confirmation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+
+
 
 interface AttendeeItem {
   name: string;
@@ -65,6 +74,20 @@ export default function AcaraListClient({
 }: AcaraListClientProps) {
   const [events, setEvents] = useState<EventItem[]>(initialEvents);
   const [eventToDelete, setEventToDelete] = useState<EventItem | null>(null);
+  const [publishModal, setPublishModal] = useState<{
+    isOpen: boolean;
+    eventId: string;
+    nextStatus: boolean;
+    title: string;
+    isLoading?: boolean;
+  }>({
+    isOpen: false,
+    eventId: "",
+    nextStatus: false,
+    title: "",
+    isLoading: false,
+  });
+
 
   // Search & Filter State
   const [search, setSearch] = useState("");
@@ -155,34 +178,52 @@ export default function AcaraListClient({
     }
   };
 
-  // Toggle Is Published
-  const handleTogglePublish = async (eventId: string, currentStatus: boolean, title: string) => {
-    const nextStatus = !currentStatus;
-    const confirmation = window.confirm(
-      `Ubah status publish untuk "${title}" menjadi ${nextStatus ? "PUBLISHED" : "DRAFT"}?`
-    );
-    if (!confirmation) return;
+  // Toggle Is Published (Modal Popup Konfirmasi)
+  const handleTogglePublish = (eventId: string, currentStatus: boolean, title: string) => {
+    setPublishModal({
+      isOpen: true,
+      eventId,
+      nextStatus: !currentStatus,
+      title,
+      isLoading: false,
+    });
+  };
+
+  const handleConfirmTogglePublish = async () => {
+    if (!publishModal.eventId) return;
+    setPublishModal(prev => ({ ...prev, isLoading: true }));
 
     try {
       const supabase = createClient();
       const { error } = await supabase
         .from("events")
-        .update({ is_published: nextStatus })
-        .eq("id", eventId);
+        .update({ is_published: publishModal.nextStatus })
+        .eq("id", publishModal.eventId);
 
       if (error) {
         toast.error("Gagal mengubah status: " + error.message);
       } else {
-        toast.success(`Status publish "${title}" berhasil diperbarui!`);
-        setEvents(prev =>
-          prev.map(e => (e.id === eventId ? { ...e, is_published: nextStatus } : e))
+        toast.success(
+          `Status "${publishModal.title}" berhasil diubah menjadi ${publishModal.nextStatus ? "Published" : "Draft"
+          }!`
         );
+        setEvents(prev =>
+          prev.map(e =>
+            e.id === publishModal.eventId
+              ? { ...e, is_published: publishModal.nextStatus }
+              : e
+          )
+        );
+        setPublishModal(prev => ({ ...prev, isOpen: false }));
       }
     } catch (err: any) {
       console.error(err);
       toast.error("Terjadi kesalahan: " + (err.message || err));
+    } finally {
+      setPublishModal(prev => ({ ...prev, isLoading: false }));
     }
   };
+
 
   // Handle Confirm Delete Event
   const handleConfirmDelete = async () => {
@@ -259,6 +300,8 @@ export default function AcaraListClient({
   return (
     <div className="space-y-6 pb-28">
       {/* Top Header */}
+
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-default/60">
         <div>
           <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted block">
@@ -332,50 +375,60 @@ export default function AcaraListClient({
       {/* ═══ 1. DESKTOP VIEW: BOXED TABLE (hidden on mobile, visible on md/lg) ═══ */}
       <div className="hidden md:block space-y-4">
         {/* Desktop Filter Toolbar */}
-        <div className="flex items-center gap-3 py-1">
+        <div className="flex items-center gap-4 py-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-text-secondary">Tipe:</span>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="text-xs bg-bg-well border border-border-default rounded-lg px-2.5 py-1.5 text-text-primary focus:outline-none"
-            >
-              <option value="all">Semua Tipe</option>
-              <option value="open_mic">Open Mic</option>
-              <option value="speech_practice">Speech Practice</option>
-              <option value="mc_practice">MC Practice</option>
-              <option value="networking">Networking</option>
-              <option value="content_class">Content Class</option>
-              <option value="lainnya">Lainnya</option>
-            </select>
+            <span className="text-xs font-semibold text-text-secondary shrink-0">Tipe:</span>
+            <div className="w-44">
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="h-9 rounded-xl px-3 py-1.5 text-xs font-medium bg-bg-well border-border-default">
+                  <SelectValue placeholder="Semua Tipe" />
+                </SelectTrigger>
+                <SelectContent className="bg-bg-card border-border-default">
+                  <SelectItem value="all">Semua Tipe</SelectItem>
+                  <SelectItem value="open_mic">Open Mic</SelectItem>
+                  <SelectItem value="speech_practice">Speech Practice</SelectItem>
+                  <SelectItem value="mc_practice">MC Practice</SelectItem>
+                  <SelectItem value="networking">Networking</SelectItem>
+                  <SelectItem value="content_class">Content Class</SelectItem>
+                  <SelectItem value="lainnya">Lainnya</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-text-secondary">Status:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-xs bg-bg-well border border-border-default rounded-lg px-2.5 py-1.5 text-text-primary focus:outline-none"
-            >
-              <option value="all">Semua Status</option>
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
-            </select>
+            <span className="text-xs font-semibold text-text-secondary shrink-0">Status:</span>
+            <div className="w-36">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 rounded-xl px-3 py-1.5 text-xs font-medium bg-bg-well border-border-default">
+                  <SelectValue placeholder="Semua Status" />
+                </SelectTrigger>
+                <SelectContent className="bg-bg-card border-border-default">
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-text-secondary">Urutan:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="text-xs bg-bg-well border border-border-default rounded-lg px-2.5 py-1.5 text-text-primary focus:outline-none"
-            >
-              <option value="newest">Tanggal Terbaru</option>
-              <option value="oldest">Tanggal Terlama</option>
-              <option value="attendees">Peserta Terbanyak</option>
-            </select>
+            <span className="text-xs font-semibold text-text-secondary shrink-0">Urutan:</span>
+            <div className="w-44">
+              <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
+                <SelectTrigger className="h-9 rounded-xl px-3 py-1.5 text-xs font-medium bg-bg-well border-border-default">
+                  <SelectValue placeholder="Urutkan" />
+                </SelectTrigger>
+                <SelectContent className="bg-bg-card border-border-default">
+                  <SelectItem value="newest">Tanggal Terbaru</SelectItem>
+                  <SelectItem value="oldest">Tanggal Terlama</SelectItem>
+                  <SelectItem value="attendees">Peserta Terbanyak</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
+
 
         {/* Desktop Table Container */}
         <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden shadow-xs">
@@ -387,7 +440,7 @@ export default function AcaraListClient({
                 <th className="py-3.5 px-5 border-r border-border-default/60">Tanggal</th>
                 <th className="py-3.5 px-5 border-r border-border-default/60">Waktu</th>
                 <th className="py-3.5 px-5 border-r border-border-default/60">Lokasi / Venue</th>
-                <th className="py-3.5 px-5 border-r border-border-default/60">Kapasitas & Absen</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60">Jumlah Peserta</th>
                 <th className="py-3.5 px-5 border-r border-border-default/60">Status Publish</th>
                 <th className="py-3.5 px-5 text-center">Aksi</th>
               </tr>
@@ -423,20 +476,18 @@ export default function AcaraListClient({
                       {evt.location}
                     </td>
                     <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40">
-                      <div className="flex items-center gap-1.5 font-mono">
+                      <div className="flex items-center justify-center gap-1.5 font-mono">
                         <span className="font-bold text-text-primary">{evt.present_count}</span>
-                        <span>/ {evt.capacity ? evt.capacity : "∞"}</span>
                       </div>
                     </td>
                     <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40">
                       <button
                         type="button"
                         onClick={() => handleTogglePublish(evt.id, evt.is_published, evt.title)}
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${
-                          evt.is_published
-                            ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25"
-                            : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-300"
-                        }`}
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${evt.is_published
+                          ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25"
+                          : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-300"
+                          }`}
                       >
                         {evt.is_published ? "Published" : "Draft"}
                       </button>
@@ -537,26 +588,22 @@ export default function AcaraListClient({
                       {pastEvents.length} Acara
                     </span>
                   </div>
-                  <div className="p-1 rounded-full text-text-muted group-hover:text-text-primary transition-colors">
-                    {isPastOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </div>
                 </button>
 
+
                 {/* Cards Grid */}
-                {isPastOpen && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-                    {pastEvents.map((evt) => (
-                      <EventCard
-                        key={evt.id}
-                        event={evt}
-                        formatDate={formatDate}
-                        formatTime={formatTime}
-                        onTogglePublish={handleTogglePublish}
-                        onDelete={setEventToDelete}
-                      />
-                    ))}
-                  </div>
-                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                  {pastEvents.map((evt) => (
+                    <EventCard
+                      key={evt.id}
+                      event={evt}
+                      formatDate={formatDate}
+                      formatTime={formatTime}
+                      onTogglePublish={handleTogglePublish}
+                      onDelete={setEventToDelete}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -564,112 +611,89 @@ export default function AcaraListClient({
       </div>
 
 
-      {/* ═══ FLOATING BOTTOM CONTROLS (Only visible on mobile) ═══ */}
-      <div className="md:hidden fixed bottom-6 inset-x-0 z-40 pointer-events-none px-5 max-w-sm mx-auto">
-        <div className="flex items-center justify-between pointer-events-auto">
+      {/* ═══ FLOATING BOTTOM CONTROLS (Compact Proportional Dock) ═══ */}
+      <div className="md:hidden fixed bottom-6 inset-x-0 z-30 pointer-events-none flex justify-center px-4">
+        <div className="pointer-events-auto bg-zinc-900/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-2 text-white">
+          {/* 1. Sort Button (Popover) */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer ${sortBy !== "newest" ? "text-white bg-zinc-800" : ""
+                  }`}
+                title="Urutkan Acara"
+              >
+                <ArrowUpDown className="w-4 h-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="center"
+              className="w-52 p-2.5 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-1 mb-2 z-50"
+            >
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted px-2.5 py-1 block border-b border-border-default/50 mb-1">
+                Urutkan Berdasarkan
+              </span>
+              <button
+                type="button"
+                onClick={() => setSortBy("newest")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "newest"
+                  ? "bg-bg-well text-text-primary font-bold"
+                  : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                  }`}
+              >
+                <span>Tanggal Terbaru</span>
+                {sortBy === "newest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy("oldest")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "oldest"
+                  ? "bg-bg-well text-text-primary font-bold"
+                  : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                  }`}
+              >
+                <span>Tanggal Terlama</span>
+                {sortBy === "oldest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy("attendees")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "attendees"
+                  ? "bg-bg-well text-text-primary font-bold"
+                  : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                  }`}
+              >
+                <span>Peserta Terbanyak</span>
+                {sortBy === "attendees" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+              </button>
+            </PopoverContent>
+          </Popover>
 
-          {/* Bottom Left: Sort and Filter Circular Buttons */}
-          <div className="flex items-center gap-3">
-            {/* 1. Sort Button */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40"
-                  title="Urutkan Acara"
-                >
-                  <ArrowUpDown className="w-5 h-5" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-48 p-2 rounded-2xl shadow-xl space-y-1">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted px-2.5 py-1 block">
-                  Urutkan Berdasarkan
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSortBy("newest")}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left ${
-                    sortBy === "newest" ? "bg-bg-well font-bold text-text-primary" : "text-text-secondary hover:bg-bg-well/60"
+          {/* 2. Filter Button (Popover with Direct Selectable Chips) */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer relative ${typeFilter !== "all" || statusFilter !== "all" ? "text-white bg-zinc-800" : ""
                   }`}
-                >
-                  <span>Tanggal Terbaru</span>
-                  {sortBy === "newest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSortBy("oldest")}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left ${
-                    sortBy === "oldest" ? "bg-bg-well font-bold text-text-primary" : "text-text-secondary hover:bg-bg-well/60"
-                  }`}
-                >
-                  <span>Tanggal Terlama</span>
-                  {sortBy === "oldest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSortBy("attendees")}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left ${
-                    sortBy === "attendees" ? "bg-bg-well font-bold text-text-primary" : "text-text-secondary hover:bg-bg-well/60"
-                  }`}
-                >
-                  <span>Peserta Terbanyak</span>
-                  {sortBy === "attendees" && <Check className="w-3.5 h-3.5 text-text-primary" />}
-                </button>
-              </PopoverContent>
-            </Popover>
-
-            {/* 2. Filter Button */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="w-12 h-12 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border border-border-default/40"
-                  title="Filter Acara"
-                >
-                  <SlidersHorizontal className="w-5 h-5" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 p-3 rounded-2xl shadow-xl space-y-3">
+                title="Filter Acara"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                {(typeFilter !== "all" || statusFilter !== "all") && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#BAFF6A]"></span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="center"
+              className="w-72 p-4 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-3.5 mb-2 z-50"
+            >
+              <div className="flex items-center justify-between border-b border-border-default/50 pb-2">
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted block">
                   Filter Acara
                 </span>
-
-                {/* Filter Tipe */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-text-secondary block">
-                    Tipe Acara
-                  </label>
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="w-full text-xs bg-bg-well border border-border-default rounded-lg px-2.5 py-1.5 text-text-primary focus:outline-none"
-                  >
-                    <option value="all">Semua Tipe</option>
-                    <option value="open_mic">Open Mic</option>
-                    <option value="speech_practice">Speech Practice</option>
-                    <option value="mc_practice">MC Practice</option>
-                    <option value="networking">Networking</option>
-                    <option value="content_class">Content Class</option>
-                    <option value="lainnya">Lainnya</option>
-                  </select>
-                </div>
-
-                {/* Filter Status */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-text-secondary block">
-                    Status Publish
-                  </label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full text-xs bg-bg-well border border-border-default rounded-lg px-2.5 py-1.5 text-text-primary focus:outline-none"
-                  >
-                    <option value="all">Semua Status</option>
-                    <option value="published">Published</option>
-                    <option value="draft">Draft</option>
-                  </select>
-                </div>
-
                 {(typeFilter !== "all" || statusFilter !== "all") && (
                   <button
                     type="button"
@@ -677,22 +701,79 @@ export default function AcaraListClient({
                       setTypeFilter("all");
                       setStatusFilter("all");
                     }}
-                    className="w-full text-center text-xs text-red-500 hover:underline pt-1"
+                    className="text-[10px] text-text-muted hover:text-red-500 underline cursor-pointer"
                   >
                     Reset Filter
                   </button>
                 )}
-              </PopoverContent>
-            </Popover>
-          </div>
+              </div>
 
-          {/* Bottom Right: Cyan Floating Action Button (FAB) matching reference */}
+              {/* Filter Tipe Acara */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-text-secondary block">
+                  Tipe Acara
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: "all", label: "Semua Tipe" },
+                    { id: "open_mic", label: "Open Mic" },
+                    { id: "speech_practice", label: "Speech Practice" },
+                    { id: "mc_practice", label: "MC Practice" },
+                    { id: "networking", label: "Networking" },
+                    { id: "content_class", label: "Content Class" },
+                    { id: "lainnya", label: "Lainnya" },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTypeFilter(t.id)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${typeFilter === t.id
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                        : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
+                        }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Filter Status Publish */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-text-secondary block">
+                  Status Publish
+                </label>
+                <div className="flex gap-1.5">
+                  {[
+                    { id: "all", label: "Semua" },
+                    { id: "published", label: "Published" },
+                    { id: "draft", label: "Draft" },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setStatusFilter(s.id)}
+                      className={`flex-1 py-1 px-2 rounded-full text-[11px] font-semibold text-center transition-all cursor-pointer ${statusFilter === s.id
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                        : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
+                        }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* 3. Right Action Button: Buat Acara (Proportional pill matching monochrome design system) */}
           <Link
             href="/admin/acara/create"
-            className="w-14 h-14 rounded-full bg-[#67e8f9] hover:bg-[#22d3ee] active:scale-95 text-zinc-950 flex items-center justify-center shadow-xl hover:scale-105 transition-all cursor-pointer border border-[#a5f3fc]"
+            className="h-9 px-4 rounded-full bg-white text-zinc-900 dark:bg-white dark:text-zinc-900 hover:bg-zinc-100 flex items-center gap-1.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
             title="Tambah Acara Baru"
           >
-            <Plus className="w-6 h-6 stroke-[2.5]" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Tambah</span>
           </Link>
         </div>
       </div>
@@ -706,9 +787,38 @@ export default function AcaraListClient({
         description={`Apakah Anda yakin ingin menghapus acara "${eventToDelete?.title}"? Seluruh data absensi peserta untuk acara ini juga akan dihapus secara permanen.`}
       />
 
+      {/* Publish Status Confirmation Modal Popup */}
+      <ModalConfirmation
+        isOpen={publishModal.isOpen}
+        onClose={() =>
+          !publishModal.isLoading &&
+          setPublishModal(prev => ({ ...prev, isOpen: false }))
+        }
+        title={publishModal.nextStatus ? "Publikasikan Acara" : "Kembalikan ke Draft"}
+        description={
+          <span>
+            Apakah Anda yakin ingin mengubah status acara{" "}
+            <span className="font-bold text-text-primary">"{publishModal.title}"</span>{" "}
+            menjadi{" "}
+            <span
+              className={`font-bold ${publishModal.nextStatus ? "text-emerald-600" : "text-amber-600"
+                }`}
+            >
+              {publishModal.nextStatus
+                ? "Published (Tampil di Web Publik)"
+                : "Draft (Disembunyikan)"}
+            </span>?
+          </span>
+        }
+        confirmText={publishModal.nextStatus ? "Publikasikan" : "Set Draft"}
+        type={publishModal.nextStatus ? "verify" : "default"}
+        isLoading={publishModal.isLoading}
+        onConfirm={handleConfirmTogglePublish}
+      />
     </div>
   );
 }
+
 
 /**
  * Komponen Card Acara (Diselaraskan persis dengan estetika referensi)
@@ -726,10 +836,16 @@ function EventCard({
   onTogglePublish: (id: string, current: boolean, title: string) => void;
   onDelete: (evt: EventItem) => void;
 }) {
+  const router = useRouter();
   const typeInfo = EVENT_TYPE_MAP[event.event_type] || EVENT_TYPE_MAP.lainnya;
 
   return (
-    <div className="bg-white dark:bg-[#121212] border border-border-default/70 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-3xl p-4 sm:p-5 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group relative">
+    <div
+      onClick={() => router.push(`/admin/acara/${event.id}`)}
+      className="bg-white dark:bg-[#121212] border border-border-default/70 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-3xl p-4 sm:p-5 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group relative cursor-pointer active:scale-[0.99]"
+    >
+
+
       {/* 1. Baris Atas: Badge Status & Tipe Acara */}
       <div className="flex items-center justify-between gap-2">
         {/* Status Badge (Pill) */}
@@ -756,14 +872,9 @@ function EventCard({
 
       {/* 2. Bagian Tengah: Judul Acara & Jam Pelaksanaan */}
       <div className="my-3">
-        <Link
-          href={`/admin/acara/${event.id}`}
-          className="group-hover:text-amber-600 dark:group-hover:text-yellow-400 transition-colors inline-block"
-        >
-          <h3 className="text-base sm:text-lg font-bold text-text-primary tracking-tight leading-snug">
-            {event.title}
-          </h3>
-        </Link>
+        <h3 className="text-base sm:text-lg font-bold text-text-primary group-hover:text-amber-600 dark:group-hover:text-yellow-400 transition-colors tracking-tight leading-snug">
+          {event.title}
+        </h3>
         <p className="text-xs text-text-muted mt-1 font-mono font-medium">
           {formatTime(event.start_time)}{event.end_time ? ` - ${formatTime(event.end_time)}` : " - Selesai"} WIB
         </p>
@@ -783,7 +894,7 @@ function EventCard({
         </div>
 
         {/* Sisi Kanan: Overlapping Avatars & Menu Aksi Cepat */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
           {/* Stack Avatar Peserta (Sesuai Referensi Gambar) */}
           <div className="flex -space-x-2 overflow-hidden items-center">
             {event.attendees && event.attendees.length > 0 ? (
@@ -814,13 +925,18 @@ function EventCard({
             <PopoverTrigger asChild>
               <button
                 type="button"
+                onClick={(e) => e.stopPropagation()}
                 className="p-1.5 rounded-full hover:bg-bg-well text-text-muted hover:text-text-primary transition-colors cursor-pointer"
                 title="Aksi Lainnya"
               >
                 <MoreVertical className="w-4 h-4" />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-44 p-1.5 rounded-xl shadow-lg space-y-0.5">
+            <PopoverContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}
+              className="w-44 p-1.5 rounded-xl shadow-lg space-y-0.5"
+            >
               <Link
                 href={`/admin/acara/${event.id}`}
                 className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-well transition-colors"
@@ -851,3 +967,4 @@ function EventCard({
     </div>
   );
 }
+
