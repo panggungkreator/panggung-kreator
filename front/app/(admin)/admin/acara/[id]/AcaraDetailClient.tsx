@@ -120,31 +120,32 @@ export default function AcaraDetailClient({
     type: "default",
   });
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [publicUrl, setPublicUrl] = useState<string>(
+    `https://panggungkreator.web.id/absensi/${event.id}`
+  );
 
-  // Dapatkan URL absensi publik peserta
-  const getPublicAbsensiUrl = (eventId: string) => {
-    if (typeof window === "undefined") {
-      return `/absensi/${eventId}`;
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const host = window.location.host;
+      const protocol = window.location.protocol;
+      const cleanHost = host.split(":")[0].toLowerCase();
+
+      const isLocalhost =
+        cleanHost === "localhost" ||
+        cleanHost === "127.0.0.1" ||
+        cleanHost.endsWith(".localhost") ||
+        cleanHost.endsWith(".local") ||
+        /^(\d{1,3}\.){3}\d{1,3}$/.test(cleanHost);
+
+      if (isLocalhost) {
+        setPublicUrl(`${protocol}//${host}/absensi/${event.id}`);
+      } else {
+        const publicHost = host.replace(/^(admin\.|akademi\.)/i, "");
+        setPublicUrl(`${protocol}//${publicHost}/absensi/${event.id}`);
+      }
     }
+  }, [event.id]);
 
-    const host = window.location.host;
-    const protocol = window.location.protocol;
-    const cleanHost = host.split(":")[0].toLowerCase();
-
-    const isLocalhost =
-      cleanHost === "localhost" ||
-      cleanHost === "127.0.0.1" ||
-      cleanHost.endsWith(".localhost") ||
-      cleanHost.endsWith(".local") ||
-      /^(\d{1,3}\.){3}\d{1,3}$/.test(cleanHost);
-
-    if (isLocalhost) {
-      return `${protocol}//${host}/absensi/${eventId}`;
-    }
-
-    const publicHost = host.replace(/^(admin\.|akademi\.)/i, "");
-    return `https://${publicHost}/absensi/${eventId}`;
-  };
 
   const handleCopyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
@@ -382,9 +383,9 @@ export default function AcaraDetailClient({
   }, [availableMembers, comboboxSearch]);
 
   const typeInfo = EVENT_TYPE_MAP[event.event_type] || EVENT_TYPE_MAP.lainnya;
-  const publicUrl = getPublicAbsensiUrl(event.id);
 
   return (
+
     <div className="space-y-6 pb-28">
       {/* Top Header */}
       <div className="flex items-center justify-between gap-3 pb-4 border-b border-border-default/60">
@@ -735,9 +736,10 @@ export default function AcaraDetailClient({
             </div>
 
             <div className="flex items-center gap-2 bg-bg-well border border-border-default/60 rounded-xl px-3 py-2">
-              <p className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
+              <p suppressHydrationWarning className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
                 {publicUrl}
               </p>
+
               <a
                 href={publicUrl}
                 target="_blank"
@@ -1153,9 +1155,10 @@ export default function AcaraDetailClient({
                   </button>
                 </div>
                 <div className="flex items-center gap-2 bg-bg-card border border-border-default/50 rounded-lg px-2.5 py-1.5 overflow-hidden">
-                  <p className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
+                  <p suppressHydrationWarning className="text-[11px] font-mono text-text-secondary truncate flex-1 select-all">
                     {publicUrl}
                   </p>
+
                   <a
                     href={publicUrl}
                     target="_blank"
