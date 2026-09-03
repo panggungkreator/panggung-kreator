@@ -14,8 +14,10 @@ import {
   FileSpreadsheet,
   ExternalLink,
   Users,
-  Eye
+  Eye,
+  ArrowLeftRight
 } from "lucide-react";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Modal, ModalSection } from "@/components/ui/Modal";
 import { ModalConfirmation } from "@/components/ui/Modal-Confirmation";
@@ -27,8 +29,14 @@ type Member = {
   stage_name: string;
   whatsapp_number: string;
   email: string;
-  instagram_username: string;
-  tiktok_username: string;
+  instagram_username?: string;
+  tiktok_username?: string;
+  social_media?: {
+    instagram?: string | null;
+    tiktok?: string | null;
+    youtube?: string | null;
+    linkedin?: string | null;
+  } | null;
   occupation: string;
   username: string;
   temporary_password?: string;
@@ -421,8 +429,86 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
       )}
 
 
-      {/* Stats Cards Grid - Soft Colors Accent */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 px-1">
+      {/* ═══ MOBILE STATS CAPSULE BAR (Simple, Horizontal Swipe with Info) ═══ */}
+      <div className="block sm:hidden mb-5 space-y-2">
+        {/* Swipe Hint Info */}
+        <div className="flex items-center justify-between px-1 text-[11px]">
+          <span className="font-bold text-text-secondary">Ringkasan Pendaftar</span>
+          <div className="flex items-center gap-1.5 font-mono text-[10px] text-text-muted bg-bg-well px-2.5 py-1 rounded-full border border-border-default/60">
+            <ArrowLeftRight className="w-3 h-3 text-text-muted" />
+            <span>Geser kiri / kanan</span>
+          </div>
+        </div>
+
+        {/* Horizontal Scrollable Capsule Pills (Persis Estetika Referensi) */}
+        <div className="p-1.5 bg-zinc-100/90 dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-white/10 rounded-2xl overflow-x-auto no-scrollbar scroll-smooth flex items-center gap-1.5 shadow-2xs">
+          {/* Pill 1: Semua Pendaftar */}
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
+              statusFilter === "all"
+                ? "bg-[#e0f2fe] text-[#0369a1] border border-[#bae6fd] shadow-xs dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 shrink-0" />
+            <span>Semua</span>
+            <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-[#0369a1] dark:text-sky-300 shadow-2xs">
+              {stats.total}
+            </span>
+          </button>
+
+          {/* Pill 2: Pending Verifikasi */}
+          <button
+            type="button"
+            onClick={() => setStatusFilter("pending")}
+            className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
+              statusFilter === "pending"
+                ? "bg-[#fef9c3] text-[#854d0e] border border-[#fde047] shadow-xs dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span>Pending</span>
+            <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-[#854d0e] dark:text-yellow-300 shadow-2xs">
+              {stats.pending}
+            </span>
+          </button>
+
+          {/* Pill 3: Total Lunas */}
+          <button
+            type="button"
+            onClick={() => setStatusFilter("paid")}
+            className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
+              statusFilter === "paid"
+                ? "bg-[#dcfce7] text-[#15803d] border border-[#86efac] shadow-xs dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+            <span>Lunas</span>
+            <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-[#15803d] dark:text-emerald-300 shadow-2xs">
+              {stats.paid}
+            </span>
+          </button>
+
+          {/* Pill 4: Total Omset */}
+          <div
+            className="shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#fee2e2]/80 text-[#b91c1c] border border-[#fca5a5]/70 dark:bg-red-950/50 dark:text-red-300 dark:border-red-900/40 select-none shadow-2xs"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+            <span>Omset</span>
+            <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-[#b91c1c] dark:text-red-300 shadow-2xs font-mono">
+              {formatIDR(stats.revenue)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ DESKTOP STATS CARDS GRID (hidden on mobile, visible on sm/lg) ═══ */}
+      <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 px-1">
+
         {/* Card 1: Total Pendaftar (Soft Blue) */}
         <div className="bg-[#e0f2fe]/50 border border-[#bae6fd]/50 dark:bg-sky-950/20 dark:border-sky-900/30 rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between min-h-[120px] transition-all duration-300">
           <div className="flex justify-between items-start">
@@ -802,16 +888,16 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">Instagram:</span>
-                  {detailMember.instagram_username &&
-                    detailMember.instagram_username.trim() !== "" &&
-                    detailMember.instagram_username.trim() !== "-" ? (
+                  {(detailMember.social_media?.instagram || detailMember.instagram_username) &&
+                  (detailMember.social_media?.instagram || detailMember.instagram_username || "").trim() !== "" &&
+                  (detailMember.social_media?.instagram || detailMember.instagram_username || "").trim() !== "-" ? (
                     <a
-                      href={`https://instagram.com/${detailMember.instagram_username.replace("@", "")}`}
+                      href={`https://instagram.com/${(detailMember.social_media?.instagram || detailMember.instagram_username || "").replace("@", "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-bold text-[#bc151b] hover:underline"
                     >
-                      @{detailMember.instagram_username.replace("@", "")}
+                      @{(detailMember.social_media?.instagram || detailMember.instagram_username || "").replace("@", "")}
                     </a>
                   ) : (
                     <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
@@ -819,16 +905,16 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">TikTok:</span>
-                  {detailMember.tiktok_username &&
-                    detailMember.tiktok_username.trim() !== "" &&
-                    detailMember.tiktok_username.trim() !== "-" ? (
+                  {(detailMember.social_media?.tiktok || detailMember.tiktok_username) &&
+                  (detailMember.social_media?.tiktok || detailMember.tiktok_username || "").trim() !== "" &&
+                  (detailMember.social_media?.tiktok || detailMember.tiktok_username || "").trim() !== "-" ? (
                     <a
-                      href={`https://tiktok.com/@${detailMember.tiktok_username.replace("@", "")}`}
+                      href={`https://tiktok.com/@${(detailMember.social_media?.tiktok || detailMember.tiktok_username || "").replace("@", "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-bold text-[#bc151b] hover:underline"
                     >
-                      @{detailMember.tiktok_username.replace("@", "")}
+                      @{(detailMember.social_media?.tiktok || detailMember.tiktok_username || "").replace("@", "")}
                     </a>
                   ) : (
                     <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>

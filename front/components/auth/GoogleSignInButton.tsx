@@ -41,6 +41,16 @@ function parseJwt(token: string) {
   }
 }
 
+async function generateNonce(): Promise<{ rawNonce: string; hashedNonce: string }> {
+  const rawNonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
+  const encoder = new TextEncoder();
+  const encoded = encoder.encode(rawNonce);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashedNonce = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return { rawNonce, hashedNonce };
+}
+
 export function GoogleSignInButton({
   redirectTo,
   onSuccess,
@@ -49,6 +59,7 @@ export function GoogleSignInButton({
   className = "",
 }: GoogleSignInButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const rawNonceRef = useRef<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
@@ -116,9 +127,11 @@ export function GoogleSignInButton({
 
       // 3. Email terdaftar! Lanjutkan proses sign in via ID token
       const supabase = createClient();
+      const hasNonceInToken = Boolean(payload?.nonce);
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: "google",
         token: response.credential,
+        ...(hasNonceInToken && rawNonceRef.current ? { nonce: rawNonceRef.current } : {}),
       });
 
       if (error) throw error;
@@ -138,13 +151,22 @@ export function GoogleSignInButton({
     }
   };
 
-
-  const renderGoogleButton = () => {
+  const renderGoogleButton = async () => {
     if (typeof window !== "undefined" && window.google?.accounts?.id && containerRef.current) {
       try {
+        let hashedNonce: string | undefined;
+        try {
+          const nonces = await generateNonce();
+          rawNonceRef.current = nonces.rawNonce;
+          hashedNonce = nonces.hashedNonce;
+        } catch (nonceErr) {
+          console.warn("[GSI] Failed to generate nonce:", nonceErr);
+        }
+
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
           callback: handleCredentialResponse,
+          ...(hashedNonce ? { nonce: hashedNonce } : {}),
           auto_select: false,
           cancel_on_tap_outside: true,
           use_fedcm_for_prompt: false,

@@ -1,18 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useTransition, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   Search,
   Download,
   CheckCircle,
-  XCircle,
   Users,
   Eye,
   Edit2,
-  Filter,
-  Check,
   AlertCircle,
   ExternalLink,
   KeyRound,
@@ -20,11 +17,15 @@ import {
   Send,
   RefreshCw,
   Trash2,
+  ArrowUpDown,
+  SlidersHorizontal,
+  Check,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Modal, ModalSection } from "@/components/ui/Modal";
 import { toast } from "sonner";
+import AdminPagination from "@/components/admin/AdminPagination";
 import { sendMemberCredentialsAction, deleteMemberAction } from "./actions";
 
 type Member = {
@@ -33,8 +34,14 @@ type Member = {
   stage_name: string;
   whatsapp_number: string;
   email: string;
-  instagram_username: string;
-  tiktok_username: string;
+  instagram_username?: string;
+  tiktok_username?: string;
+  social_media?: {
+    instagram?: string | null;
+    tiktok?: string | null;
+    youtube?: string | null;
+    linkedin?: string | null;
+  } | null;
   occupation: string;
   username: string;
   temporary_password?: string;
@@ -56,6 +63,7 @@ type Member = {
 interface MembersClientProps {
   initialMembers: Member[];
   packages?: any[];
+  paginationLimit?: number;
 }
 
 const formatOccupation = (occupation: string | undefined) => {
@@ -86,12 +94,25 @@ const formatWhatsappLink = (phone: string | undefined, stageName: string | undef
   return `https://wa.me/${cleanPhone}?text=${text}`;
 };
 
-export default function MembersClient({ initialMembers, packages = [] }: MembersClientProps) {
+export default function MembersClient({
+  initialMembers,
+  packages = [],
+  paginationLimit = 10,
+}: MembersClientProps) {
   const router = useRouter();
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [search, setSearch] = useState("");
   const [communityFilter, setCommunityFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name_asc">("newest");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const limit = paginationLimit > 0 ? paginationLimit : 10;
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, communityFilter, tierFilter, sortBy]);
 
   const packagesMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -245,9 +266,9 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
     fetchUser();
   }, []);
 
-  // Filtered members list
+  // Filtered and sorted members list
   const filteredMembers = useMemo(() => {
-    return members.filter((m) => {
+    const list = members.filter((m) => {
       // Exclude admin members from this list
       if (m.role === "admin") return false;
 
@@ -267,7 +288,28 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
 
       return matchSearch && matchCommunity && matchTier;
     });
-  }, [members, search, communityFilter, tierFilter]);
+
+    return list.sort((a, b) => {
+      if (sortBy === "newest") {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      if (sortBy === "oldest") {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      if (sortBy === "name_asc") {
+        return (a.full_name || "").localeCompare(b.full_name || "");
+      }
+      return 0;
+    });
+  }, [members, search, communityFilter, tierFilter, sortBy]);
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / limit));
+  const startIndex = (currentPage - 1) * limit;
+  const endIndex = Math.min(filteredMembers.length, startIndex + limit);
+  const paginatedMembers = useMemo(() => {
+    return filteredMembers.slice(startIndex, endIndex);
+  }, [filteredMembers, startIndex, endIndex]);
 
   // Statistics calculation
   const stats = useMemo(() => {
@@ -386,25 +428,58 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
     document.body.removeChild(link);
   };
 
-  return (
-    <div className="flex flex-col h-full animate-fade-in text-zinc-800 dark:text-zinc-200">
+  const renderTierBadge = (m: Member, pkgName?: string | null) => {
+    if (m.membership_tier === "priority") {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-red-500/10 text-red-600 dark:text-red-400 font-bold border border-red-500/20 uppercase tracking-wider">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+          Member Priority
+        </span>
+      );
+    }
+    if (pkgName) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 uppercase tracking-wider">
+          <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+          {pkgName}
+        </span>
+      );
+    }
+    if (m.membership_tier === "membership" || m.membership_tier === "regular" || m.membership_tier === "mvp") {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 uppercase tracking-wider">
+          <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+          Membership PK
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 font-bold border border-zinc-500/20 uppercase tracking-wider">
+        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+        General (Free)
+      </span>
+    );
+  };
 
-      {/* Page Header */}
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-4 border-b border-border-default mb-6">
+  return (
+    <div className="space-y-6 pb-28 md:pb-12 text-zinc-800 dark:text-zinc-200">
+
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-default/60">
         <div>
-          <h1 className="text-lg font-black tracking-wider text-text-primary uppercase">
-            MANAJEMEN DATA MEMBER
+          <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted block">
+            [ ANGGOTA KOMUNITAS ]
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-0.5">
+            Manajemen Data Member
           </h1>
-          <p className="text-xs text-text-secondary mt-0.5">
-            Daftar lengkap anggota komunitas Panggung Kreator dan Berani Tampil Bicara.
-          </p>
         </div>
 
         <div>
           <button
             onClick={handleExportExcel}
             disabled={filteredMembers.length === 0}
-            className="flex items-center gap-1.5 px-6 py-4 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all shadow-sm cursor-pointer tracking-wider"
+            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all shadow-xs cursor-pointer tracking-wider shrink-0"
           >
             <Download size={14} />
             <span>Ekspor CSV</span>
@@ -414,114 +489,189 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
 
       {/* Alert Messages */}
       {successMessage && (
-        <div className="mb-6 p-4 bg-[#dcfce7] border border-emerald-200/50 rounded-2xl text-xs text-[#15803d] dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 flex items-center justify-between font-semibold">
+        <div className="p-4 bg-[#dcfce7] border border-emerald-200/50 rounded-2xl text-xs text-[#15803d] dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 flex items-center justify-between font-semibold">
           <span className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-[#15803d] dark:text-emerald-400" />
             {successMessage}
           </span>
-          <button onClick={() => setSuccessMessage(null)} className="hover:opacity-80 p-1">✕</button>
+          <button onClick={() => setSuccessMessage(null)} className="hover:opacity-80 p-1 cursor-pointer">✕</button>
         </div>
       )}
 
       {errorMessage && (
-        <div className="mb-6 p-4 bg-[#fee2e2] border border-red-200/50 rounded-2xl text-xs text-[#b91c1c] dark:bg-red-950/20 dark:text-red-400 dark:border-red-500/20 flex items-center justify-between font-semibold">
+        <div className="p-4 bg-[#fee2e2] border border-red-200/50 rounded-2xl text-xs text-[#b91c1c] dark:bg-red-950/20 dark:text-red-400 dark:border-red-500/20 flex items-center justify-between font-semibold">
           <span className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-[#b91c1c] dark:text-red-400" />
             {errorMessage}
           </span>
-          <button onClick={() => setErrorMessage(null)} className="hover:opacity-80 p-1">✕</button>
+          <button onClick={() => setErrorMessage(null)} className="hover:opacity-80 p-1 cursor-pointer">✕</button>
         </div>
       )}
 
+      {/* Horizontal Scrollable Capsule Pills for Quick Filter & Stats (Persis Standar admin-mobile.md) */}
+      <div className="p-1.5 bg-zinc-100/90 dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-white/10 rounded-2xl overflow-x-auto no-scrollbar scroll-smooth flex items-center gap-1.5 shadow-2xs">
+        {/* Pill 1: Semua Member */}
+        <button
+          type="button"
+          onClick={() => setTierFilter("all")}
+          className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${tierFilter === "all"
+              ? "bg-[#e0f2fe] text-[#0369a1] border border-[#bae6fd] shadow-xs dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800"
+              : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
+            }`}
+        >
+          <Users className="w-3.5 h-3.5 shrink-0" />
+          <span>Semua</span>
+          <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-[#0369a1] dark:text-sky-300 shadow-2xs">
+            {stats.total}
+          </span>
+        </button>
 
-      {/* Stats Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-bg-well/50 border border-border-default/80 rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex justify-between items-center text-xs font-bold text-text-secondary uppercase tracking-wider">
-            <span>Total Member</span>
-            <Users className="w-4 h-4 text-text-secondary" />
-          </div>
-          <div className="text-2xl font-black text-text-primary mt-2">{stats.total}</div>
-          <span className="text-[10px] text-text-secondary mt-0.5 font-medium">Semua anggota terdaftar</span>
-        </div>
+        {/* Pill 2: Membership PK */}
+        <button
+          type="button"
+          onClick={() => setTierFilter("membership")}
+          className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${tierFilter === "membership"
+              ? "bg-[#e0f2fe] text-[#0284c7] border border-[#7dd3fc] shadow-xs dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800"
+              : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
+            }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+          <span>Membership PK</span>
+          <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-sky-600 dark:text-sky-300 shadow-2xs">
+            {stats.membershipCount}
+          </span>
+        </button>
 
-        <div className="bg-sky-500/5 border border-sky-500/20 rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex justify-between items-center text-xs font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-            <span>Membership PK</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
-          </div>
-          <div className="text-2xl font-black text-sky-600 dark:text-sky-400 mt-2">{stats.membershipCount}</div>
-          <span className="text-[10px] text-sky-600/70 dark:text-sky-400/70 mt-0.5 font-medium">Paket Membership</span>
-        </div>
+        {/* Pill 3: Member Priority */}
+        <button
+          type="button"
+          onClick={() => setTierFilter("priority")}
+          className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${tierFilter === "priority"
+              ? "bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5] shadow-xs dark:bg-red-950/60 dark:text-red-300 dark:border-red-800"
+              : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
+            }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+          <span>Priority</span>
+          <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-[#b91c1c] dark:text-red-300 shadow-2xs">
+            {stats.priorityCount}
+          </span>
+        </button>
 
-        <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex justify-between items-center text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">
-            <span>Member Priority</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
-          </div>
-          <div className="text-2xl font-black text-red-600 dark:text-red-400 mt-2">{stats.priorityCount}</div>
-          <span className="text-[10px] text-red-600/70 dark:text-red-400/70 mt-0.5 font-medium">Form Prioritas Langsung</span>
-        </div>
+        {/* Pill 4: General Free */}
+        <button
+          type="button"
+          onClick={() => setTierFilter("free")}
+          className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${tierFilter === "free"
+              ? "bg-zinc-200 text-zinc-900 border border-zinc-300 shadow-xs dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700"
+              : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
+            }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-zinc-400"></span>
+          <span>General (Free)</span>
+          <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-zinc-700 dark:text-zinc-300 shadow-2xs">
+            {stats.total - stats.priorityCount - stats.membershipCount}
+          </span>
+        </button>
       </div>
 
-      {/* Toolbar Filter */}
-      <div className="flex gap-3.5 mb-6">
-        <div className="relative flex-grow max-w-xs">
-          <Search className="absolute left-4 top-3.5 w-4 h-4 text-text-secondary" />
+      {/* Toolbar Filter & Search */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
+            <Search className="w-3.5 h-3.5" />
+          </span>
           <input
             type="text"
-            placeholder="Cari member berdasarkan nama, email, username atau nomor WA..."
+            placeholder="Cari nama, email, username, nomor WA..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-bg-well border border-gray-400 rounded-full py-4 pl-11 pr-4 text-xs text-text-primary focus:outline-none focus:border-text-primary font-bold"
+            className="w-full h-9 bg-bg-well/70 border border-border-default rounded-full pl-9 pr-4 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary font-medium transition-colors"
           />
         </div>
 
-        {/* Filter Komunitas */}
-        <div className="flex flex-col min-w-[150px]">
-          <Select value={communityFilter} onValueChange={setCommunityFilter}>
-            <SelectTrigger className="h-[50px] border-gray-400">
-              <SelectValue placeholder="Semua Komunitas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Komunitas</SelectItem>
-              <SelectItem value="panggung_kreator">Panggung Kreator</SelectItem>
-              <SelectItem value="berani_tampil_bicara">Berani Tampil Bicara</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <div className="hidden sm:flex sm:w-auto gap-2 sm:gap-3">
+          {/* Filter Komunitas */}
+          <div className="w-full sm:w-44">
+            <Select value={communityFilter} onValueChange={setCommunityFilter}>
+              <SelectTrigger className="w-full h-9 rounded-full px-3 text-xs font-medium bg-bg-well/70 border-border-default">
+                <SelectValue placeholder="Semua Komunitas" />
+              </SelectTrigger>
+              <SelectContent className="bg-bg-card border-border-default">
+                <SelectItem value="all">Semua Komunitas</SelectItem>
+                <SelectItem value="panggung_kreator">Panggung Kreator</SelectItem>
+                <SelectItem value="berani_tampil_bicara">Berani Tampil Bicara</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Filter Tier */}
-        <div className="flex flex-col min-w-[150px]">
-          <Select value={tierFilter} onValueChange={setTierFilter}>
-            <SelectTrigger className="h-[50px] border-gray-400">
-              <SelectValue placeholder="Semua Tingkatan" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Tingkatan</SelectItem>
-              <SelectItem value="free">Free (General)</SelectItem>
-              <SelectItem value="priority">Priority</SelectItem>
-              <SelectItem value="membership">Membership PK</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Filter Tier */}
+          <div className="w-full sm:w-44">
+            <Select value={tierFilter} onValueChange={setTierFilter}>
+              <SelectTrigger className="w-full h-9 rounded-full px-3 text-xs font-medium bg-bg-well/70 border-border-default">
+                <SelectValue placeholder="Semua Tingkatan" />
+              </SelectTrigger>
+              <SelectContent className="bg-bg-card border-border-default">
+                <SelectItem value="all">Semua Tingkatan</SelectItem>
+                <SelectItem value="free">Free (General)</SelectItem>
+                <SelectItem value="priority">Priority</SelectItem>
+                <SelectItem value="membership">Membership PK</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      {/* Member Table */}
-      <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden flex-1 flex flex-col">
-        <div className="overflow-x-auto flex-grow">
-          <table className="w-full border-collapse text-left text-xs font-semibold">
+      {/* Active Filter Chips Bar */}
+      {(communityFilter !== "all" || tierFilter !== "all" || search) && (
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="text-[11px] text-text-muted font-medium mr-1">Filter Aktif:</span>
+          {search && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] bg-bg-well border border-border-default text-text-primary">
+              Cari: "{search}"
+              <button onClick={() => setSearch("")} className="hover:text-red-500 ml-1 cursor-pointer">×</button>
+            </span>
+          )}
+          {communityFilter !== "all" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] bg-bg-well border border-border-default text-text-primary">
+              Komunitas: {communityFilter === "berani_tampil_bicara" ? "BTB" : "PK"}
+              <button onClick={() => setCommunityFilter("all")} className="hover:text-red-500 ml-1 cursor-pointer">×</button>
+            </span>
+          )}
+          {tierFilter !== "all" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] bg-bg-well border border-border-default text-text-primary">
+              Tier: {tierFilter.toUpperCase()}
+              <button onClick={() => setTierFilter("all")} className="hover:text-red-500 ml-1 cursor-pointer">×</button>
+            </span>
+          )}
+          <button
+            onClick={() => {
+              setSearch("");
+              setCommunityFilter("all");
+              setTierFilter("all");
+            }}
+            className="text-[11px] text-text-muted hover:text-text-primary underline ml-1 cursor-pointer"
+          >
+            Reset Semua
+          </button>
+        </div>
+      )}
+
+      {/* ═══ 1. DESKTOP VIEW: TABLE (hidden on mobile, visible on md/lg) ═══ */}
+      <div className="hidden md:block bg-bg-card border border-border-default/70 rounded-2xl overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-border-default/70 bg-bg-well/50 text-text-secondary">
-                <th className="p-4 uppercase tracking-wider font-bold">Nama & Username</th>
-                <th className="p-4 uppercase tracking-wider font-bold">Email</th>
-                <th className="p-4 uppercase tracking-wider font-bold">WhatsApp</th>
-                <th className="p-4 uppercase tracking-wider font-bold">Tipe Member</th>
-                <th className="p-4 uppercase tracking-wider font-bold">Tgl Bergabung</th>
-                <th className="p-4 uppercase tracking-wider font-bold text-right">Aksi</th>
+              <tr className="text-zinc-650 dark:text-zinc-400 font-semibold border-b border-border-default/70 bg-bg-well/50">
+                <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">Nama & Username</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">Email</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">WhatsApp</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">Tipe Member</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">Tgl Bergabung</th>
+                <th className="py-3.5 px-5 text-center uppercase tracking-wider font-bold">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-default/30">
+            <tbody className="divide-y divide-border-default/40">
               {filteredMembers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-text-muted">
@@ -529,16 +679,15 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                   </td>
                 </tr>
               ) : (
-                filteredMembers.map((m) => {
+                paginatedMembers.map((m) => {
                   const pkgName = m.package?.name || (m.package_id ? packagesMap.get(m.package_id) : null);
 
                   return (
                     <tr
                       key={m.id}
-                      className={`group hover:bg-bg-well/30 transition-colors ${m.membership_tier === "priority" ? "bg-red-500/[0.02]" : ""
-                        }`}
+                      className={`group hover:bg-bg-well/30 transition-colors ${m.membership_tier === "priority" ? "bg-red-500/[0.02]" : ""}`}
                     >
-                      <td className="p-4">
+                      <td className="py-3.5 px-5">
                         <div className="flex items-center gap-2">
                           <div className="font-bold text-text-primary">{m.full_name || "-"}</div>
                           {m.membership_tier === "priority" && (
@@ -547,59 +696,44 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-text-secondary mt-0.5">@{m.username}</div>
+                        <div className="text-[10px] text-text-secondary mt-0.5 font-mono">@{m.username}</div>
                       </td>
-                      <td className="p-4 text-text-secondary font-normal">{m.email || "-"}</td>
-                      <td className="p-4 text-text-secondary font-normal">{m.whatsapp_number || "-"}</td>
-                      <td className="p-4">
-                        {m.membership_tier === "priority" ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-red-500/10 text-red-600 dark:text-red-400 font-bold border border-red-500/20 uppercase tracking-wider">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                            Member Priority
-                          </span>
-                        ) : pkgName ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 uppercase tracking-wider">
-                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-                            {pkgName}
-                          </span>
-                        ) : m.membership_tier === "membership" || m.membership_tier === "regular" || m.membership_tier === "mvp" ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 uppercase tracking-wider">
-                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-                            Membership PK
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 font-bold border border-zinc-500/20 uppercase tracking-wider">
-                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
-                            General (Free)
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-4 text-text-secondary font-normal">
+                      <td className="py-3.5 px-5 text-text-secondary font-normal">{m.email || "-"}</td>
+                      <td className="py-3.5 px-5 text-text-secondary font-normal font-mono">{m.whatsapp_number || "-"}</td>
+                      <td className="py-3.5 px-5">{renderTierBadge(m, pkgName)}</td>
+                      <td className="py-3.5 px-5 text-text-secondary font-normal">
                         {new Date(m.created_at).toLocaleDateString("id-ID", {
                           day: "2-digit",
                           month: "short",
                           year: "numeric"
                         })}
                       </td>
-                      <td className="p-4 text-right">
-                        <div className="flex justify-end gap-1.5">
+                      <td className="py-3.5 px-5 text-center">
+                        <div className="flex justify-center gap-1">
                           <button
                             onClick={() => setDetailMember(m)}
-                            className="p-1.5 rounded hover:bg-bg-well text-text-secondary hover:text-text-primary cursor-pointer"
+                            className="p-1.5 rounded-lg border border-border-default/60 hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                             title="Lihat Detail"
                           >
                             <Eye size={14} />
                           </button>
                           <button
                             onClick={() => openEditModal(m)}
-                            className="p-1.5 rounded hover:bg-bg-well text-text-secondary hover:text-text-primary cursor-pointer"
+                            className="p-1.5 rounded-lg border border-border-default/60 hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                             title="Edit Status"
                           >
                             <Edit2 size={14} />
                           </button>
                           <button
+                            onClick={() => openCredentialModal(m)}
+                            className="p-1.5 rounded-lg border border-border-default/60 hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                            title="Kredensial Akun"
+                          >
+                            <KeyRound size={14} />
+                          </button>
+                          <button
                             onClick={() => setDeleteModalMember(m)}
-                            className="p-1.5 rounded hover:bg-red-500/10 text-red-500 hover:text-red-600 dark:hover:text-red-400 cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200"
+                            className="p-1.5 rounded-lg border border-border-default/60 hover:bg-red-500/10 text-red-500 hover:text-red-600 transition-colors cursor-pointer"
                             title="Hapus Member"
                           >
                             <Trash2 size={14} />
@@ -615,6 +749,283 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
         </div>
       </div>
 
+      {/* ═══ 2. MOBILE VIEW: CARDS (visible on mobile, hidden on md/lg) ═══ */}
+      <div className="md:hidden space-y-4">
+        {filteredMembers.length === 0 ? (
+          <div className="bg-bg-card border border-border-default/70 rounded-3xl p-8 text-center text-text-muted shadow-xs">
+            <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-xs font-medium">Tidak ada data member ditemukan.</p>
+          </div>
+        ) : (
+          paginatedMembers.map((m) => {
+            const pkgName = m.package?.name || (m.package_id ? packagesMap.get(m.package_id) : null);
+            return (
+              <div
+                key={m.id}
+                onClick={() => setDetailMember(m)}
+                className="bg-white dark:bg-[#121212] border border-border-default/70 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-3xl p-4 sm:p-5 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group relative cursor-pointer active:scale-[0.99]"
+              >
+                {/* Top: Tier Badge & Community Dot */}
+                <div className="flex items-center justify-between gap-2">
+                  <div>{renderTierBadge(m, pkgName)}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${m.community === 'berani_tampil_bicara' ? 'bg-amber-500' : 'bg-emerald-500'} shrink-0`}></span>
+                    <span className="text-[11px] font-semibold text-text-secondary tracking-tight">
+                      {m.community === 'berani_tampil_bicara' ? 'BTB' : 'PK'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Middle: Member info */}
+                <div className="my-3">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="text-base font-black tracking-tight text-text-primary dark:group-hover:text-yellow-400 transition-colors leading-tight">
+                      {m.full_name || "-"}
+                    </h3>
+                    {m.stage_name && (
+                      <span className="text-[11px] font-semibold text-text-muted">
+                        ({m.stage_name})
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-secondary font-mono mt-0.5">@{m.username}</p>
+                  {m.occupation && (
+                    <p className="text-[11px] text-text-muted mt-1 font-medium">
+                      {formatOccupation(m.occupation)}
+                    </p>
+                  )}
+                </div>
+
+                {/* Bottom: Contact info & Action buttons */}
+                <div className="pt-3 border-t border-border-default/40 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-mono text-text-secondary truncate">
+                      {m.whatsapp_number || m.email || "-"}
+                    </p>
+                    <p className="text-[10px] text-text-muted mt-0.5">
+                      Gabung: {new Date(m.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setDetailMember(m)}
+                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
+                      title="Lihat Detail"
+                    >
+                      <Eye size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(m)}
+                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
+                      title="Edit Status"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openCredentialModal(m)}
+                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
+                      title="Kredensial Akun"
+                    >
+                      <KeyRound size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteModalMember(m)}
+                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-red-500/10 text-red-500 hover:text-red-600 active:scale-95 transition-all cursor-pointer"
+                      title="Hapus Member"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ═══ PAGINATION CONTROLS (Reusable AdminPagination Component) ═══ */}
+      <AdminPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredMembers.length}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        limit={limit}
+        itemLabel="member"
+        onPageChange={setCurrentPage}
+      />
+
+      {/* ═══ FLOATING BOTTOM CONTROLS (Compact Proportional Dock Persis admin-mobile.md) ═══ */}
+      <div className="md:hidden fixed bottom-6 inset-x-0 z-30 pointer-events-none flex justify-center px-4">
+        <div className="pointer-events-auto bg-zinc-900/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-2 text-white">
+          {/* 1. Sort Button (Popover) */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer ${sortBy !== "newest" ? "text-white bg-zinc-800" : ""
+                  }`}
+                title="Urutkan Data"
+              >
+                <ArrowUpDown className="w-4 h-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="center"
+              className="w-52 p-2.5 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-1 mb-2 z-50"
+            >
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted px-2.5 py-1 block border-b border-border-default/50 mb-1">
+                Urutkan Berdasarkan
+              </span>
+              <button
+                type="button"
+                onClick={() => setSortBy("newest")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "newest"
+                    ? "bg-bg-well text-text-primary font-bold"
+                    : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                  }`}
+              >
+                <span>Tanggal Terbaru</span>
+                {sortBy === "newest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy("oldest")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "oldest"
+                    ? "bg-bg-well text-text-primary font-bold"
+                    : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                  }`}
+              >
+                <span>Tanggal Terlama</span>
+                {sortBy === "oldest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy("name_asc")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "name_asc"
+                    ? "bg-bg-well text-text-primary font-bold"
+                    : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                  }`}
+              >
+                <span>Nama (A - Z)</span>
+                {sortBy === "name_asc" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+              </button>
+            </PopoverContent>
+          </Popover>
+
+          {/* 2. Filter Button (Popover with Direct Selectable Chips) */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer relative ${communityFilter !== "all" || tierFilter !== "all" ? "text-white bg-zinc-800" : ""
+                  }`}
+                title="Filter Member"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                {(communityFilter !== "all" || tierFilter !== "all") && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#BAFF6A]"></span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="center"
+              className="w-72 p-4 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-3.5 mb-2 z-50"
+            >
+              <div className="flex items-center justify-between border-b border-border-default/50 pb-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted block">
+                  Filter Member
+                </span>
+                {(communityFilter !== "all" || tierFilter !== "all") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCommunityFilter("all");
+                      setTierFilter("all");
+                    }}
+                    className="text-[10px] text-text-muted hover:text-red-500 underline cursor-pointer"
+                  >
+                    Reset Filter
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Komunitas */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-text-secondary block">
+                  Komunitas
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: "all", label: "Semua" },
+                    { id: "panggung_kreator", label: "Panggung Kreator" },
+                    { id: "berani_tampil_bicara", label: "Berani Tampil Bicara" },
+                  ].map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setCommunityFilter(c.id)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${communityFilter === c.id
+                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                          : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
+                        }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Filter Tingkatan Tier */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-text-secondary block">
+                  Tingkatan Tier
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: "all", label: "Semua" },
+                    { id: "priority", label: "Priority" },
+                    { id: "membership", label: "Membership PK" },
+                    { id: "free", label: "General (Free)" },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTierFilter(t.id)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${tierFilter === t.id
+                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                          : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
+                        }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* 3. Right Action Button: Ekspor CSV */}
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={filteredMembers.length === 0}
+            className="h-9 px-4 rounded-full bg-white text-zinc-900 dark:bg-white dark:text-zinc-900 hover:bg-zinc-100 disabled:opacity-50 flex items-center gap-1.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+            title="Ekspor CSV Data Member"
+          >
+            <Download className="w-4 h-4 stroke-[2.5]" />
+            <span>Ekspor</span>
+          </button>
+        </div>
+      </div>
+
       {/* Reusable Edit Status Member Modal */}
       <Modal
         isOpen={isEditOpen && !!editingMember}
@@ -627,17 +1038,17 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
         subtitle={editingMember ? `${editingMember.full_name} (${editingMember.email || editingMember.username})` : undefined}
       >
         {editingMember && (
-          <form onSubmit={handleSaveStatus} className="space-y-3.5 text-xs">
+          <form onSubmit={handleSaveStatus} className="space-y-4 text-xs">
             {/* Komunitas */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider block">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-text-secondary block">
                 Komunitas
               </label>
               <Select value={editCommunity} onValueChange={setEditCommunity}>
-                <SelectTrigger className="w-full h-9 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 text-xs text-zinc-900 dark:text-zinc-100 font-medium focus:ring-0 focus:outline-none">
+                <SelectTrigger className="w-full h-10 bg-bg-well/50 border border-border-default rounded-xl px-3.5 text-xs text-text-primary font-medium focus:ring-0 focus:outline-none">
                   <SelectValue placeholder="Pilih Komunitas" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
+                <SelectContent className="bg-bg-card border-border-default">
                   <SelectItem value="panggung_kreator">Panggung Kreator (PK)</SelectItem>
                   <SelectItem value="berani_tampil_bicara">Berani Tampil Bicara (BTB)</SelectItem>
                 </SelectContent>
@@ -645,15 +1056,15 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
             </div>
 
             {/* Tier */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider block">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-text-secondary block">
                 Tingkatan (Tier)
               </label>
               <Select value={editTier} onValueChange={setEditTier}>
-                <SelectTrigger className="w-full h-9 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 text-xs text-zinc-900 dark:text-zinc-100 font-medium focus:ring-0 focus:outline-none">
+                <SelectTrigger className="w-full h-10 bg-bg-well/50 border border-border-default rounded-xl px-3.5 text-xs text-text-primary font-medium focus:ring-0 focus:outline-none">
                   <SelectValue placeholder="Pilih Tier" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
+                <SelectContent className="bg-bg-card border-border-default">
                   <SelectItem value="free">General (Free)</SelectItem>
                   <SelectItem value="priority">Member Prioritas</SelectItem>
                   <SelectItem value="membership">Membership PK</SelectItem>
@@ -662,8 +1073,8 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
             </div>
 
             {/* Note */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider block">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-text-secondary block">
                 Catatan Perubahan
               </label>
               <textarea
@@ -671,25 +1082,25 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                 onChange={(e) => setEditNote(e.target.value)}
                 placeholder="Contoh: Naik tier karena keaktifan di 3 acara Open Mic..."
                 rows={3}
-                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg py-2 px-3 text-xs text-zinc-900 dark:text-zinc-100 font-medium focus:outline-none"
+                className="w-full bg-bg-well/50 border border-border-default rounded-xl py-2.5 px-3.5 text-xs text-text-primary font-medium focus:outline-none focus:border-text-primary leading-relaxed"
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-zinc-150 dark:border-zinc-800/80">
+            <div className="flex justify-end gap-2 pt-3 border-t border-border-default/60">
               <button
                 type="button"
                 onClick={() => {
                   setIsEditOpen(false);
                   setEditingMember(null);
                 }}
-                className="px-4 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors cursor-pointer"
+                className="h-10 px-4 text-xs font-bold rounded-xl text-text-secondary bg-bg-well hover:bg-bg-well/80 border border-border-default transition-colors cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-4 py-2 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                className="h-10 px-4 text-xs font-bold rounded-xl text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {isSaving ? "Menyimpan..." : "Simpan Status"}
               </button>
@@ -698,7 +1109,7 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
         )}
       </Modal>
 
-      {/* Reusable Detail Member Modal - Stacked, Reduced Radius, Neutral Colors */}
+      {/* Reusable Detail Member Modal */}
       <Modal
         isOpen={!!detailMember}
         onClose={() => setDetailMember(null)}
@@ -707,10 +1118,10 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
         title={detailMember?.full_name}
         subtitle={`@${detailMember?.username || "username"}`}
         footer={
-          <div className="flex gap-2.5">
+          <div className="flex gap-2.5 w-full">
             <button
               onClick={() => setDetailMember(null)}
-              className="px-4 py-2.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors w-full cursor-pointer text-center"
+              className="h-10 px-4 text-xs font-bold rounded-xl text-text-secondary bg-bg-well hover:bg-bg-well/80 border border-border-default transition-colors w-full cursor-pointer text-center"
             >
               Tutup
             </button>
@@ -723,7 +1134,7 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2.5 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-lg transition-colors w-full flex justify-center items-center gap-2 cursor-pointer text-center"
+                className="h-10 px-4 text-xs font-bold rounded-xl text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 transition-colors w-full flex justify-center items-center gap-2 cursor-pointer text-center"
               >
                 <span>Kirim WhatsApp</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -738,20 +1149,20 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
             <ModalSection title="Informasi Personal">
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 font-medium">Nama Panggung:</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">{detailMember.stage_name || "-"}</span>
+                  <span className="text-text-muted font-medium">Nama Panggung:</span>
+                  <span className="font-semibold text-text-primary">{detailMember.stage_name || "-"}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 font-medium">Username:</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">@{detailMember.username}</span>
+                  <span className="text-text-muted font-medium">Username:</span>
+                  <span className="font-semibold text-text-primary font-mono">@{detailMember.username}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 font-medium">Pekerjaan:</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatOccupation(detailMember.occupation)}</span>
+                  <span className="text-text-muted font-medium">Pekerjaan:</span>
+                  <span className="font-semibold text-text-primary">{formatOccupation(detailMember.occupation)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 font-medium">Tgl Terdaftar:</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  <span className="text-text-muted font-medium">Tgl Terdaftar:</span>
+                  <span className="font-semibold text-text-primary">
                     {new Date(detailMember.created_at).toLocaleDateString("id-ID", {
                       day: "numeric", month: "long", year: "numeric"
                     })}
@@ -764,36 +1175,36 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
             <ModalSection title="Kontak & Sosial Media">
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 font-medium">No. WhatsApp:</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">{detailMember.whatsapp_number || "-"}</span>
+                  <span className="text-text-muted font-medium">No. WhatsApp:</span>
+                  <span className="font-semibold text-text-primary font-mono">{detailMember.whatsapp_number || "-"}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 font-medium">Email:</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">{detailMember.email || "-"}</span>
+                  <span className="text-text-muted font-medium">Email:</span>
+                  <span className="font-semibold text-text-primary">{detailMember.email || "-"}</span>
                 </div>
-                {detailMember.instagram_username && (
+                {(detailMember.social_media?.instagram || detailMember.instagram_username) && (
                   <div className="flex justify-between items-center">
-                    <span className="text-zinc-500 font-medium">Instagram:</span>
+                    <span className="text-text-muted font-medium">Instagram:</span>
                     <a
-                      href={`https://instagram.com/${detailMember.instagram_username.replace("@", "")}`}
+                      href={`https://instagram.com/${(detailMember.social_media?.instagram || detailMember.instagram_username || "").replace("@", "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium text-zinc-900 dark:text-zinc-100 underline hover:text-zinc-600"
+                      className="font-medium text-text-primary underline hover:text-amber-600"
                     >
-                      @{detailMember.instagram_username.replace("@", "")}
+                      @{(detailMember.social_media?.instagram || detailMember.instagram_username || "").replace("@", "")}
                     </a>
                   </div>
                 )}
-                {detailMember.tiktok_username && (
+                {(detailMember.social_media?.tiktok || detailMember.tiktok_username) && (
                   <div className="flex justify-between items-center">
-                    <span className="text-zinc-500 font-medium">TikTok:</span>
+                    <span className="text-text-muted font-medium">TikTok:</span>
                     <a
-                      href={`https://tiktok.com/@${detailMember.tiktok_username.replace("@", "")}`}
+                      href={`https://tiktok.com/@${(detailMember.social_media?.tiktok || detailMember.tiktok_username || "").replace("@", "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium text-zinc-900 dark:text-zinc-100 underline hover:text-zinc-600"
+                      className="font-medium text-text-primary underline hover:text-amber-600"
                     >
-                      @{detailMember.tiktok_username.replace("@", "")}
+                      @{(detailMember.social_media?.tiktok || detailMember.tiktok_username || "").replace("@", "")}
                     </a>
                   </div>
                 )}
@@ -804,31 +1215,19 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
             <ModalSection title="Status Keanggotaan">
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 font-medium">Komunitas:</span>
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700">
+                  <span className="text-text-muted font-medium">Komunitas:</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-bg-well text-text-primary border border-border-default">
                     {detailMember.community === "berani_tampil_bicara" ? "Berani Tampil Bicara (BTB)" : "Panggung Kreator (PK)"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 font-medium">Tipe Tier:</span>
-                  {detailMember.membership_tier === "priority" ? (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
-                      Priority Member
-                    </span>
-                  ) : detailMember.membership_tier === "membership" || detailMember.membership_tier === "regular" || detailMember.membership_tier === "mvp" ? (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700">
-                      Membership PK
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                      General (Free)
-                    </span>
-                  )}
+                  <span className="text-text-muted font-medium">Tipe Tier:</span>
+                  <div>{renderTierBadge(detailMember, detailMember.package?.name || (detailMember.package_id ? packagesMap.get(detailMember.package_id) : null))}</div>
                 </div>
                 {detailMember.tier_note && (
-                  <div className="pt-2 mt-1 border-t border-zinc-200/60 dark:border-zinc-800/60">
-                    <span className="text-zinc-500 font-medium block text-[10px] mb-0.5">Catatan Status:</span>
-                    <p className="text-zinc-800 dark:text-zinc-200 text-[11px] font-medium leading-relaxed">
+                  <div className="pt-2 mt-1 border-t border-border-default/50">
+                    <span className="text-text-muted font-medium block text-[10px] mb-0.5">Catatan Status:</span>
+                    <p className="text-text-primary text-[11px] font-medium leading-relaxed">
                       {detailMember.tier_note}
                     </p>
                   </div>
@@ -840,8 +1239,8 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
             <ModalSection title="Kredensial & Akses Akun">
               <div className="space-y-2.5">
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 font-medium">Username:</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 font-mono">
+                  <span className="text-text-muted font-medium">Username:</span>
+                  <span className="font-semibold text-text-primary font-mono">
                     @{detailMember.username || "-"}
                   </span>
                 </div>
@@ -849,7 +1248,7 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                   <button
                     type="button"
                     onClick={() => openCredentialModal(detailMember)}
-                    className="w-full py-2 px-3 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full h-10 px-4 text-xs font-bold rounded-xl text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <KeyRound className="w-3.5 h-3.5" />
                     <span>Set username & password</span>
@@ -864,12 +1263,12 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                 <div className="space-y-2.5">
                   {(detailMember.interests as any).primary_interests?.length > 0 && (
                     <div>
-                      <span className="text-zinc-500 font-medium text-[10px] block mb-1">Minat Utama:</span>
+                      <span className="text-text-muted font-medium text-[10px] block mb-1">Minat Utama:</span>
                       <div className="flex flex-wrap gap-1">
                         {(detailMember.interests as any).primary_interests.map((interest: string) => (
                           <span
                             key={interest}
-                            className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-[10px] text-zinc-700 dark:text-zinc-300 rounded-md font-medium border border-zinc-200/60 dark:border-zinc-700/60"
+                            className="px-2 py-0.5 bg-bg-well text-[10px] text-text-secondary rounded-full font-medium border border-border-default"
                           >
                             {interest.replace("_", " ")}
                           </span>
@@ -879,8 +1278,8 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                   )}
 
                   {(detailMember.interests as any).ai_analysis && (
-                    <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-2">
-                      <span className="text-zinc-500 font-medium text-[10px] uppercase tracking-wider block">AI Mentoring Insights:</span>
+                    <div className="pt-2 border-t border-border-default/50 space-y-2">
+                      <span className="text-text-muted font-medium text-[10px] uppercase tracking-wider block">AI Mentoring Insights:</span>
                       {typeof (detailMember.interests as any).ai_analysis === 'object' && !(detailMember.interests as any).ai_analysis.legacy ? (
                         <div className="grid grid-cols-1 gap-2 max-h-72 overflow-y-auto pr-1">
                           {([
@@ -894,15 +1293,15 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                             const val = (detailMember.interests as any).ai_analysis[key];
                             if (!val) return null;
                             return (
-                              <div key={key} className="p-2 bg-zinc-100/60 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60 rounded-md">
-                                <span className="text-[10px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider block mb-0.5">{label}</span>
-                                <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed">{val}</p>
+                              <div key={key} className="p-2.5 bg-bg-well/60 border border-border-default/60 rounded-xl">
+                                <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider block mb-0.5">{label}</span>
+                                <p className="text-[11px] text-text-secondary leading-relaxed">{val}</p>
                               </div>
                             );
                           })}
                         </div>
                       ) : (
-                        <div className="p-2.5 bg-zinc-100/60 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60 rounded-md text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line">
+                        <div className="p-2.5 bg-bg-well/60 border border-border-default/60 rounded-xl text-[11px] text-text-secondary leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line">
                           {typeof (detailMember.interests as any).ai_analysis === 'object'
                             ? (detailMember.interests as any).ai_analysis.legacy
                             : (detailMember.interests as any).ai_analysis}
@@ -935,36 +1334,36 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
         {credentialMember && (
           <form onSubmit={handleSendCredentials} className="space-y-4 text-xs">
             {/* Username Input */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider block">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-text-secondary block">
                 Username Member
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-zinc-400 font-mono text-xs">@</span>
+                <span className="absolute left-3.5 top-2.5 text-text-muted font-mono text-xs">@</span>
                 <input
                   type="text"
                   value={inputUsername}
                   disabled
                   readOnly
                   placeholder="username_member"
-                  className="w-full bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-800 rounded-lg py-2 pl-7 pr-3 text-xs text-zinc-500 dark:text-zinc-400 font-mono font-medium cursor-not-allowed focus:outline-none"
+                  className="w-full h-10 bg-bg-well/30 border border-border-default rounded-xl pl-8 pr-3 text-xs text-text-muted font-mono font-medium cursor-not-allowed focus:outline-none"
                 />
               </div>
-              <span className="text-[10px] text-zinc-400 block">
+              <span className="text-[10px] text-text-muted block">
                 Username digunakan member untuk login ke platform.
               </span>
             </div>
 
             {/* Password Input & Generator */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider block">
+                <label className="text-[11px] font-semibold text-text-secondary block">
                   Password Sementara
                 </label>
                 <button
                   type="button"
                   onClick={handleGeneratePassword}
-                  className="text-[10px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-semibold flex items-center gap-1 cursor-pointer"
+                  className="text-[10px] text-text-muted hover:text-text-primary font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <RefreshCw className="w-3 h-3" />
                   <span>Acak Password</span>
@@ -975,41 +1374,41 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
                 value={inputPassword}
                 onChange={(e) => setInputPassword(e.target.value)}
                 placeholder="Contoh: PK-7x9m2k"
-                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg py-2 px-3 text-xs text-zinc-900 dark:text-zinc-100 font-mono font-medium focus:outline-none focus:border-zinc-400"
+                className="w-full h-10 bg-bg-well/50 border border-border-default rounded-xl px-3.5 text-xs text-text-primary font-mono font-medium focus:outline-none focus:border-text-primary"
               />
-              <span className="text-[10px] text-zinc-400 block">
+              <span className="text-[10px] text-text-muted block">
                 Password akan disimpan di akun member dan dikirimkan via email.
               </span>
             </div>
 
             {/* Email Notification Preview Box */}
-            <div className="p-3 bg-zinc-100/70 dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800 rounded-lg space-y-1">
-              <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 font-semibold text-[11px]">
-                <Mail className="w-3.5 h-3.5 text-zinc-500" />
+            <div className="p-3 bg-bg-well/60 border border-border-default rounded-xl space-y-1">
+              <div className="flex items-center gap-1.5 text-text-primary font-semibold text-[11px]">
+                <Mail className="w-3.5 h-3.5 text-text-muted" />
                 <span>Kirim Email Otomatis</span>
               </div>
-              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              <p className="text-[10px] text-text-muted leading-relaxed">
                 Email kredensial berisi username dan password ini akan langsung dikirim ke{" "}
-                <strong className="text-zinc-700 dark:text-zinc-300">{credentialMember.email}</strong>.
+                <strong className="text-text-primary">{credentialMember.email}</strong>.
               </p>
             </div>
 
             {/* Modal Actions */}
-            <div className="flex justify-end gap-2 pt-3 border-t border-zinc-150 dark:border-zinc-800/80">
+            <div className="flex justify-end gap-2 pt-3 border-t border-border-default/60">
               <button
                 type="button"
                 onClick={() => {
                   setIsCredentialOpen(false);
                   setCredentialMember(null);
                 }}
-                className="px-4 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors cursor-pointer"
+                className="h-10 px-4 text-xs font-bold rounded-xl text-text-secondary bg-bg-well hover:bg-bg-well/80 border border-border-default transition-colors cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={isSendingCredentials}
-                className="px-4 py-2 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                className="h-10 px-4 text-xs font-bold rounded-xl text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
               >
                 {isSendingCredentials ? (
                   <>
@@ -1035,7 +1434,7 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
         title="Konfirmasi Hapus Member"
       >
         <div className="space-y-4 pt-1">
-          <div className="p-3.5 bg-red-50 dark:bg-red-950/40 border border-red-200/80 dark:border-red-900/60 rounded-xl flex items-start gap-3">
+          <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-red-900 dark:text-red-200 space-y-1">
               <p className="font-bold">Peringatan: Tindakan ini permanen!</p>
@@ -1045,20 +1444,20 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
             </div>
           </div>
 
-          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+          <p className="text-xs text-text-secondary">
             Apakah Anda yakin ingin menghapus member{" "}
-            <strong className="text-zinc-900 dark:text-white">
+            <strong className="text-text-primary">
               {deleteModalMember?.stage_name || deleteModalMember?.full_name}
             </strong>{" "}
             ({deleteModalMember?.email || deleteModalMember?.whatsapp_number})?
           </p>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-zinc-150 dark:border-zinc-800/80">
+          <div className="flex justify-end gap-2 pt-3 border-t border-border-default/60">
             <button
               type="button"
               disabled={isDeleting}
               onClick={() => setDeleteModalMember(null)}
-              className="px-4 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+              className="h-10 px-4 text-xs font-bold rounded-xl text-text-secondary bg-bg-well hover:bg-bg-well/80 border border-border-default transition-colors cursor-pointer disabled:opacity-50"
             >
               Batal
             </button>
@@ -1066,7 +1465,7 @@ export default function MembersClient({ initialMembers, packages = [] }: Members
               type="button"
               disabled={isDeleting}
               onClick={handleDeleteMember}
-              className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              className="h-10 px-4 text-xs font-bold rounded-xl text-white bg-red-600 hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
               {isDeleting ? (
                 <>

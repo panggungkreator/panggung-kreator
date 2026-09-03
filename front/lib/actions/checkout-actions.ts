@@ -131,6 +131,16 @@ export async function submitOnboardingData(payload: OnboardingPayload) {
   }
 }
 
+function cleanSocialUsername(val?: string | null): string | null {
+  if (!val) return null;
+  let cleaned = val.trim();
+  if (!cleaned || cleaned === "-") return null;
+  cleaned = cleaned.replace(/^https?:\/\/(www\.)?(instagram\.com|tiktok\.com\/@?)/i, "");
+  cleaned = cleaned.split("?")[0].replace(/\/+$/, "");
+  cleaned = cleaned.replace(/^@+/, "").trim();
+  return cleaned || null;
+}
+
 type CheckoutPayload = {
   fullName: string;
   stageName: string;
@@ -392,18 +402,23 @@ export async function registerMemberAction(payload: CheckoutPayload) {
     // Generate order ID
     const orderId = `PK-AKAD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
+    const cleanIg = cleanSocialUsername(payload.instagram);
+    const cleanTt = cleanSocialUsername(payload.tiktok);
+
     // 4. Save/Update Member Details in Database (using upsert to support DB triggers and bypass RLS)
     const { error: dbError } = await supabaseAdmin
       .from("members")
       .upsert({
         id: user.id,
-        full_name: payload.fullName,
-        stage_name: payload.stageName,
-        whatsapp_number: payload.whatsapp,
+        full_name: payload.fullName.trim(),
+        stage_name: (payload.stageName || payload.fullName).trim(),
+        whatsapp_number: payload.whatsapp.trim(),
         email: payload.email.trim(),
-        instagram_username: payload.instagram,
-        tiktok_username: payload.tiktok,
-        occupation: payload.profession,
+        social_media: {
+          instagram: cleanIg,
+          tiktok: cleanTt,
+        },
+        occupation: payload.profession?.trim() || "Lainnya",
         username: generatedUsername,
         payment_status: 'pending',
         role: 'member',

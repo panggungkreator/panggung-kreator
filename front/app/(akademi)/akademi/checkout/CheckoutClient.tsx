@@ -429,6 +429,13 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
       // Panggil server action untuk register member & generate akun login
       const payloadData = {
         ...formData,
+        fullName: formData.fullName.trim(),
+        stageName: formData.stageName.trim() || formData.fullName.trim(),
+        instagram: formData.instagram.replace(/^@+/, "").trim(),
+        tiktok: formData.tiktok.replace(/^@+/, "").trim(),
+        email: formData.email.trim(),
+        whatsapp: formData.whatsapp.trim(),
+        profession: formData.profession.trim(),
         packageId: selectedPackage?.id,
         usedVoucherCode: appliedVoucher?.code,
         referralCode: appliedReferral?.code
