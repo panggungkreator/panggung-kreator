@@ -111,7 +111,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                   setQrisGenerated(false);
                 } else if (member.payment_status === 'paid') {
                   localStorage.removeItem("pangkreas_checkout_state");
-                  router.push('/myprofile');
+                  router.push('/akademi/dashboard');
                 } else {
                   const { data: transaction } = await supabase
                     .from("transactions")
@@ -142,6 +142,12 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                 setDbMember(null);
                 setQrisGenerated(false);
               }
+            } else {
+              localStorage.removeItem("pangkreas_checkout_state");
+              setCurrentUser(null);
+              setDbMember(null);
+              setQrisGenerated(false);
+              router.push('/login');
             }
             return;
           } else {
