@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getFieldError, clearFieldError, scrollToFirstError } from "@/lib/formValidation";
 
 export interface InitialOnboardingData {
@@ -461,21 +461,49 @@ export function useOnboardingFormState(
     return true;
   };
 
+  const lastSectionChangeTime = useRef<number>(0);
+
+  // Reset field errors whenever switching sections so new section starts clean
+  useEffect(() => {
+    setFieldErrors({});
+    lastSectionChangeTime.current = Date.now();
+  }, [currentSection]);
+
   const handleNextSection = () => {
-    if (validateSection(currentSection)) {
-      setCurrentSection((prev) => Math.min(prev + 1, 6));
-      setErrorMsg("");
+    setErrorMsg("");
+    if (currentSection >= 6) return;
+    const isValid = validateSection(currentSection);
+    if (!isValid) {
+      return;
     }
+    setFieldErrors({});
+    lastSectionChangeTime.current = Date.now();
+    setCurrentSection((prev) => prev + 1);
   };
 
   const handlePrevSection = () => {
-    setCurrentSection((prev) => Math.max(prev - 1, 1));
     setErrorMsg("");
+    setFieldErrors({});
+    if (currentSection > 1) {
+      lastSectionChangeTime.current = Date.now();
+      setCurrentSection((prev) => prev - 1);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
+    if (currentSection < 6) {
+      handleNextSection();
+      return;
+    }
+
+    // Mencegah trigger validasi otomatis jika baru saja berpindah ke Section 6
+    if (Date.now() - lastSectionChangeTime.current < 400) {
+      return;
+    }
+
+    // Validasi akhir untuk semua section
     for (let sec = 1; sec <= 6; sec++) {
       if (!validateSection(sec)) {
         setCurrentSection(sec);
