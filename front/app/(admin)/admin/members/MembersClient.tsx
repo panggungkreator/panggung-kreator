@@ -20,6 +20,7 @@ import {
   ArrowUpDown,
   SlidersHorizontal,
   Check,
+  FileText,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -27,6 +28,7 @@ import { Modal, ModalSection } from "@/components/ui/Modal";
 import { toast } from "sonner";
 import AdminPagination from "@/components/admin/AdminPagination";
 import { sendMemberCredentialsAction, deleteMemberAction } from "./actions";
+import { MemberFormRecapModal } from "./MemberFormRecapModal";
 
 type Member = {
   id: string;
@@ -34,6 +36,9 @@ type Member = {
   stage_name: string;
   whatsapp_number: string;
   email: string;
+  birth_date?: string | null;
+  address?: string | null;
+  city?: string | null;
   instagram_username?: string;
   tiktok_username?: string;
   social_media?: {
@@ -52,12 +57,8 @@ type Member = {
   role?: string;
   package_id?: string;
   package?: { id: string; name: string } | null;
-  interests?: {
-    primary_interests: string[];
-    experience_level: string;
-    goals: string[];
-    ai_analysis?: string;
-  };
+  subscribed_newsletter?: boolean;
+  interests?: any;
 };
 
 interface MembersClientProps {
@@ -146,9 +147,28 @@ export default function MembersClient({
   const [inputPassword, setInputPassword] = useState("");
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
 
+  // Recap form onboarding modal state
+  const [recapModalMember, setRecapModalMember] = useState<Member | null>(null);
+
   // Delete modal state
   const [deleteModalMember, setDeleteModalMember] = useState<Member | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Helper to check whether member has filled StepEssential onboarding form
+  const hasFilledOnboardingForm = (m: Member | null | undefined) => {
+    if (!m) return false;
+    const ints = Array.isArray(m.interests) ? m.interests[0] : m.interests;
+    if (!ints) return false;
+    const hasPs = Array.isArray(ints.ps_challenges) && ints.ps_challenges.length > 0;
+    const hasSkills = Boolean(ints.skills_to_master);
+    const hasGoals = Array.isArray(ints.goals) && ints.goals.length > 0;
+    const hasConfidence = ints.confidence_scale !== null && ints.confidence_scale !== undefined;
+    const hasTopics = Array.isArray(ints.content_topics) && ints.content_topics.length > 0;
+    const hasMonetization = Boolean(ints.monetization_interest);
+    const hasRoleModel = Boolean(ints.role_model);
+    const hasNervous = Boolean(ints.nervous_trigger);
+    return hasPs || hasSkills || hasGoals || hasConfidence || hasTopics || hasMonetization || hasRoleModel || hasNervous;
+  };
 
   const handleDeleteMember = async () => {
     if (!deleteModalMember) return;
@@ -159,6 +179,9 @@ export default function MembersClient({
         toast.success(res.message || "Member berhasil dihapus.");
         setMembers((prev) => prev.filter((m) => m.id !== deleteModalMember.id));
         setDeleteModalMember(null);
+        if (detailMember?.id === deleteModalMember.id) {
+          setDetailMember(null);
+        }
       } else {
         toast.error(res.error || "Gagal menghapus member.");
       }
@@ -725,18 +748,17 @@ export default function MembersClient({
                             <Edit2 size={14} />
                           </button>
                           <button
-                            onClick={() => openCredentialModal(m)}
-                            className="p-1.5 rounded-lg border border-border-default/60 hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
-                            title="Kredensial Akun"
+                            onClick={() => setRecapModalMember(m)}
+                            className="p-1.5 rounded-lg border border-border-default/60 hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer relative"
+                            title="Rekap Jawaban Form"
                           >
-                            <KeyRound size={14} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteModalMember(m)}
-                            className="p-1.5 rounded-lg border border-border-default/60 hover:bg-red-500/10 text-red-500 hover:text-red-600 transition-colors cursor-pointer"
-                            title="Hapus Member"
-                          >
-                            <Trash2 size={14} />
+                            <FileText size={14} />
+                            {!hasFilledOnboardingForm(m) && (
+                              <span
+                                className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-900"
+                                title="Form belum diisi"
+                              />
+                            )}
                           </button>
                         </div>
                       </td>
@@ -826,19 +848,17 @@ export default function MembersClient({
                     </button>
                     <button
                       type="button"
-                      onClick={() => openCredentialModal(m)}
-                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
-                      title="Kredensial Akun"
+                      onClick={() => setRecapModalMember(m)}
+                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer relative"
+                      title="Rekap Jawaban Form"
                     >
-                      <KeyRound size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteModalMember(m)}
-                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-red-500/10 text-red-500 hover:text-red-600 active:scale-95 transition-all cursor-pointer"
-                      title="Hapus Member"
-                    >
-                      <Trash2 size={13} />
+                      <FileText size={13} />
+                      {!hasFilledOnboardingForm(m) && (
+                        <span
+                          className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-500"
+                          title="Form belum diisi"
+                        />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -1145,6 +1165,31 @@ export default function MembersClient({
       >
         {detailMember && (
           <div className="flex flex-col gap-3 text-xs">
+            {/* Rekap Jawaban Form Onboarding Card */}
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-bg-well/60 border border-border-default/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-bg-card border border-border-default/80 flex items-center justify-center shrink-0 text-text-muted">
+                  <FileText size={15} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-text-primary">Rekap Jawaban Form Onboarding</p>
+                  <p className="text-[10px] text-text-muted">Profiling minat & kebutuhan program (StepEssential)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRecapModalMember(detailMember)}
+                className="h-8 px-3 rounded-xl bg-text-primary text-bg-card hover:opacity-90 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              >
+                <span>Lihat Rekap</span>
+                {hasFilledOnboardingForm(detailMember) ? (
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-white text-[9px] font-bold">Terisi</span>
+                ) : (
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[9px] font-bold">Belum diisi</span>
+                )}
+              </button>
+            </div>
+
             {/* Personal Info Section */}
             <ModalSection title="Informasi Personal">
               <div className="space-y-2">
@@ -1312,6 +1357,29 @@ export default function MembersClient({
                 </div>
               </ModalSection>
             )}
+
+            {/* Danger Zone: Hapus Member dengan Peringatan Jelas */}
+            <div className="mt-2 p-3.5 rounded-2xl border border-red-500/30 bg-red-500/5 dark:bg-red-950/20 space-y-2.5">
+              <div className="flex items-start gap-2.5 text-red-600 dark:text-red-400">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <h4 className="font-bold text-xs">Peringatan: Tindakan Berbahaya (Hapus Akun)</h4>
+                  <p className="text-[11px] text-red-600/80 dark:text-red-400/80 leading-relaxed">
+                    Menghapus akun member ini akan menghapus seluruh data profil, akun login autentikasi, jawaban form, dan relasi transaksi secara permanen. Tindakan ini tidak dapat dibatalkan.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalMember(detailMember)}
+                  className="h-8 px-3.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                >
+                  <Trash2 size={13} />
+                  <span>Hapus Akun Member</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </Modal>
@@ -1482,6 +1550,13 @@ export default function MembersClient({
           </div>
         </div>
       </Modal>
+
+      {/* Modal Rekap Jawaban Form Onboarding (StepEssential) */}
+      <MemberFormRecapModal
+        isOpen={!!recapModalMember}
+        onClose={() => setRecapModalMember(null)}
+        member={recapModalMember}
+      />
 
     </div>
   );

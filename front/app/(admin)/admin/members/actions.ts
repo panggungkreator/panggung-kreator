@@ -322,25 +322,21 @@ export async function deleteMemberAction(memberId: string): Promise<ActionRespon
       };
     }
 
-    const supabaseAdmin = createServiceRoleClient();
+    const { syncDualOperation } = await import("@/lib/supabase/dual-sync");
 
-    // Delete all related records across linked tables
-    await supabaseAdmin.from("member_interests").delete().eq("member_id", memberId);
-    await supabaseAdmin.from("member_ai_analysis").delete().eq("member_id", memberId);
-    await supabaseAdmin.from("event_attendances").delete().eq("member_id", memberId);
-    await supabaseAdmin.from("member_portfolios").delete().eq("member_id", memberId);
-    await supabaseAdmin.from("transactions").delete().eq("member_id", memberId);
-    await supabaseAdmin.from("referrals").delete().or(`referrer_id.eq.${memberId},referee_id.eq.${memberId}`);
+    const dualResult = await syncDualOperation(async (client) => {
+      await client.from("member_interests").delete().eq("member_id", memberId);
+      await client.from("member_ai_analysis").delete().eq("member_id", memberId);
+      await client.from("event_attendances").delete().eq("member_id", memberId);
+      await client.from("member_portfolios").delete().eq("member_id", memberId);
+      await client.from("transactions").delete().eq("member_id", memberId);
+      await client.from("referrals").delete().or(`referrer_id.eq.${memberId},referee_id.eq.${memberId}`);
+      return await client.from("members").delete().eq("id", memberId);
+    });
 
-    // Delete from public.members table
-    const { error: deleteMemberErr } = await supabaseAdmin
-      .from("members")
-      .delete()
-      .eq("id", memberId);
-
-    if (deleteMemberErr) {
-      console.error("Error deleting member record:", deleteMemberErr);
-      return { success: false, error: `Gagal menghapus data member: ${deleteMemberErr.message}` };
+    if (!dualResult.success) {
+      console.error("Error deleting member record via dual-sync:", dualResult.error);
+      return { success: false, error: `Gagal menghapus data member: ${dualResult.error}` };
     }
 
     // Delete from Supabase Auth auth.users
