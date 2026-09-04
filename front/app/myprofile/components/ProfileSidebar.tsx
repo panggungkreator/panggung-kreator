@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { MemberProfile } from "@/lib/types/member";
-import { Globe, Copy, Check, Lock } from "lucide-react";
+import { Globe, Copy, Check, Lock, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import ChangePasswordModal from "@/components/member/ChangePasswordModal";
 
@@ -50,16 +50,27 @@ function LinkedInIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
 }
 
 export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggingOut }: ProfileSidebarProps) {
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
-  const handleCopyReferral = () => {
+  const handleCopyCode = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!member.affiliate_code) return;
+    navigator.clipboard.writeText(member.affiliate_code);
+    setCopiedCode(true);
+    toast.success(`Kode referral "${member.affiliate_code}" berhasil disalin!`);
+    setTimeout(() => setCopiedCode(false), 2500);
+  };
+
+  const handleCopyLink = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!member.affiliate_code) return;
     const link = `${window.location.origin}/form/member-priority?ref=${member.affiliate_code}`;
     navigator.clipboard.writeText(link);
-    setCopied(true);
-    toast.success("Link referral berhasil disalin ke clipboard!");
-    setTimeout(() => setCopied(false), 2500);
+    setCopiedLink(true);
+    toast.success("Link pendaftaran referral berhasil disalin!");
+    setTimeout(() => setCopiedLink(false), 2500);
   };
   const initials = (member.stage_name || member.full_name || "M")
     .substring(0, 2)
@@ -215,25 +226,81 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
       {/* REFERRAL QUICK COPY BADGE */}
       {member.affiliate_code && (
         <div className="w-full pt-4">
-          <button
-            type="button"
-            onClick={handleCopyReferral}
-            className="w-full py-2 px-3 bg-neutral-100 dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors flex items-center justify-between text-left group cursor-pointer"
-          >
-            <div className="min-w-0">
-              <span className="text-[9px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block">
+          <div className="w-full p-3 bg-neutral-100 dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 text-left space-y-2.5 transition-colors">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block font-medium">
                 KODE REFERRAL
               </span>
-              <span className="text-xs font-mono font-bold text-neutral-900 dark:text-white truncate block">
-                {member.affiliate_code}
+              <span className="text-[9px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                Bagikan
               </span>
             </div>
-            {copied ? (
-              <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 ml-2" />
-            ) : (
-              <Copy className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white shrink-0 ml-2 transition-colors" />
-            )}
-          </button>
+
+            {/* Code pill / clickable to copy code */}
+            <div
+              onClick={handleCopyCode}
+              className="flex items-center justify-between p-2 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors cursor-pointer group select-none"
+              title="Klik untuk salin kode saja"
+            >
+              <span className="text-xs font-mono font-bold text-neutral-900 dark:text-white tracking-wider truncate">
+                {member.affiliate_code}
+              </span>
+              {copiedCode ? (
+                <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 ml-1.5" />
+              ) : (
+                <Copy className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white shrink-0 ml-1.5 transition-colors" />
+              )}
+            </div>
+
+            {/* Two Action Buttons: Salin Kode & Salin Link */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className={`py-1.5 px-2 border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${
+                  copiedCode
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                    : "bg-white dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-neutral-700"
+                }`}
+                title="Salin hanya kode referral"
+              >
+                {copiedCode ? (
+                  <>
+                    <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                    <span>Tersalin</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3 text-neutral-500 shrink-0" />
+                    <span>Salin Kode</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className={`py-1.5 px-2 border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${
+                  copiedLink
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                    : "bg-white dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-neutral-700"
+                }`}
+                title="Salin tautan pendaftaran referral lengkap"
+              >
+                {copiedLink ? (
+                  <>
+                    <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                    <span>Tersalin</span>
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="w-3 h-3 text-neutral-500 shrink-0" />
+                    <span>Salin Link</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

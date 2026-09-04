@@ -384,13 +384,33 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
     setVoucherMessage(null);
   };
 
+  // Helper to extract clean referral code even if user pastes full URL
+  const extractReferralCode = (val: string): string => {
+    let text = val.trim();
+    if (text.includes("?ref=") || text.includes("&ref=")) {
+      try {
+        const urlObj = new URL(text.startsWith("http") ? text : `https://${text}`);
+        const refParam = urlObj.searchParams.get("ref");
+        if (refParam) return refParam.trim().toUpperCase();
+      } catch {
+        const match = text.match(/[?&]ref=([^&#\s]+)/i);
+        if (match?.[1]) return match[1].trim().toUpperCase();
+      }
+    }
+    return text.toUpperCase();
+  };
+
   const handleApplyReferral = async () => {
-    if (!referralCodeInput.trim()) return;
+    const cleanCode = extractReferralCode(referralCodeInput);
+    if (!cleanCode) return;
+    if (cleanCode !== referralCodeInput) {
+      setReferralCodeInput(cleanCode);
+    }
     setIsValidatingReferral(true);
     setReferralMessage(null);
 
     try {
-      const result = await validateReferralCodeAction(referralCodeInput.trim());
+      const result = await validateReferralCodeAction(cleanCode);
       if (result.success) {
         setAppliedReferral({
           code: result.code!,
@@ -906,7 +926,14 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                             type="text"
                             value={referralCodeInput}
                             disabled={isReferralFromUrl}
-                            onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw.includes("?ref=") || raw.includes("&ref=")) {
+                                setReferralCodeInput(extractReferralCode(raw));
+                              } else {
+                                setReferralCodeInput(raw.toUpperCase());
+                              }
+                            }}
                             placeholder="Contoh: RIZAL2026"
                             focusClassName="focus-within:border-[#bc151b] dark:focus-within:border-[#bc151b]"
                             className={isReferralFromUrl ? "opacity-75 cursor-not-allowed font-semibold text-blue-600 dark:text-blue-400 select-none" : ""}
