@@ -156,7 +156,7 @@ export async function submitAdminOnboardingAction(input: {
         tiktok_username: input.tiktokUsername?.trim() || null,
         username: input.username.trim().toLowerCase(),
         role: "admin",
-        membership_tier: "free",
+        membership_tier: "mvp",
         payment_status: "paid",
       });
 
