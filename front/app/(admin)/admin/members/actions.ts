@@ -324,7 +324,7 @@ export async function deleteMemberAction(memberId: string): Promise<ActionRespon
 
     const { syncDualOperation } = await import("@/lib/supabase/dual-sync");
 
-    const dualResult = await syncDualOperation(async (client) => {
+    const { devResult } = await syncDualOperation(async (client) => {
       await client.from("member_interests").delete().eq("member_id", memberId);
       await client.from("member_ai_analysis").delete().eq("member_id", memberId);
       await client.from("event_attendances").delete().eq("member_id", memberId);
@@ -334,12 +334,13 @@ export async function deleteMemberAction(memberId: string): Promise<ActionRespon
       return await client.from("members").delete().eq("id", memberId);
     });
 
-    if (!dualResult.success) {
-      console.error("Error deleting member record via dual-sync:", dualResult.error);
-      return { success: false, error: `Gagal menghapus data member: ${dualResult.error}` };
+    if (devResult.error) {
+      console.error("Error deleting member record via dual-sync:", devResult.error);
+      return { success: false, error: `Gagal menghapus data member: ${devResult.error.message}` };
     }
 
     // Delete from Supabase Auth auth.users
+    const supabaseAdmin = createServiceRoleClient();
     try {
       await supabaseAdmin.auth.admin.deleteUser(memberId);
     } catch (authDelErr: any) {
