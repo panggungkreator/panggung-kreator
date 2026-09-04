@@ -88,7 +88,34 @@ export default function MyProfilePage() {
 
       if (profileRes.error) throw profileRes.error;
 
-      setMember(profileRes.data as MemberProfile);
+      const profileData = profileRes.data;
+      if (profileData) {
+        // Guard: Jika role === admin, lempar ke dashboard admin
+        if (profileData.role === "admin") {
+          const isLocalhost =
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1";
+          const adminUrl =
+            !isLocalhost && process.env.NEXT_PUBLIC_ADMIN_URL
+              ? process.env.NEXT_PUBLIC_ADMIN_URL
+              : "/admin";
+          window.location.href = adminUrl;
+          return;
+        }
+
+        // Guard: Jika member belum mengisi data minat, lempar ke /myprofile/onboarding
+        const interests = profileData.interests;
+        const hasCompletedInterests =
+          interests &&
+          (Array.isArray(interests) ? interests.length > 0 : !!(interests as any)?.id);
+
+        if (profileData.role === "member" && !hasCompletedInterests) {
+          router.replace("/myprofile/onboarding");
+          return;
+        }
+      }
+
+      setMember(profileData as MemberProfile);
       setAttendanceCount(attendanceCountRes.count ?? 0);
       setReferrals((referralRes as any)?.data || []);
       setLedger((ledgerRes.data as any[]) || []);

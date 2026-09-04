@@ -38,6 +38,30 @@ export default function EditProfilePage() {
 
       if (error) throw error;
 
+      if (data) {
+        if (data.role === "admin") {
+          const isLocalhost =
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1";
+          const adminUrl =
+            !isLocalhost && process.env.NEXT_PUBLIC_ADMIN_URL
+              ? process.env.NEXT_PUBLIC_ADMIN_URL
+              : "/admin";
+          window.location.href = adminUrl;
+          return;
+        }
+
+        const interests = data.interests;
+        const hasCompletedInterests =
+          interests &&
+          (Array.isArray(interests) ? interests.length > 0 : !!(interests as any)?.id);
+
+        if (data.role === "member" && !hasCompletedInterests) {
+          router.replace("/myprofile/onboarding");
+          return;
+        }
+      }
+
       setMember(data as MemberProfile);
     } catch (err: any) {
       console.error("Error loading profile for edit:", err);

@@ -322,6 +322,49 @@ export async function proxy(request: NextRequest) {
         return redirectRes;
       }
 
+      // Check member role & onboarding status
+      let { data: member } = await supabase
+        .from("members")
+        .select("role, membership_tier, interests:member_interests(id)")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!member && user.email) {
+        const { data: memberByEmail } = await supabase
+          .from("members")
+          .select("role, membership_tier, interests:member_interests(id)")
+          .ilike("email", user.email)
+          .maybeSingle();
+        if (memberByEmail) member = memberByEmail;
+      }
+
+      const isAdmin = member?.role === "admin";
+      const interests = member?.interests;
+      const hasInterests = interests && (Array.isArray(interests) ? interests.length > 0 : !!(interests as any)?.id);
+
+      // Jika role === admin, selalu lempar ke halaman admin
+      if (isAdmin) {
+        const defaultAdminUrl = isLocalhost
+          ? `${protocol}//localhost${port}/admin`
+          : `${protocol}//admin.${rootHost}`;
+        const adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL
+          ? `${process.env.NEXT_PUBLIC_ADMIN_URL}/`
+          : `${defaultAdminUrl}/`;
+        return noCacheRedirect(new URL(adminRedirectUrl, request.url));
+      }
+
+      const isOnboardingPath = pathname === "/myprofile/onboarding";
+
+      // Jika member biasa belum melengkapi data minat dan BUKAN sedang di halaman /myprofile/onboarding
+      if (!hasInterests && !isOnboardingPath) {
+        return noCacheRedirect(new URL("/myprofile/onboarding", request.url));
+      }
+
+      // Jika member biasa sudah melengkapi data minat tapi mencoba buka /myprofile/onboarding lagi
+      if (hasInterests && isOnboardingPath) {
+        return noCacheRedirect(new URL("/myprofile", request.url));
+      }
+
       // Pastikan response /myprofile tidak pernah di-cache oleh browser mobile
       response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
       response.headers.set("Pragma", "no-cache");
@@ -331,19 +374,18 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/login" && user && !isRecoveryMode && request.method === "GET") {
       let { data: member } = await supabase
         .from("members")
-        .select("role, membership_tier")
+        .select("role, membership_tier, interests:member_interests(id)")
         .eq("id", user.id)
         .maybeSingle();
 
       if (!member && user.email) {
         const { data: memberByEmail } = await supabase
           .from("members")
-          .select("role, membership_tier")
+          .select("role, membership_tier, interests:member_interests(id)")
           .ilike("email", user.email)
           .maybeSingle();
         if (memberByEmail) member = memberByEmail;
       }
-
 
       if (member) {
         if (member.role === "admin") {
@@ -355,6 +397,11 @@ export async function proxy(request: NextRequest) {
             : `${defaultAdminUrl}/`;
           return noCacheRedirect(new URL(adminRedirectUrl, request.url));
         } else {
+          const interests = member.interests;
+          const hasInterests = interests && (Array.isArray(interests) ? interests.length > 0 : !!(interests as any)?.id);
+          if (!hasInterests) {
+            return noCacheRedirect(new URL("/myprofile/onboarding", request.url));
+          }
           return noCacheRedirect(new URL("/myprofile", request.url));
         }
       }

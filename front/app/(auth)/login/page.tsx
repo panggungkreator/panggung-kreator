@@ -74,8 +74,11 @@ function LoginPageContent() {
             : `${protocol}//admin.${rootHost}/`;
         }
 
-        // Gunakan relative path /myprofile agar tidak terjadi cross-host/cross-port mismatch di perangkat mobile / IP LAN
-        const userRedirectUrl = "/myprofile";
+        // Gunakan relative path /myprofile atau /myprofile/onboarding agar tidak terjadi cross-host/cross-port mismatch
+        let userRedirectUrl = "/myprofile";
+        if (result.needsOnboarding) {
+          userRedirectUrl = "/myprofile/onboarding";
+        }
 
         const targetUrl = redirectToParam ? redirectToParam : userRedirectUrl;
 

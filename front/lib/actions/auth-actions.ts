@@ -200,18 +200,26 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
       }
     } catch (_) {}
 
+    let needsOnboarding = false;
     const { data: member } = await supabase
       .from("members")
-      .select("role")
+      .select("role, interests:member_interests(id)")
       .eq("id", authData.user.id)
-      .single();
+      .maybeSingle();
 
     if (member && member.role === "admin") {
       isAdmin = true;
+    } else if (member && member.role === "member") {
+      const interests = member.interests;
+      const hasInterests = interests && (Array.isArray(interests) ? interests.length > 0 : !!(interests as any).id);
+      if (!hasInterests) {
+        needsOnboarding = true;
+      }
     }
+    return { success: true, isAdmin, needsOnboarding };
   }
 
-  return { success: true, isAdmin };
+  return { success: true, isAdmin: false, needsOnboarding: false };
 }
 
 export async function signUpWithPasswordAction(email: string, password: string, username: string) {
@@ -430,7 +438,8 @@ export async function registerPriorityMemberAction(onboardingData: any) {
         username: generatedUsername,
         membership_tier: 'priority',
         role: 'member',
-        payment_status: 'paid'
+        payment_status: 'paid',
+        profile_completed_at: new Date().toISOString(),
       }, { onConflict: "id" });
 
     if (memberError) {
