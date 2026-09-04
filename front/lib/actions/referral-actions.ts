@@ -249,6 +249,8 @@ export async function confirmPaymentWithRewardAction({
           full_name,
           stage_name,
           email,
+          username,
+          temporary_password,
           referred_by,
           referred_by_member_id
         ),
@@ -467,6 +469,23 @@ export async function confirmPaymentWithRewardAction({
     // 6. Kirim email konfirmasi ke member yang mendaftar
     if (payingMember?.email && process.env.SMTP_USER && process.env.SMTP_PASS) {
       try {
+        let finalPassword = payingMember.temporary_password;
+
+        if (!finalPassword) {
+          finalPassword = `Panggung${Math.floor(1000 + Math.random() * 9000)}!`;
+          try {
+            await supabaseAdmin.auth.admin.updateUserById(payingMember.id, {
+              password: finalPassword,
+            });
+            await supabaseAdmin
+              .from("members")
+              .update({ temporary_password: finalPassword })
+              .eq("id", payingMember.id);
+          } catch (passErr) {
+            console.warn("Gagal update password member:", passErr);
+          }
+        }
+
         const transporter = nodemailer.createTransport({
           host: process.env.SMTP_HOST || "smtp.gmail.com",
           port: parseInt(process.env.SMTP_PORT || "465"),
@@ -477,21 +496,85 @@ export async function confirmPaymentWithRewardAction({
           },
         });
 
+        const appUrl =
+          process.env.NEXT_PUBLIC_SITE_URL ||
+          process.env.NEXT_PUBLIC_APP_URL ||
+          "https://panggungkreator.web.id";
+        const loginUrl = `${appUrl.replace(/\/+$/, "")}/login`;
+        const memberName = payingMember.stage_name || payingMember.full_name || "Kreator";
+        const memberUsername = payingMember.username || payingMember.email;
+
         await transporter.sendMail({
           from: `"Panggung Kreator" <${process.env.SMTP_USER}>`,
           to: payingMember.email,
-          subject: "Pembayaran Terkonfirmasi - Panggung Kreator Akademi",
+          subject: "Pembayaran Terkonfirmasi & Kredensial Akun - Panggung Kreator",
           html: `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827; line-height: 1.6;">
-              <h2 style="color: #bc151b;">Selamat, Pembayaran Anda Sudah Terkonfirmasi! 🎉</h2>
-              <p>Halo <strong>${payingMember.full_name || "Kreator"}</strong>,</p>
-              <p>Pembayaran Anda untuk bergabung di Panggung Kreator Akademi telah berhasil kami verifikasi.</p>
-              <p>Silakan klik tombol di bawah ini untuk bergabung dengan Grup WhatsApp Akademi:</p>
-              <div style="margin: 25px 0;">
-                <a href="https://chat.whatsapp.com/JrJ9oXeYmdG4zC40HXMXjt" style="background-color: #25d366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Gabung ke Grup WhatsApp</a>
+            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; background-color: #f8fafc; padding: 20px;">
+              <div style="background-color: #18181b; color: #ffffff; padding: 28px 24px; text-align: center; border-radius: 12px 12px 0 0;">
+                <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; text-transform: uppercase;">
+                  Panggung Kreator
+                </h1>
+                <p style="margin: 6px 0 0 0; font-size: 13px; color: #a1a1aa;">
+                  Pembayaran Terkonfirmasi & Akses Akun Akademi
+                </p>
               </div>
-              <p style="font-size: 13px; color: #6b7280;">Jika Anda mengalami kendala, silakan balas email ini untuk menghubungi tim support kami.</p>
-              <p style="margin-top: 25px;">Salam hangat,<br/><strong>Tim Panggung Kreator</strong></p>
+
+              <div style="background-color: #ffffff; padding: 28px 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+                <h2 style="color: #bc151b; margin-top: 0; font-size: 18px;">Selamat, Pembayaran Anda Sudah Terkonfirmasi! 🎉</h2>
+                <p style="font-size: 15px; color: #334155; margin-top: 0;">
+                  Halo <strong>${memberName}</strong>,
+                </p>
+                <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+                  Pembayaran Anda untuk bergabung di <strong>Panggung Kreator Akademi</strong> telah berhasil kami verifikasi. Akun Anda kini telah aktif sepenuhnya. Berikut adalah informasi kredensial untuk login ke platform:
+                </p>
+
+                <!-- CREDENTIAL BOX -->
+                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; margin: 24px 0;">
+                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
+                    🔑 KREDENSIAL LOGIN ANDA
+                  </div>
+                  <table style="width: 100%; border-collapse: collapse; font-family: monospace; font-size: 14px;">
+                    <tr>
+                      <td style="width: 100px; color: #64748b; padding: 6px 0; font-weight: 600;">Email:</td>
+                      <td style="color: #0f172a; padding: 6px 0; font-weight: 700;">${payingMember.email}</td>
+                    </tr>
+                    <tr>
+                      <td style="width: 100px; color: #64748b; padding: 6px 0; font-weight: 600;">Username:</td>
+                      <td style="color: #0f172a; padding: 6px 0; font-weight: 700;">${memberUsername}</td>
+                    </tr>
+                    <tr>
+                      <td style="width: 100px; color: #64748b; padding: 6px 0; font-weight: 600;">Password:</td>
+                      <td style="color: #0f172a; padding: 6px 0; font-weight: 700;">${finalPassword}</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <!-- LOGIN BUTTON -->
+                <div style="text-align: center; margin: 24px 0;">
+                  <a href="${loginUrl}" style="background-color: #0f172a; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 14px; display: inline-block;">
+                    Masuk ke Akun Saya &rarr;
+                  </a>
+                </div>
+
+                <!-- WHATSAPP GROUP SECTION -->
+                <div style="margin: 28px 0; padding: 20px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; text-align: center;">
+                  <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #166534;">
+                    Silakan klik tombol di bawah ini untuk bergabung dengan Grup WhatsApp Akademi:
+                  </p>
+                  <a href="https://chat.whatsapp.com/JrJ9oXeYmdG4zC40HXMXjt" style="background-color: #25d366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
+                    Gabung ke Grup WhatsApp
+                  </a>
+                </div>
+
+                <p style="font-size: 13px; color: #64748b; margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                  Jika Anda mengalami kendala atau membutuhkan bantuan, silakan balas email ini untuk menghubungi tim support kami.
+                </p>
+
+                <p style="margin-top: 20px; font-size: 13px; color: #334155;">
+                  Salam hangat,<br/>
+                  <strong>Tim Panggung Kreator</strong>
+                </p>
+              </div>
             </div>
           `,
         });

@@ -103,9 +103,8 @@ export default function OnboardingClient({ initialData, tierName }: OnboardingCl
             </span>
             <span
               aria-hidden="true"
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                theme === "dark" ? "translate-x-6" : "translate-x-0"
-              }`}
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${theme === "dark" ? "translate-x-6" : "translate-x-0"
+                }`}
             />
           </button>
         </div>
@@ -113,7 +112,6 @@ export default function OnboardingClient({ initialData, tierName }: OnboardingCl
         {/* Welcome Banner */}
         <div className="mb-8 p-4 bg-zinc-100 dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800">
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-4 h-4 text-amber-500" />
             <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-semibold">
               ONBOARDING MEMBER {tierName ? `• TIER ${tierName.toUpperCase()}` : ""}
             </span>

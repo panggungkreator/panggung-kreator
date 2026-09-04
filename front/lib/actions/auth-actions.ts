@@ -436,6 +436,7 @@ export async function registerPriorityMemberAction(onboardingData: any) {
         occupation: profile.occupation || null,
         subscribed_newsletter: profile.subscribed_newsletter ?? true,
         username: generatedUsername,
+        temporary_password: generatedPassword,
         membership_tier: 'priority',
         role: 'member',
         payment_status: 'paid',
