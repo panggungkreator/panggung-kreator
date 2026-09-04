@@ -110,8 +110,12 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                   setDbMember(null);
                   setQrisGenerated(false);
                 } else if (member.payment_status === 'paid') {
+                  await supabase.auth.signOut();
                   localStorage.removeItem("pangkreas_checkout_state");
-                  router.push('/akademi/dashboard');
+                  setCurrentUser(null);
+                  setDbMember(null);
+                  setQrisGenerated(false);
+                  router.push('/login');
                 } else {
                   const { data: transaction } = await supabase
                     .from("transactions")
@@ -177,9 +181,13 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
             setQrisGenerated(false);
           } else {
             if (member.payment_status === 'paid') {
-              // Redirect member yang sudah lunas ke dashboard akademi
+              // Redirect member yang sudah lunas ke login
+              await supabase.auth.signOut();
               localStorage.removeItem("pangkreas_checkout_state");
-              router.push('/akademi/dashboard');
+              setCurrentUser(null);
+              setDbMember(null);
+              setQrisGenerated(false);
+              router.push('/login');
             } else {
               // Fetch pending transaction to get unique_code
               const { data: transaction } = await supabase
