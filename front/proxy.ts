@@ -51,12 +51,12 @@ export async function proxy(request: NextRequest) {
   const isRootDomain = isLocalhost || sub === "" || sub === "www";
 
 
-  // 3. Centralized login/register redirect
-  // If accessing auth routes on a subdomain (admin or akademi), redirect to root domain login center
-  const AUTH_PATHS = ["/login", "/register"];
-  const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
+  // 3. Centralized login/register/myprofile redirect
+  // If accessing auth routes or user profile on a subdomain (admin or akademi), redirect to root domain
+  const CENTRALIZED_PATHS = ["/login", "/register", "/myprofile"];
+  const isCentralizedPath = CENTRALIZED_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
-  if (isAuthPath && !isRootDomain) {
+  if (isCentralizedPath && !isRootDomain) {
     return NextResponse.redirect(
       new URL(`${protocol}//${rootHost}${pathname}${search}`)
     );

@@ -5,20 +5,43 @@ import Link from "next/link";
 import { Sun, Moon, Menu, X, LogOut, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { performCompleteSignOut } from "@/lib/utils/auth-client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Logo from "../components/ui/Logo";
 
 export default function NavHeader() {
   const router = useRouter();
+  const pathname = usePathname();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isClientCheckout, setIsClientCheckout] = useState(false);
+  const [profileUrl, setProfileUrl] = useState("/myprofile");
 
   useEffect(() => {
     setMounted(true);
+
+    if (typeof window !== "undefined") {
+      const p = window.location.pathname.toLowerCase();
+      if (
+        p === "/akademi/checkout" ||
+        p === "/checkout" ||
+        p.startsWith("/akademi/checkout") ||
+        p.startsWith("/checkout")
+      ) {
+        setIsClientCheckout(true);
+      }
+
+      const host = window.location.host;
+      if (host.includes("akademi.") || host.includes("admin.")) {
+        const rootHost = host.replace(/^(akademi|admin)\./, "");
+        setProfileUrl(`${window.location.protocol}//${rootHost}/myprofile`);
+      } else {
+        setProfileUrl("/myprofile");
+      }
+    }
 
     // Initialize theme
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
@@ -98,6 +121,13 @@ export default function NavHeader() {
     { label: "Harga", href: "#pricing" },
   ];
 
+  const isCheckoutPage =
+    isClientCheckout ||
+    pathname === "/akademi/checkout" ||
+    pathname === "/checkout" ||
+    Boolean(pathname?.startsWith("/akademi/checkout")) ||
+    Boolean(pathname?.startsWith("/checkout"));
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 border-b ${isScrolled
@@ -137,7 +167,7 @@ export default function NavHeader() {
           ) : user ? (
             <div className="flex items-center gap-2">
               <Link
-                href="/akademi/dashboard"
+                href={profileUrl}
                 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white flex items-center gap-1 py-2 px-3 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white/50 dark:bg-zinc-900/50"
               >
                 <User size={14} /> Dashboard
@@ -151,12 +181,14 @@ export default function NavHeader() {
               </button>
             </div>
           ) : (
-            <Link
-              href="/checkout"
-              className="text-sm font-bold text-white transition-all bg-[#bc151b] hover:bg-[#9a1116] border border-[#bc151b] hover:border-[#9a1116] rounded-lg px-5 py-2 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] duration-150"
-            >
-              Daftar Sekarang
-            </Link>
+            !isCheckoutPage && (
+              <Link
+                href="/checkout"
+                className="text-sm font-bold text-white transition-all bg-[#bc151b] hover:bg-[#9a1116] border border-[#bc151b] hover:border-[#9a1116] rounded-lg px-5 py-2 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] duration-150"
+              >
+                Daftar Sekarang
+              </Link>
+            )
           )}
         </div>
 
@@ -202,7 +234,7 @@ export default function NavHeader() {
               ) : user ? (
                 <>
                   <Link
-                    href="/akademi/dashboard"
+                    href={profileUrl}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="text-center font-semibold text-zinc-700 dark:text-zinc-300 py-3 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-900"
                   >
@@ -219,13 +251,15 @@ export default function NavHeader() {
                   </button>
                 </>
               ) : (
-                <Link
-                  href="/checkout"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-center font-bold text-white py-3 bg-[#bc151b] rounded-lg shadow-sm"
-                >
-                  Daftar Sekarang
-                </Link>
+                !isCheckoutPage && (
+                  <Link
+                    href="/checkout"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-center font-bold text-white py-3 bg-[#bc151b] rounded-lg shadow-sm"
+                  >
+                    Daftar Sekarang
+                  </Link>
+                )
               )}
             </div>
           </div>

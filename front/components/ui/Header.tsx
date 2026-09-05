@@ -14,9 +14,23 @@ export default function Header({ isFixed = false }: { isFixed?: boolean }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isClientCheckout, setIsClientCheckout] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+
+    if (typeof window !== "undefined") {
+      const p = window.location.pathname.toLowerCase();
+      if (
+        p === "/akademi/checkout" ||
+        p === "/checkout" ||
+        p.startsWith("/akademi/checkout") ||
+        p.startsWith("/checkout")
+      ) {
+        setIsClientCheckout(true);
+      }
+    }
+
     // Initialize theme
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
     if (savedTheme) {
@@ -71,6 +85,13 @@ export default function Header({ isFixed = false }: { isFixed?: boolean }) {
     }
   };
 
+  const isCheckoutPage =
+    isClientCheckout ||
+    pathname === '/akademi/checkout' ||
+    pathname === '/checkout' ||
+    Boolean(pathname?.startsWith('/akademi/checkout')) ||
+    Boolean(pathname?.startsWith('/checkout'));
+
   return (
     <header className={`${isFixed ? 'fixed' : 'sticky'} top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-[#2c2c2c]/80 backdrop-blur-md border-b border-zinc-200 dark:border-white/5 transition-colors duration-300`}>
       <Logo size="md" />
@@ -88,7 +109,7 @@ export default function Header({ isFixed = false }: { isFixed?: boolean }) {
           <div className="w-8 h-8 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/50 animate-pulse" />
         )}
 
-        {pathname !== '/akademi/checkout' && (
+        {!isCheckoutPage && (
           <Link
             href="/akademi/checkout"
             className="text-sm font-bold text-white transition-all border border-[#bc151b] hover:border-[#9a1116] rounded-lg px-4 py-2 bg-[#bc151b] hover:bg-[#9a1116] cursor-pointer shadow-sm shadow-[#bc151b]/20"

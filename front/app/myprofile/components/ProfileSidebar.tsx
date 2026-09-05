@@ -66,7 +66,7 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
   const handleCopyLink = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!member.affiliate_code) return;
-    const link = `${window.location.origin}/form/member-priority?ref=${member.affiliate_code}`;
+    const link = `${window.location.origin}/akademi/checkout?ref=${member.affiliate_code}`;
     navigator.clipboard.writeText(link);
     setCopiedLink(true);
     toast.success("Link pendaftaran referral berhasil disalin!");
@@ -257,11 +257,10 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
               <button
                 type="button"
                 onClick={handleCopyCode}
-                className={`py-1.5 px-2 border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${
-                  copiedCode
+                className={`py-1.5 px-2 border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${copiedCode
                     ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
                     : "bg-white dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-neutral-700"
-                }`}
+                  }`}
                 title="Salin hanya kode referral"
               >
                 {copiedCode ? (
@@ -280,11 +279,10 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className={`py-1.5 px-2 border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${
-                  copiedLink
+                className={`py-1.5 px-2 border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${copiedLink
                     ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
                     : "bg-white dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-neutral-700"
-                }`}
+                  }`}
                 title="Salin tautan pendaftaran referral lengkap"
               >
                 {copiedLink ? (

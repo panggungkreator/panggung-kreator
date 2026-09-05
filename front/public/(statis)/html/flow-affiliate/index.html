@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alur Sistem Afiliasi Panggung Kreator</title>
+  <style>
+    :root {
+      --bg-primary: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --bg-muted: #e2e8f0;
+      --border-color: #cbd5e1;
+      --border-light: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-soft: #64748b;
+      --accent: #bc151b;
+      --accent-soft: #fef2f2;
+      --accent-border: #fecaca;
+      --brand-dark: #18181b;
+      --success: #166534;
+      --success-bg: #f0fdf4;
+      --success-border: #bbf7d0;
+      --info: #1e40af;
+      --info-bg: #eff6ff;
+      --info-border: #bfdbfe;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-weight: 400 !important;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 32px 16px 80px 16px;
+    }
+
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+
+    .header-badge {
+      display: inline-block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-soft);
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+
+    .header-title {
+      font-size: 24px;
+      color: var(--text-main);
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+
+    .header-description {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 800px;
+    }
+
+    /* Summary Bar */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .summary-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
+
+    .summary-label {
+      font-size: 12px;
+      color: var(--text-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .summary-value {
+      font-size: 18px;
+      color: var(--text-main);
+    }
+
+    /* Overall Flow Diagram */
+    .flow-overview {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 36px;
+    }
+
+    .section-title {
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 13px;
+      color: var(--text-soft);
+    }
+
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    @media (min-width: 768px) {
+      .pipeline {
+        flex-direction: row;
+        align-items: stretch;
+      }
+    }
+
+    .pipeline-step {
+      flex: 1;
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 14px;
+      position: relative;
+    }
+
+    .pipeline-num {
+      font-size: 11px;
+      color: var(--text-soft);
+      font-family: monospace;
+      margin-bottom: 4px;
+    }
+
+    .pipeline-name {
+      font-size: 13px;
+      color: var(--text-main);
+      line-height: 1.4;
+    }
+
+    .pipeline-actor {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border-color);
+    }
+
+    /* Step Card */
+    .step-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+
+    .step-header {
+      padding: 20px 24px;
+      background-color: #ffffff;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .step-tag {
+      font-size: 11px;
+      font-family: monospace;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      color: var(--text-soft);
+    }
+
+    .step-title {
+      font-size: 18px;
+      color: var(--text-main);
+      margin-top: 4px;
+    }
+
+    .step-actor-badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background-color: var(--info-bg);
+      color: var(--info);
+      border: 1px solid var(--info-border);
+    }
+
+    .step-body {
+      padding: 24px;
+    }
+
+    .step-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    /* Instruction List */
+    .instruction-block {
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+    }
+
+    .instruction-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-soft);
+      margin-bottom: 10px;
+    }
+
+    .instruction-list {
+      list-style-type: decimal;
+      padding-left: 20px;
+      font-size: 13px;
+      color: var(--text-main);
+    }
+
+    .instruction-list li {
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .instruction-list li:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Visual Placeholder Mockup */
+    .mockup-container {
+      margin: 20px 0;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background-color: #ffffff;
+      overflow: hidden;
+    }
+
+    .mockup-header {
+      background-color: #1e293b;
+      color: #94a3b8;
+      padding: 10px 14px;
+      font-size: 11px;
+      font-family: monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mockup-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mockup-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #475569;
+    }
+
+    .mockup-body {
+      padding: 18px;
+      background-color: #fafafa;
+    }
+
+    .mockup-box {
+      background-color: #ffffff;
+      border: 1px dashed var(--border-color);
+      border-radius: 6px;
+      padding: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .mockup-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 12px;
+    }
+
+    .mockup-row:last-child {
+      border-bottom: none;
+    }
+
+    .mockup-btn {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 8px 16px;
+      background-color: var(--brand-dark);
+      color: #ffffff;
+      font-size: 12px;
+      border-radius: 4px;
+      text-align: center;
+      border: none;
+      cursor: default;
+    }
+
+    .mockup-btn-green {
+      background-color: #16a34a;
+    }
+
+    /* System Logic Table */
+    .logic-box {
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .logic-header {
+      background-color: var(--bg-subtle);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--text-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .logic-content {
+      padding: 14px;
+      font-size: 13px;
+      color: var(--text-muted);
+      background-color: #ffffff;
+    }
+
+    .logic-grid {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 8px 12px;
+      font-size: 12px;
+    }
+
+    .logic-key {
+      color: var(--text-soft);
+      font-family: monospace;
+    }
+
+    .logic-val {
+      color: var(--text-main);
+      font-family: monospace;
+      word-break: break-all;
+    }
+
+    /* Copyable Text Box */
+    .copy-box {
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+      margin-top: 16px;
+      position: relative;
+    }
+
+    .copy-box-label {
+      font-size: 11px;
+      color: var(--text-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .copy-box-content {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--text-main);
+      background-color: var(--bg-subtle);
+      padding: 10px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border-light);
+      white-space: pre-wrap;
+      word-break: break-word;
+      user-select: all;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- HEADER -->
+    <header class="header">
+      <span class="header-badge">Dokumentasi Teknis & Operasional</span>
+      <h1 class="header-title">Alur Sistem Afiliasi Panggung Kreator</h1>
+      <p class="header-description">
+        Visualisasi lengkap langkah demi langkah pelaksanaan sistem referral dan afiliasi, mulai dari pendaftaran link, sharing konten promosi, tracking kunjungan, checkout dan pembayaran, verifikasi transaksi reward, hingga pencairan saldo komisi.
+      </p>
+    </header>
+
+    <!-- METRIC SUMMARY -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">Total Tahapan Alur</div>
+        <div class="summary-value">6 Langkah Utama</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Aktor Terlibat</div>
+        <div class="summary-value">Afiliator, Pembeli, Admin, Sistem</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Mekanisme Reward</div>
+        <div class="summary-value">Komisi Flat / Persentase Dinamis</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Pencatatan Finansial</div>
+        <div class="summary-value">Buku Besar (Commission Ledger)</div>
+      </div>
+    </div>
+
+    <!-- PIPELINE OVERVIEW -->
+    <section class="flow-overview">
+      <div class="section-title">Diagram Urutan Alur Kerja</div>
+      <div class="pipeline">
+        <div class="pipeline-step">
+          <div class="pipeline-num">LANGKAH 01</div>
+          <div class="pipeline-name">Pendaftaran & Generate Link</div>
+          <div class="pipeline-actor">Aktor: Afiliator & Sistem</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-num">LANGKAH 02</div>
+          <div class="pipeline-name">Distribusi & Sharing Promosi</div>
+          <div class="pipeline-actor">Aktor: Afiliator</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-num">LANGKAH 03</div>
+          <div class="pipeline-name">Klik & Tracking Kunjungan</div>
+          <div class="pipeline-actor">Aktor: Calon Member & Sistem</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-num">LANGKAH 04</div>
+          <div class="pipeline-name">Registrasi & Checkout Pembayaran</div>
+          <div class="pipeline-actor">Aktor: Calon Member</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-num">LANGKAH 05</div>
+          <div class="pipeline-name">Verifikasi & Reward Saldo</div>
+          <div class="pipeline-actor">Aktor: Admin & Sistem</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-num">LANGKAH 06</div>
+          <div class="pipeline-name">Pencairan Komisi (Withdraw)</div>
+          <div class="pipeline-actor">Aktor: Afiliator & Admin</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 1 -->
+    <article class="step-card" id="step-1">
+      <div class="step-header">
+        <div>
+          <span class="step-tag">TAHAP 1 DARI 6</span>
+          <h2 class="step-title">Pendaftaran Akun & Pembuatan Link Referral</h2>
+        </div>
+        <span class="step-actor-badge">Aktor: Afiliator & Sistem Supabase</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">
+          Afiliator yang terdaftar di Panggung Kreator memiliki kode referral unik yang digenerate otomatis oleh sistem saat pendaftaran profil atau membership. Link referral ini berisi parameter query pengenal yang dapat dilacak secara akurat.
+        </p>
+
+        <div class="instruction-block">
+          <div class="instruction-title">Instruksi Langkah Demi Langkah</div>
+          <ol class="instruction-list">
+            <li>Afiliator masuk ke platform melalui halaman login di https://panggungkreator.web.id/login.</li>
+            <li>Buka halaman Profil Saya pada menu samping atau url /myprofile.</li>
+            <li>Lihat kartu informasi Afiliasi & Referral pada bilah sisi profil.</li>
+            <li>Salin Kode Afiliasi (contoh: PK-RIZAL-8921) atau Salin Link Referral Lengkap.</li>
+            <li>Pastikan format link referral valid mengarah ke landing page akademi.</li>
+          </ol>
+        </div>
+
+        <div class="mockup-container">
+          <div class="mockup-header">
+            <span>TAMPILAN VISUAL DASBOR AFILIATOR: /myprofile</span>
+            <div class="mockup-dots">
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+            </div>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-box">
+              <div class="mockup-row">
+                <span>Nama Afiliator:</span>
+                <span>Rizal Pratama (Member Priority)</span>
+              </div>
+              <div class="mockup-row">
+                <span>Kode Referral Anda:</span>
+                <span>PK-RIZAL-8921</span>
+              </div>
+              <div class="mockup-row">
+                <span>Tautan Referral Akademi:</span>
+                <span>https://panggungkreator.web.id/akademi?ref=PK-RIZAL-8921</span>
+              </div>
+              <div class="mockup-row">
+                <span>Saldo Komisi Saat Ini:</span>
+                <span>Rp 0</span>
+              </div>
+              <button type="button" class="mockup-btn">Salin Kode Saja</button>
+              <button type="button" class="mockup-btn" style="background-color: #334155; margin-left: 8px;">Salin URL Lengkap</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="logic-box">
+          <div class="logic-header">Logika Data & Status Sistem</div>
+          <div class="logic-content">
+            <div class="logic-grid">
+              <div class="logic-key">Tabel Database:</div>
+              <div class="logic-val">public.members</div>
+              <div class="logic-key">Kolom Terkait:</div>
+              <div class="logic-val">id, affiliate_code, commission_balance, role</div>
+              <div class="logic-key">Format Kode:</div>
+              <div class="logic-val">PK-[NAMA]-[4 DIGIT ANGKA ACAK]</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="copy-box">
+          <div class="copy-box-label">Contoh Teks Link Referral Siap Salin</div>
+          <div class="copy-box-content">https://panggungkreator.web.id/akademi?ref=PK-RIZAL-8921</div>
+        </div>
+      </div>
+    </article>
+
+    <!-- STEP 2 -->
+    <article class="step-card" id="step-2">
+      <div class="step-header">
+        <div>
+          <span class="step-tag">TAHAP 2 DARI 6</span>
+          <h2 class="step-title">Distribusi & Sharing Konten Promosi</h2>
+        </div>
+        <span class="step-actor-badge">Aktor: Afiliator</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">
+          Afiliator menyebarkan tautan referral dan kode kupon ke audiens target melalui berbagai kanal komunikasi digital, seperti media sosial, bio profil, konten edukasi, artikel blog, atau pesan broadcast komunitas.
+        </p>
+
+        <div class="instruction-block">
+          <div class="instruction-title">Instruksi Langkah Demi Langkah</div>
+          <ol class="instruction-list">
+            <li>Siapkan narasi ajakan atau ulasan pengalaman belajar di Panggung Kreator Akademi.</li>
+            <li>Cantumkan link referral lengkap pada bio Instagram, TikTok, YouTube deskripsi, atau pesan langsung.</li>
+            <li>Sertakan instruksi singkat agar calon member mendaftar melalui link tersebut agar mendapatkan akses kelas dan pendampingan.</li>
+            <li>Gunakan pesan WhatsApp personal kepada rekan atau komunitas yang membutuhkan materi public speaking dan personal branding.</li>
+          </ol>
+        </div>
+
+        <div class="mockup-container">
+          <div class="mockup-header">
+            <span>TAMPILAN VISUAL PESAN PROMOSI: WHATSAPP / SOCIAL MEDIA</span>
+            <div class="mockup-dots">
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+            </div>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-box" style="background-color: #ffffff;">
+              <p style="margin-bottom: 10px; font-size: 13px; color: #1e293b;">
+                Halo teman-teman kreator! Buat kamu yang ingin upgrade skill public speaking dan membangun personal branding profesional, yuk gabung di Panggung Kreator Akademi.
+              </p>
+              <p style="margin-bottom: 10px; font-size: 13px; color: #1e293b;">
+                Daftar sekarang melalui tautan resmi ini:
+                <br>
+                https://panggungkreator.web.id/akademi?ref=PK-RIZAL-8921
+              </p>
+              <p style="font-size: 12px; color: #64748b;">
+                Gunakan kode referral PK-RIZAL-8921 saat checkout untuk bergabung dalam batch eksklusif bulan ini.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="copy-box">
+          <div class="copy-box-label">Template Pesan Promosi Siap Pakai</div>
+          <div class="copy-box-content">Tingkatkan rasa percaya diri dan personal branding kamu bersama Panggung Kreator Akademi. Dapatkan kurikulum terstruktur dan bimbingan praktis. Daftar sekarang melalui tautan ini: https://panggungkreator.web.id/akademi?ref=PK-RIZAL-8921 atau masukkan kode referral PK-RIZAL-8921 di menu checkout.</div>
+        </div>
+      </div>
+    </article>
+
+    <!-- STEP 3 -->
+    <article class="step-card" id="step-3">
+      <div class="step-header">
+        <div>
+          <span class="step-tag">TAHAP 3 DARI 6</span>
+          <h2 class="step-title">Klik Tautan & Tracking Kunjungan Calon Member</h2>
+        </div>
+        <span class="step-actor-badge">Aktor: Calon Member & Sistem Web</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">
+          Saat calon member mengeklik link referral yang dibagikan, sistem secara otomatis membaca parameter query referral dari URL dan menyimpannya di memori sesi peramban agar tidak hilang saat pengguna menjelajahi halaman platform.
+        </p>
+
+        <div class="instruction-block">
+          <div class="instruction-title">Instruksi Langkah Demi Langkah</div>
+          <ol class="instruction-list">
+            <li>Calon member mengeklik link promosi dari media sosial atau pesan chat.</li>
+            <li>Browser membuka halaman pendaftaran /akademi?ref=PK-RIZAL-8921.</li>
+            <li>Komponen aplikasi membaca parameter ref dan memvalidasi keberadaan kode di database.</li>
+            <li>Kode referral tersimpan pada session storage atau state form checkout.</li>
+            <li>Calon member meninjau rincian paket akademi dan mengklik tombol Daftar Sekarang.</li>
+          </ol>
+        </div>
+
+        <div class="mockup-container">
+          <div class="mockup-header">
+            <span>TAMPILAN VISUAL LANDING PAGE AKADEMI: /akademi?ref=...</span>
+            <div class="mockup-dots">
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+            </div>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-box">
+              <div style="font-size: 11px; color: #16a34a; background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 6px 12px; border-radius: 4px; margin-bottom: 12px;">
+                Kode Referral Terdeteksi: PK-RIZAL-8921 (Direferensikan oleh Rizal Pratama)
+              </div>
+              <div class="mockup-row">
+                <span>Program:</span>
+                <span>Panggung Kreator Akademi (Akses Penuh)</span>
+              </div>
+              <div class="mockup-row">
+                <span>Harga Program:</span>
+                <span>Rp 49.000</span>
+              </div>
+              <button type="button" class="mockup-btn mockup-btn-green">Lanjut ke Checkout Akademi &rarr;</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="logic-box">
+          <div class="logic-header">Logika Data & Tracking Parameter</div>
+          <div class="logic-content">
+            <div class="logic-grid">
+              <div class="logic-key">URL Parameter:</div>
+              <div class="logic-val">?ref=PK-RIZAL-8921 atau ?referred_by=PK-RIZAL-8921</div>
+              <div class="logic-key">Lookup DB:</div>
+              <div class="logic-val">SELECT id, full_name FROM members WHERE affiliate_code = 'PK-RIZAL-8921'</div>
+              <div class="logic-key">Fallback State:</div>
+              <div class="logic-val">Jika link tidak bawa param, calon member tetap bisa ketik kode manual di checkout.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- STEP 4 -->
+    <article class="step-card" id="step-4">
+      <div class="step-header">
+        <div>
+          <span class="step-tag">TAHAP 4 DARI 6</span>
+          <h2 class="step-title">Registrasi Data Diri & Checkout Pembayaran</h2>
+        </div>
+        <span class="step-actor-badge">Aktor: Calon Member</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">
+          Calon member mengisi formulir registrasi akun baru di halaman checkout. Sistem mengaitkan ID member afiliator ke data pendaftaran baru dan menghitung nominal transfer dengan kode unik 3 digit acak untuk verifikasi otomatis.
+        </p>
+
+        <div class="instruction-block">
+          <div class="instruction-title">Instruksi Langkah Demi Langkah</div>
+          <ol class="instruction-list">
+            <li>Calon member berada di halaman /akademi/checkout.</li>
+            <li>Mengisi data diri: Nama Lengkap, Nomor WhatsApp aktif, Alamat Email, dan Password pilihan.</li>
+            <li>Memastikan kolom Kode Referral terisi kode afiliator (auto-fill dari link).</li>
+            <li>Sistem membuat data member baru dengan status pembayaran pending dan referred_by mengarah ke afiliator.</li>
+            <li>Calon member melihat nominal total (misal: Rp 49.382) beserta QRIS resmi Panggung Kreator.</li>
+            <li>Calon member melakukan transfer tepat sesuai nominal hingga 3 digit terakhir.</li>
+          </ol>
+        </div>
+
+        <div class="mockup-container">
+          <div class="mockup-header">
+            <span>TAMPILAN VISUAL FORMULIR CHECKOUT: /akademi/checkout</span>
+            <div class="mockup-dots">
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+            </div>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-box">
+              <div class="mockup-row">
+                <span>Nama Lengkap:</span>
+                <span>Budi Santoso</span>
+              </div>
+              <div class="mockup-row">
+                <span>Email:</span>
+                <span>budi.santoso@example.com</span>
+              </div>
+              <div class="mockup-row">
+                <span>Nomor WhatsApp:</span>
+                <span>081234567890</span>
+              </div>
+              <div class="mockup-row">
+                <span>Kode Referral:</span>
+                <span>PK-RIZAL-8921 (Valid)</span>
+              </div>
+              <div class="mockup-row" style="background-color: #fef2f2; padding: 10px; margin-top: 8px; border-radius: 4px;">
+                <span>Total Transfer (Termasuk Kode Unik):</span>
+                <span>Rp 49.382</span>
+              </div>
+              <div style="margin-top: 12px; font-size: 11px; color: #64748b;">
+                Metode Pembayaran: QRIS Dinamis / Transfer Manual BCA & Mandiri
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="logic-box">
+          <div class="logic-header">Logika Data & Entitas Database</div>
+          <div class="logic-content">
+            <div class="logic-grid">
+              <div class="logic-key">Tabel Members:</div>
+              <div class="logic-val">INSERT INTO members (id, email, full_name, payment_status='pending', referred_by='[ID_AFILIATOR]')</div>
+              <div class="logic-key">Tabel Transaksi:</div>
+              <div class="logic-val">INSERT INTO transactions (member_id, amount=49000, unique_code=382, final_amount=49382, status='pending', referred_by_id='[ID_AFILIATOR]')</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- STEP 5 -->
+    <article class="step-card" id="step-5">
+      <div class="step-header">
+        <div>
+          <span class="step-tag">TAHAP 5 DARI 6</span>
+          <h2 class="step-title">Verifikasi Pembayaran & Penerbitan Reward Komisi</h2>
+        </div>
+        <span class="step-actor-badge">Aktor: Admin & Sistem Server Action</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">
+          Admin memverifikasi bukti transfer pembayaran di dasbor admin. Saat admin menyetujui transaksi, sistem secara otomatis mengeksekusi tiga tindakan sekaligus: aktivasi akun pembeli, penambahan saldo komisi afiliator, dan pengiriman notifikasi email ke kedua pihak.
+        </p>
+
+        <div class="instruction-block">
+          <div class="instruction-title">Instruksi Langkah Demi Langkah</div>
+          <ol class="instruction-list">
+            <li>Admin membuka dasbor manajemen transaksi di /admin/payment atau /admin/referral.</li>
+            <li>Admin mencocokkan mutasi bank / QRIS dengan bukti transfer yang dikirim pembeli.</li>
+            <li>Admin mengklik tombol Konfirmasi Pembayaran pada baris transaksi terkait.</li>
+            <li>Sistem mengubah status member baru menjadi paid dan tier menjadi membership.</li>
+            <li>Sistem mendeteksi kolom referred_by pada member baru dan mengambil setting komisi (contoh: Rp 10.000 per referral).</li>
+            <li>Saldo commission_balance milik afiliator bertambah secara instan.</li>
+            <li>Sistem mencatat transaksi kredit pada tabel commission_ledger sebagai bukti pembukuan.</li>
+            <li>Sistem mengirim email kredensial akun ke pembeli dan email notifikasi komisi masuk ke afiliator.</li>
+          </ol>
+        </div>
+
+        <div class="mockup-container">
+          <div class="mockup-header">
+            <span>TAMPILAN VISUAL MODAL ADMIN KONFIRMASI: /admin/referral</span>
+            <div class="mockup-dots">
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+            </div>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-box">
+              <div class="mockup-row">
+                <span>Member Baru:</span>
+                <span>Budi Santoso (budi.santoso@example.com)</span>
+              </div>
+              <div class="mockup-row">
+                <span>Paket Dibeli:</span>
+                <span>Akademi Membership (Rp 49.000)</span>
+              </div>
+              <div class="mockup-row">
+                <span>Pemilik Referral:</span>
+                <span>Rizal Pratama (PK-RIZAL-8921)</span>
+              </div>
+              <div class="mockup-row">
+                <span>Reward Komisi yang Diterbitkan:</span>
+                <span>Rp 10.000</span>
+              </div>
+              <div class="mockup-row">
+                <span>Saldo Baru Afiliator:</span>
+                <span>Rp 10.000 (Sebelumnya Rp 0)</span>
+              </div>
+              <button type="button" class="mockup-btn mockup-btn-green" style="margin-top: 14px;">Setujui Pembayaran & Kirim Reward Komisi</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mockup-container" style="margin-top: 14px;">
+          <div class="mockup-header">
+            <span>TAMPILAN VISUAL NOTIFIKASI EMAIL AFILIATOR</span>
+            <div class="mockup-dots">
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+            </div>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-box" style="background-color: #ffffff;">
+              <p style="font-size: 14px; color: #166534; margin-bottom: 8px;">
+                Selamat! Anda Mendapatkan Reward Referral Baru 🎉
+              </p>
+              <p style="font-size: 13px; color: #334155; margin-bottom: 6px;">
+                Halo Rizal Pratama,
+              </p>
+              <p style="font-size: 13px; color: #475569; line-height: 1.5;">
+                Member baru atas nama Budi Santoso telah menyelesaikan pembayaran pendaftaran Akademi menggunakan kode referral Anda. Saldo komisi sebesar Rp 10.000 telah ditambahkan ke akun Anda.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="logic-box">
+          <div class="logic-header">Logika Data & Server Action</div>
+          <div class="logic-content">
+            <div class="logic-grid">
+              <div class="logic-key">Action File:</div>
+              <div class="logic-val">front/lib/actions/referral-actions.ts -> confirmPaymentWithRewardAction</div>
+              <div class="logic-key">Update Member:</div>
+              <div class="logic-val">UPDATE members SET payment_status='paid', membership_tier='membership' WHERE id=buyerId</div>
+              <div class="logic-key">Update Saldo:</div>
+              <div class="logic-val">UPDATE members SET commission_balance = commission_balance + 10000 WHERE id=referrerId</div>
+              <div class="logic-key">Insert Ledger:</div>
+              <div class="logic-val">INSERT INTO commission_ledger (member_id, type='credit', amount=10000, source='referral_reward')</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- STEP 6 -->
+    <article class="step-card" id="step-6">
+      <div class="step-header">
+        <div>
+          <span class="step-tag">TAHAP 6 DARI 6</span>
+          <h2 class="step-title">Monitoring Saldo & Pencairan Komisi (Withdrawal)</h2>
+        </div>
+        <span class="step-actor-badge">Aktor: Afiliator & Admin Keuangan</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">
+          Afiliator dapat memantau riwayat reward komisi dan mengajukan pencairan saldo (payout) ke nomor rekening bank atau dompet digital yang terdaftar. Admin keuangan memproses transfer dan memperbarui buku besar sistem.
+        </p>
+
+        <div class="instruction-block">
+          <div class="instruction-title">Instruksi Langkah Demi Langkah</div>
+          <ol class="instruction-list">
+            <li>Afiliator memeriksa akumulasi saldo komisi di dasbor profil /myprofile atau tab Afiliasi.</li>
+            <li>Jika saldo telah mencapai batas minimum penarikan (misal: Rp 50.000), klik tombol Ajukan Penarikan Dana.</li>
+            <li>Mengisi informasi rekening tujuan: Nama Bank, Nomor Rekening, dan Nama Pemilik Rekening.</li>
+            <li>Sistem mencatat permohonan penarikan dana dengan status pending approval.</li>
+            <li>Admin keuangan meninjau permintaan, melakukan transfer dana melalui perbankan resmi Panggung Kreator.</li>
+            <li>Admin mengunggah bukti transfer dan menandai permohonan selesai (approved/completed).</li>
+            <li>Saldo commission_balance terpotong dan transaksi debit tercatat rapi di commission_ledger.</li>
+          </ol>
+        </div>
+
+        <div class="mockup-container">
+          <div class="mockup-header">
+            <span>TAMPILAN VISUAL MODAL PENCAIRAN KOMISI: /myprofile</span>
+            <div class="mockup-dots">
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+            </div>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-box">
+              <div class="mockup-row">
+                <span>Saldo Tersedia:</span>
+                <span>Rp 150.000</span>
+              </div>
+              <div class="mockup-row">
+                <span>Nominal Penarikan:</span>
+                <span>Rp 150.000</span>
+              </div>
+              <div class="mockup-row">
+                <span>Bank Tujuan:</span>
+                <span>BCA - 8820192811 a.n Rizal Pratama</span>
+              </div>
+              <div class="mockup-row">
+                <span>Biaya Admin:</span>
+                <span>Rp 0 (Gratis)</span>
+              </div>
+              <button type="button" class="mockup-btn" style="margin-top: 12px;">Kirim Pengajuan Pencairan Dana</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="logic-box">
+          <div class="logic-header">Logika Data & Pembukuan Finansial</div>
+          <div class="logic-content">
+            <div class="logic-grid">
+              <div class="logic-key">Tabel Ledger:</div>
+              <div class="logic-val">INSERT INTO commission_ledger (member_id, type='debit', amount=150000, source='payout_withdrawal')</div>
+              <div class="logic-key">Update Saldo:</div>
+              <div class="logic-val">UPDATE members SET commission_balance = commission_balance - 150000 WHERE id=memberId</div>
+              <div class="logic-key">Audit Trail:</div>
+              <div class="logic-val">Pencatatan created_by, timestamps, balance_after, dan catatan nomor transfer.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- TABLE SUMMARY -->
+    <section class="step-card">
+      <div class="step-header">
+        <h2 class="step-title">Matriks Ringkasan Status & Tanggung Jawab</h2>
+      </div>
+      <div class="step-body" style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border-color); background-color: var(--bg-subtle);">
+              <th style="padding: 10px; color: var(--text-soft);">Tahap</th>
+              <th style="padding: 10px; color: var(--text-soft);">Aktivitas Utama</th>
+              <th style="padding: 10px; color: var(--text-soft);">Status Transaksi</th>
+              <th style="padding: 10px; color: var(--text-soft);">Output Sistem</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border-light);">
+              <td style="padding: 10px;">1. Pendaftaran</td>
+              <td style="padding: 10px;">Pembuatan kode referral unik</td>
+              <td style="padding: 10px;">Member Active</td>
+              <td style="padding: 10px;">Kode afiliasi terdaftar di profil</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-light);">
+              <td style="padding: 10px;">2. Promosi</td>
+              <td style="padding: 10px;">Penyebaran tautan di media sosial</td>
+              <td style="padding: 10px;">-</td>
+              <td style="padding: 10px;">Traffic pengunjung masuk</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-light);">
+              <td style="padding: 10px;">3. Kunjungan</td>
+              <td style="padding: 10px;">Pembacaan parameter ref di URL</td>
+              <td style="padding: 10px;">Tracking Session</td>
+              <td style="padding: 10px;">ID afiliator tersimpan di memori</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-light);">
+              <td style="padding: 10px;">4. Checkout</td>
+              <td style="padding: 10px;">Pendaftaran akun & transfer biaya</td>
+              <td style="padding: 10px;">Payment Pending</td>
+              <td style="padding: 10px;">Transaksi baru & kode unik dibuat</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-light);">
+              <td style="padding: 10px;">5. Verifikasi</td>
+              <td style="padding: 10px;">Persetujuan admin & kredit reward</td>
+              <td style="padding: 10px;">Payment Paid</td>
+              <td style="padding: 10px;">Saldo afiliator bertambah + email</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px;">6. Pencairan</td>
+              <td style="padding: 10px;">Penarikan saldo komisi ke bank</td>
+              <td style="padding: 10px;">Payout Completed</td>
+              <td style="padding: 10px;">Dana ditransfer & ledger terupdate</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <p>Sistem Afiliasi & Referral Panggung Kreator • Dokumentasi Visual Alur Kerja</p>
+      <p style="margin-top: 4px; color: #94a3b8;">Format Berkas HTML Tunggal Tanpa Simbol Asteris & Tanpa Teks Tebal untuk Kemudahan Salin Data</p>
+    </footer>
+
+  </div>
+
+</body>
+</html>

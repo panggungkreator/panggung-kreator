@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Langkah Teknis Sistem Afiliasi - Panggung Kreator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --panel-soft: #f1f5f9;
+      --line: #e2e8f0;
+      --line-light: #f1f5f9;
+      --ink: #0f172a;
+      --ink-dim: #475569;
+      --ink-soft: #64748b;
+      --accent: #bc151b;
+      --accent-soft: #fef2f2;
+      --accent-border: #fecaca;
+      --green: #166534;
+      --green-soft: #f0fdf4;
+      --green-border: #bbf7d0;
+      --blue: #1e40af;
+      --blue-soft: #eff6ff;
+      --blue-border: #bfdbfe;
+      --font-main: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "JetBrains Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-weight: 400 !important;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-main);
+      overflow: hidden;
+      user-select: text;
+    }
+
+    /* Presentation Canvas */
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 40px 60px 80px 60px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(10px);
+      transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 768px) {
+      .slide {
+        padding: 20px 16px 76px 16px;
+      }
+    }
+
+    /* Eyebrow Header */
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .eyebrow .idx {
+      color: var(--ink-soft);
+    }
+
+    .eyebrow::after {
+      content: "";
+      height: 1px;
+      flex: 1;
+      background: var(--line);
+    }
+
+    /* Slide Titles */
+    h2.slide-title {
+      font-size: clamp(22px, 2.6vw, 32px);
+      line-height: 1.25;
+      letter-spacing: -0.015em;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .subtitle-copy {
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--ink-dim);
+      margin-bottom: 18px;
+    }
+
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    /* 2-Column Grid Layout */
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .grid2 {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+
+    /* Card Panels */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+    }
+
+    .card-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .card-title {
+      font-size: 14px;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+
+    .card-text {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ink-dim);
+    }
+
+    /* Numbered Step Instructions */
+    .step-list {
+      list-style: none;
+      counter-reset: step-counter;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .step-list li {
+      counter-increment: step-counter;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--ink);
+    }
+
+    .step-list li::before {
+      content: counter(step-counter);
+      min-width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--ink-dim);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Screenshot Placeholder Box */
+    .placeholder-box {
+      background: var(--panel);
+      border: 2px dashed var(--line);
+      border-radius: 8px;
+      padding: 22px 16px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .placeholder-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-border);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .placeholder-text {
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--ink-dim);
+    }
+
+    /* Technical Key-Value Info */
+    .tech-box {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--ink-dim);
+      line-height: 1.6;
+    }
+
+    .tech-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      padding: 4px 0;
+    }
+
+    .tech-row:last-child {
+      border-bottom: none;
+    }
+
+    .tech-key {
+      color: var(--ink-soft);
+    }
+
+    .tech-val {
+      color: var(--ink);
+    }
+
+    /* Bottom Navigation Bar */
+    .control-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 52px;
+      background: var(--panel);
+      border-top: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+    }
+
+    .control-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .slide-label {
+      font-size: 12px;
+      color: var(--ink-dim);
+      font-family: var(--font-mono);
+    }
+
+    .slide-counter {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-soft);
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .control-center {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-nav {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .btn-nav:hover {
+      background: var(--panel-soft);
+      border-color: var(--ink-soft);
+    }
+
+    .nav-hint {
+      font-size: 11px;
+      color: var(--ink-soft);
+      font-family: var(--font-mono);
+    }
+
+    @media (max-width: 600px) {
+      .nav-hint {
+        display: none;
+      }
+    }
+
+    /* Progress Line */
+    .progress-track {
+      position: absolute;
+      top: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--line-light);
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 20%;
+      transition: width 0.25s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- STAGE -->
+  <main class="stage" id="stage">
+
+    <!-- SLIDE 1: LANGKAH 1 -->
+    <section class="slide active" data-title="01. Salin Kode & Link">
+      <div class="eyebrow">
+        <span>TAHAP 1 DARI 5</span>
+        <span class="idx">01 // PENGAMBILAN KREDENSIAL</span>
+      </div>
+      <div class="slide-body">
+        <h2 class="slide-title">1. Ambil Kode Referral & Tautan URL</h2>
+        <p class="subtitle-copy">
+          Afiliator mengakses halaman profil untuk mendapatkan kode unik referral (affiliate code) dan URL promosi.
+        </p>
+
+        <div class="grid2">
+          <div>
+            <div class="card">
+              <span class="card-label">LANGKAH OPERASIONAL</span>
+              <ul class="step-list">
+                <li>Buka halaman Profil Saya (/myprofile) setelah berhasil login.</li>
+                <li>Lihat panel samping kiri pada kartu Kode Referral.</li>
+                <li>Gunakan tombol Salin Kode untuk mengambil teks kode (misal: PK-RIZAL-4921).</li>
+                <li>Gunakan tombol Salin Link untuk mengambil tautan URL lengkap pendaftaran akademi.</li>
+              </ul>
+            </div>
+
+            <div class="tech-box">
+              <div class="tech-row">
+                <span class="tech-key">Endpoint:</span>
+                <span class="tech-val">panggungkreator.web.id/myprofile</span>
+              </div>
+              <div class="tech-row">
+                <span class="tech-key">Kolom Database:</span>
+                <span class="tech-val">members.affiliate_code</span>
+              </div>
+              <div class="tech-row">
+                <span class="tech-key">Format Kode:</span>
+                <span class="tech-val">PK-[NAMA]-[4 DIGIT ACAK]</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="placeholder-box">
+              <span class="placeholder-tag">Slot Gambar 01</span>
+              <p class="placeholder-text">
+                [tambahkan screenshot panel sidebar code affiliat]
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: LANGKAH 2 -->
+    <section class="slide" data-title="02. Distribusi & Tracking">
+      <div class="eyebrow">
+        <span>TAHAP 2 DARI 5</span>
+        <span class="idx">02 // DISTRIBUSI LINK</span>
+      </div>
+      <div class="slide-body">
+        <h2 class="slide-title">2. Distribusi Tautan & Tracking Parameter</h2>
+        <p class="subtitle-copy">
+          Tautan promosi dibagikan ke calon member. Sistem membaca parameter ref dari URL dan menyimpannya di memori sesi.
+        </p>
+
+        <div class="grid2">
+          <div>
+            <div class="card">
+              <span class="card-label">LANGKAH OPERASIONAL</span>
+              <ul class="step-list">
+                <li>Afiliator membagikan tautan melalui WhatsApp, bio media sosial, atau grup komunitas.</li>
+                <li>Calon member mengeklik tautan referral tersebut di peramban (browser).</li>
+                <li>Halaman web membaca parameter query (?ref=...) pada URL secara otomatis.</li>
+                <li>Sistem memvalidasi keaktifan kode pemilik sebelum diarahkan ke pendaftaran.</li>
+              </ul>
+            </div>
+
+            <div class="tech-box">
+              <div class="tech-row">
+                <span class="tech-key">Format URL:</span>
+                <span class="tech-val">/akademi?ref=PK-RIZAL-4921</span>
+              </div>
+              <div class="tech-row">
+                <span class="tech-key">Handler:</span>
+                <span class="tech-val">validateReferralCodeAction(code)</span>
+              </div>
+              <div class="tech-row">
+                <span class="tech-key">Penyimpanan:</span>
+                <span class="tech-val">Session Storage / State Query</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="placeholder-box">
+              <span class="placeholder-tag">Slot Gambar 02</span>
+              <p class="placeholder-text">
+                [tambahkan screenshot contoh pesan promosi whatsapp dan link bio]
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: LANGKAH 3 -->
+    <section class="slide" data-title="03. Checkout Calon Member">
+      <div class="eyebrow">
+        <span>TAHAP 3 DARI 5</span>
+        <span class="idx">03 // CHECKOUT & PEMBAYARAN</span>
+      </div>
+      <div class="slide-body">
+        <h2 class="slide-title">3. Pendaftaran Akun & Checkout Tagihan</h2>
+        <p class="subtitle-copy">
+          Calon member mengisi form checkout, kode referral terikat ke akun baru, dan sistem membuat invoice kode unik.
+        </p>
+
+        <div class="grid2">
+          <div>
+            <div class="card">
+              <span class="card-label">LANGKAH OPERASIONAL</span>
+              <ul class="step-list">
+                <li>Calon member membuka formulir pendaftaran di /akademi/checkout.</li>
+                <li>Indikator hijau menunjukkan kode referral telah terpasang secara otomatis.</li>
+                <li>Calon member melengkapi nama, email, nomor WhatsApp, dan password akun.</li>
+                <li>Sistem menghitung total nominal transfer beserta 3 digit kode unik verifikasi.</li>
+                <li>Calon member mentransfer pembayaran melalui QRIS atau transfer bank.</li>
+              </ul>
+            </div>
+
+            <div class="tech-box">
+              <div class="tech-row">
+                <span class="tech-key">Relasi Akun:</span>
+                <span class="tech-val">members.referred_by = referrer_id</span>
+              </div>
+              <div class="tech-row">
+                <span class="tech-key">Data Transaksi:</span>
+                <span class="tech-val">transactions.referred_by_id</span>
+              </div>
+              <div class="tech-row">
+                <span class="tech-key">Status Awal:</span>
+                <span class="tech-val">payment_status = pending</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="placeholder-box">
+              <span class="placeholder-tag">Slot Gambar 03</span>
+              <p class="placeholder-text">
+                [tambahkan screenshot halaman checkout dengan badge kode referral terpasang]
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: LANGKAH 4 -->
+    <section class="slide" data-title="04. Verifikasi & Reward">
+      <div class="eyebrow">
+        <span>TAHAP 4 DARI 5</span>
+        <span class="idx">04 // VERIFIKASI ADMIN</span>
+      </div>
+      <div class="slide-body">
+        <h2 class="slide-title">4. Verifikasi Admin & Eksekusi Reward</h2>
+        <p class="subtitle-copy">
+          Admin menyetujui mutasi pembayaran. Sistem secara otomatis mengaktifkan member dan mengkreditkan reward komisi.
+        </p>
+
+        <div class="grid2">
+          <div>
+            <div class="card">
+              <span class="card-label">LANGKAH OPERASIONAL</span>
+              <ul class="step-list">
+                <li>Admin memeriksa bukti transfer pada panel transaksi /admin/referral.</li>
+                <li>Admin mengklik tombol Konfirmasi Pembayaran.</li>
+                <li>Status member baru diubah menjadi paid dan hak akses program aktif.</li>
+                <li>Saldo komisi milik afiliator langsung bertambah secara instan (+Rp 10.000).</li>
+                <li>Sistem mencatat mutasi kredit pada buku besar (commission_ledger) dan mengirim email.</li>
+              </ul>
+            </div>
+
+            <div class="tech-box">
+              <div class="tech-row">
+                <span class="tech-key">Server Action:</span>
+                <span class="tech-val">confirmPaymentWithRewardAction</span>
+              </div>
+              <div class="tech-row">
+                <span class="tech-key">Ledger Entry:</span>
+                <span class="tech-val">commission_ledger (type = credit)</span>
+              </div>
+              <div class="tech-row">
+                <span class="tech-key">Email Alert:</span>
+                <span class="tech-val">Notifikasi reward terkirim otomatis</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="placeholder-box">
+              <span class="placeholder-tag">Slot Gambar 04</span>
+              <p class="placeholder-text">
+                [tambahkan screenshot dashboard admin verifikasi referral dan email notifikasi reward]
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: LANGKAH 5 -->
+    <section class="slide" data-title="05. Saldo & Pencairan">
+      <div class="eyebrow">
+        <span>TAHAP 5 DARI 5</span>
+        <span class="idx">05 // PENCAIRAN KOMISI</span>
+      </div>
+      <div class="slide-body">
+        <h2 class="slide-title">5. Monitoring Saldo & Pengajuan Pencairan</h2>
+        <p class="subtitle-copy">
+          Afiliator memantau akumulasi komisi di dasbor profil dan mengajukan penarikan dana ke rekening bank.
+        </p>
+
+        <div class="grid2">
+          <div>
+            <div class="card">
+              <span class="card-label">LANGKAH OPERASIONAL</span>
+              <ul class="step-list">
+                <li>Afiliator memeriksa total saldo komisi tersedia di halaman /myprofile.</li>
+                <li>Klik tombol Tarik Saldo untuk mengajukan pencairan dana.</li>
+                <li>Input nama bank, nomor rekening tujuan, dan nama pemilik rekening.</li>
+                <li>Admin keuangan memproses transfer dana dan menandai transaksi selesai.</li>
+                <li>Sistem mencatat transaksi debit pada buku besar komisi.</li>
+              </ul>
+            </div>
+
+            <div class="tech-box">
+              <div class="tech-row">
+                <span class="tech-key">Monitoring:</span>
+                <span class="tech-val">members.commission_balance</span>
+              </div>
+              <div class="tech-row">
+                <span class="tech-key">Pencairan:</span>
+                <span class="tech-val">commission_ledger (type = debit)</span>
+              </div>
+              <div class="tech-row">
+                <span class="tech-key">Kanal Tujuan:</span>
+                <span class="tech-val">Rekening Bank / E-Wallet Resmi</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="placeholder-box">
+              <span class="placeholder-tag">Slot Gambar 05</span>
+              <p class="placeholder-text">
+                [tambahkan screenshot kartu saldo komisi afiliasi dan tombol tarik saldo di /myprofile]
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- CONTROL BAR -->
+  <footer class="control-bar">
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="control-left">
+      <span class="slide-counter" id="slideCounter">01 / 05</span>
+      <span class="slide-label" id="slideLabel">01. Salin Kode & Link</span>
+    </div>
+
+    <div class="control-center">
+      <button type="button" class="btn-nav" id="prevBtn" title="Slide Sebelumnya (Panah Kiri)">&#8592;</button>
+      <button type="button" class="btn-nav" id="nextBtn" title="Slide Selanjutnya (Panah Kanan / Spasi)">&#8594;</button>
+      <span class="nav-hint">Tekan Panah / Spasi untuk Navigasi</span>
+    </div>
+  </footer>
+
+  <!-- SCRIPT -->
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      const total = slides.length;
+      let current = 0;
+
+      const label = document.getElementById("slideLabel");
+      const counter = document.getElementById("slideCounter");
+      const fill = document.getElementById("progressFill");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+
+      function updateSlide() {
+        slides.forEach((slide, idx) => {
+          slide.classList.toggle("active", idx === current);
+        });
+
+        const activeSlide = slides[current];
+        label.textContent = activeSlide.dataset.title || "";
+        counter.textContent =
+          String(current + 1).padStart(2, "0") + " / " + String(total).padStart(2, "0");
+        fill.style.width = ((current + 1) / total) * 100 + "%";
+
+        activeSlide.scrollTop = 0;
+      }
+
+      function nextSlide() {
+        if (current < total - 1) {
+          current++;
+          updateSlide();
+        }
+      }
+
+      function prevSlide() {
+        if (current > 0) {
+          current--;
+          updateSlide();
+        }
+      }
+
+      function goToSlide(index) {
+        current = Math.max(0, Math.min(total - 1, index));
+        updateSlide();
+      }
+
+      nextBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        nextSlide();
+      });
+
+      prevBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        prevSlide();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (["ArrowRight", "ArrowDown", " ", "PageDown"].includes(e.key)) {
+          e.preventDefault();
+          nextSlide();
+        } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) {
+          e.preventDefault();
+          prevSlide();
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          goToSlide(0);
+        } else if (e.key === "End") {
+          e.preventDefault();
+          goToSlide(total - 1);
+        }
+      });
+
+      let startX = null;
+      document.addEventListener(
+        "touchstart",
+        (e) => {
+          startX = e.touches[0].clientX;
+        },
+        { passive: true }
+      );
+
+      document.addEventListener(
+        "touchend",
+        (e) => {
+          if (startX === null) return;
+          const diffX = e.changedTouches[0].clientX - startX;
+          if (Math.abs(diffX) > 40) {
+            if (diffX < 0) {
+              nextSlide();
+            } else {
+              prevSlide();
+            }
+          }
+          startX = null;
+        },
+        { passive: true }
+      );
+
+      updateSlide();
+    })();
+  </script>
+</body>
+</html>

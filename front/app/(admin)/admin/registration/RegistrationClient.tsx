@@ -446,11 +446,10 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
           <button
             type="button"
             onClick={() => setStatusFilter("all")}
-            className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
-              statusFilter === "all"
-                ? "bg-[#e0f2fe] text-[#0369a1] border border-[#bae6fd] shadow-xs dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800"
-                : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
-            }`}
+            className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${statusFilter === "all"
+              ? "bg-[#e0f2fe] text-[#0369a1] border border-[#bae6fd] shadow-xs dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800"
+              : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
+              }`}
           >
             <Users className="w-3.5 h-3.5 shrink-0" />
             <span>Semua</span>
@@ -463,11 +462,10 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
           <button
             type="button"
             onClick={() => setStatusFilter("pending")}
-            className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
-              statusFilter === "pending"
-                ? "bg-[#fef9c3] text-[#854d0e] border border-[#fde047] shadow-xs dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800"
-                : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
-            }`}
+            className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${statusFilter === "pending"
+              ? "bg-[#fef9c3] text-[#854d0e] border border-[#fde047] shadow-xs dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800"
+              : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
+              }`}
           >
             <Clock className="w-3.5 h-3.5 shrink-0" />
             <span>Pending</span>
@@ -480,11 +478,10 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
           <button
             type="button"
             onClick={() => setStatusFilter("paid")}
-            className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
-              statusFilter === "paid"
-                ? "bg-[#dcfce7] text-[#15803d] border border-[#86efac] shadow-xs dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
-                : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
-            }`}
+            className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${statusFilter === "paid"
+              ? "bg-[#dcfce7] text-[#15803d] border border-[#86efac] shadow-xs dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+              : "text-text-secondary hover:text-text-primary hover:bg-bg-well/60"
+              }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
             <span>Lunas</span>
@@ -562,7 +559,8 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
           <div className="mt-2">
             <span className="text-3xl font-extrabold text-[#b91c1c] dark:text-red-300">{formatIDR(stats.revenue)}</span>
           </div>
-          <p className="text-[10px] text-red-700/60 dark:text-red-400/60 mt-1 font-medium">Total pendapatan kotor</p>
+          <p className="text-[10px] text-red-700/60 dark:text-red-400/60 mt-1 font-medium">Total pendapatan kotor </p>
+          <span className="text-[9px] text-red-700/70 dark:text-red-400/70 italic font-bold">(per 05 September 2026)</span>
         </div>
       </div>
 
@@ -889,8 +887,8 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">Instagram:</span>
                   {(detailMember.social_media?.instagram || detailMember.instagram_username) &&
-                  (detailMember.social_media?.instagram || detailMember.instagram_username || "").trim() !== "" &&
-                  (detailMember.social_media?.instagram || detailMember.instagram_username || "").trim() !== "-" ? (
+                    (detailMember.social_media?.instagram || detailMember.instagram_username || "").trim() !== "" &&
+                    (detailMember.social_media?.instagram || detailMember.instagram_username || "").trim() !== "-" ? (
                     <a
                       href={`https://instagram.com/${(detailMember.social_media?.instagram || detailMember.instagram_username || "").replace("@", "")}`}
                       target="_blank"
@@ -906,8 +904,8 @@ export default function AdminClient({ initialMembers, packages = [] }: AdminClie
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">TikTok:</span>
                   {(detailMember.social_media?.tiktok || detailMember.tiktok_username) &&
-                  (detailMember.social_media?.tiktok || detailMember.tiktok_username || "").trim() !== "" &&
-                  (detailMember.social_media?.tiktok || detailMember.tiktok_username || "").trim() !== "-" ? (
+                    (detailMember.social_media?.tiktok || detailMember.tiktok_username || "").trim() !== "" &&
+                    (detailMember.social_media?.tiktok || detailMember.tiktok_username || "").trim() !== "-" ? (
                     <a
                       href={`https://tiktok.com/@${(detailMember.social_media?.tiktok || detailMember.tiktok_username || "").replace("@", "")}`}
                       target="_blank"
