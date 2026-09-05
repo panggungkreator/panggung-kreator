@@ -37,6 +37,7 @@ export const Section4Career: React.FC<Section4CareerProps> = ({
           id="firstOpportunity"
           name="firstOpportunity"
           label="JIKA KAMU SUDAH JAGO PUBLIC SPEAKING & PUNYA PERSONAL BRANDING YANG KUAT, PELUANG APA YANG INGIN KAMU KEJAR PERTAMA KALI? *"
+          hint="Contoh: Menjadi Speaker Nasional di berbagai seminar kepemimpinan dan edukasi, serta membangun komunitas mentoring profesional."
           rows={3}
           placeholder="Tuliskan peluang impianmu..."
           value={firstOpportunity}

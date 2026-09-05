@@ -42,6 +42,7 @@ export const Section6Commitment: React.FC<Section6CommitmentProps> = ({
           id="careerObstacle"
           name="careerObstacle"
           label="APA KENDALA TERBESAR KAMU SAAT INI DALAM BERKARYA/MEMBANGUN KARIR TERMASUK MEWUJUDKAN IMPIAN? *"
+          hint="Contoh: Masih ragu menentukan niche yang tepat karena merasa banyak potensi di berbagai bidang, belum memiliki portofolio yang meyakinkan, dan belum terhubung dengan mentor atau komunitas yang sesuai."
           rows={3}
           placeholder="Ceritakan kendala terbesarmu saat ini..."
           value={careerObstacle}

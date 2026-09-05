@@ -57,7 +57,7 @@ export default async function DashboardLayout({
     .single();
 
   // If not paid and not admin, redirect to checkout
-  const isPaid = member?.payment_status === "paid" || member?.membership_tier === "regular" || member?.membership_tier === "mvp";
+  const isPaid = member?.payment_status === "paid" || member?.membership_tier === "regular" || member?.membership_tier === "mvp" || member?.membership_tier === "membership";
   const isAdmin = member?.role === "admin";
 
   if (!isPaid && !isAdmin) {

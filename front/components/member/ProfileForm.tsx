@@ -343,7 +343,7 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
       if (!response.ok) {
         const err = await response.json();
         let message = "Gagal memperbarui profil.";
-        
+
         if (err.error) {
           if (typeof err.error === "string") {
             message = err.error;
@@ -354,12 +354,12 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                 const fieldName = field.replace(/_/g, " ").toUpperCase();
                 return `${fieldName}: ${msgs.join(", ")}`;
               });
-            
+
             const formErrors = err.error.formErrors || [];
             if (formErrors.length > 0) {
               messages.push(...formErrors);
             }
-            
+
             if (messages.length > 0) {
               message = messages.join(" | ");
             }
@@ -995,6 +995,7 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                   id="careerObstacle"
                   name="careerObstacle"
                   label="APA KENDALA TERBESAR KAMU SAAT INI DALAM BERKARYA/MEMBANGUN KARIR TERMASUK MEWUJUDKAN IMPIAN?"
+                  hint="Contoh: Masih ragu menentukan niche yang tepat karena merasa banyak potensi di berbagai bidang, belum memiliki portofolio yang meyakinkan, dan belum terhubung dengan mentor atau komunitas yang sesuai."
                   rows={2}
                   placeholder="Ceritakan kendala terbesarmu saat ini..."
                   value={careerObstacle}

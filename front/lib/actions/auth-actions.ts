@@ -757,7 +757,7 @@ export async function registerCollectionMemberAction(onboardingData: any) {
         subscribed_newsletter: profile.subscribed_newsletter ?? true,
         username: generatedUsername,
         temporary_password: generatedPassword,
-        membership_tier: 'regular',
+        membership_tier: 'membership',
         role: 'member',
         payment_status: 'paid',
         profile_completed_at: new Date().toISOString(),

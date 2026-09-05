@@ -472,7 +472,7 @@ export default function MembersClient({
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 uppercase tracking-wider">
           <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-          Membership PK
+          Membership
         </span>
       );
     }
