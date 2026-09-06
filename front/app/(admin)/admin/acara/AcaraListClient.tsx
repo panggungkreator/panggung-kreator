@@ -66,6 +66,7 @@ const EVENT_TYPE_MAP: Record<string, { label: string; dotColor: string }> = {
   mc_practice: { label: "MC Practice", dotColor: "bg-purple-500" },
   networking: { label: "Networking", dotColor: "bg-emerald-500" },
   content_class: { label: "Content Class", dotColor: "bg-rose-500" },
+  mentoring: { label: "Mentoring", dotColor: "bg-indigo-500" },
   lainnya: { label: "Acara Komunitas", dotColor: "bg-cyan-500" },
 };
 
@@ -390,6 +391,7 @@ export default function AcaraListClient({
                   <SelectItem value="mc_practice">MC Practice</SelectItem>
                   <SelectItem value="networking">Networking</SelectItem>
                   <SelectItem value="content_class">Content Class</SelectItem>
+                  <SelectItem value="mentoring">Mentoring</SelectItem>
                   <SelectItem value="lainnya">Lainnya</SelectItem>
                 </SelectContent>
               </Select>
@@ -721,6 +723,7 @@ export default function AcaraListClient({
                     { id: "mc_practice", label: "MC Practice" },
                     { id: "networking", label: "Networking" },
                     { id: "content_class", label: "Content Class" },
+                    { id: "mentoring", label: "Mentoring" },
                     { id: "lainnya", label: "Lainnya" },
                   ].map((t) => (
                     <button

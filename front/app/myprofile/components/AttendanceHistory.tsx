@@ -10,6 +10,7 @@ interface AttendanceHistoryProps {
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   open_mic: "Open Mic",
+  speech_practice: "Speech Practice",
   mc_practice: "MC Practice",
   voice_over: "Voice Over Challenge",
   sharing_session: "Sharing Session",
@@ -17,6 +18,8 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   workshop: "Workshop",
   content_class: "Content Creator Class",
   branding_class: "Personal Branding Class",
+  mentoring: "Mentoring",
+  lainnya: "Acara Komunitas",
 };
 
 export default function AttendanceHistory({ records }: AttendanceHistoryProps) {

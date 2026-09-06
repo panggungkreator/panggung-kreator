@@ -582,7 +582,7 @@ export default function MembersClient({
         </button>
 
         {/* Pill 4: General Free */}
-        <button
+        {/* <button
           type="button"
           onClick={() => setTierFilter("free")}
           className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${tierFilter === "free"
@@ -595,7 +595,7 @@ export default function MembersClient({
           <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-zinc-700 dark:text-zinc-300 shadow-2xs">
             {stats.total - stats.priorityCount - stats.membershipCount}
           </span>
-        </button>
+        </button> */}
       </div>
 
       {/* Toolbar Filter & Search */}
@@ -1064,15 +1064,19 @@ export default function MembersClient({
               <label className="text-[11px] font-semibold text-text-secondary block">
                 Komunitas
               </label>
-              <Select value={editCommunity} onValueChange={setEditCommunity}>
-                <SelectTrigger className="w-full h-10 bg-bg-well/50 border border-border-default rounded-xl px-3.5 text-xs text-text-primary font-medium focus:ring-0 focus:outline-none">
-                  <SelectValue placeholder="Pilih Komunitas" />
-                </SelectTrigger>
-                <SelectContent className="bg-bg-card border-border-default">
-                  <SelectItem value="panggung_kreator">Panggung Kreator (PK)</SelectItem>
-                  <SelectItem value="berani_tampil_bicara">Berani Tampil Bicara (BTB)</SelectItem>
-                </SelectContent>
-              </Select>
+              <input
+                type="text"
+                value={
+                  editCommunity === "berani_tampil_bicara"
+                    ? "Berani Tampil Bicara (BTB)"
+                    : editCommunity === "panggung_kreator"
+                      ? "Panggung Kreator (PK)"
+                      : editCommunity || "Panggung Kreator (PK)"
+                }
+                disabled
+                readOnly
+                className="w-full h-10 bg-bg-well/30 border border-border-default rounded-xl px-3.5 text-xs text-text-muted font-medium cursor-not-allowed focus:outline-none"
+              />
             </div>
 
             {/* Tier */}

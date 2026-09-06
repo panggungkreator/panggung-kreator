@@ -177,6 +177,7 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
                   <SelectItem value="mc_practice">MC Practice</SelectItem>
                   <SelectItem value="networking">Networking</SelectItem>
                   <SelectItem value="content_class">Content Class</SelectItem>
+                  <SelectItem value="mentoring">Mentoring</SelectItem>
                   <SelectItem value="lainnya">Lainnya</SelectItem>
                 </SelectContent>
               </Select>

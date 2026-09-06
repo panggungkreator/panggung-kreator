@@ -79,6 +79,7 @@ const EVENT_TYPE_MAP: Record<string, { label: string; dotColor: string }> = {
   mc_practice: { label: "MC Practice", dotColor: "bg-purple-500" },
   networking: { label: "Networking", dotColor: "bg-emerald-500" },
   content_class: { label: "Content Class", dotColor: "bg-rose-500" },
+  mentoring: { label: "Mentoring", dotColor: "bg-indigo-500" },
   lainnya: { label: "Acara Komunitas", dotColor: "bg-cyan-500" },
 };
 

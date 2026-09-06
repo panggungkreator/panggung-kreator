@@ -412,14 +412,36 @@ export default function AdminLayout({
 
 
 
-  // Helper to build a clean breadcrumb title in header
+  // Helper to build functional breadcrumb items in header
   const getBreadcrumbs = () => {
-    const parts = pathname.split("/").filter(Boolean);
-    if (parts.length === 0 || (parts.length === 1 && parts[0] === "admin")) {
-      return ["DASHBOARD"];
+    const rawParts = pathname.split("/").filter(Boolean);
+    const parts = rawParts[0] === "admin" ? rawParts.slice(1) : rawParts;
+
+    if (parts.length === 0) {
+      return [
+        {
+          label: "DASHBOARD",
+          href: "/admin",
+          isLast: true,
+        },
+      ];
     }
-    const filteredParts = parts[0] === "admin" ? parts.slice(1) : parts;
-    return filteredParts.map(part => part.replace("-", " ").toUpperCase());
+
+    let currentPath = "/admin";
+    return parts.map((part, index) => {
+      currentPath += `/${part}`;
+      const isLast = index === parts.length - 1;
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(part) ||
+        part.length > 25;
+      const label = isUuid ? "DETAIL" : part.replace(/-/g, " ").toUpperCase();
+
+      return {
+        label,
+        href: currentPath,
+        isLast,
+      };
+    });
   };
 
   const breadcrumbs = getBreadcrumbs();
@@ -455,13 +477,27 @@ export default function AdminLayout({
 
           {/* Breadcrumbs */}
           <div className="hidden sm:flex items-center gap-2 text-[10px] font-black tracking-widest text-text-secondary/50 select-none">
-            <span>[ ADMIN ]</span>
-            {breadcrumbs.map((crumb, idx) => (
-              <React.Fragment key={crumb}>
-                <span>/</span>
-                <span className={idx === breadcrumbs.length - 1 ? "text-text-primary" : ""}>
-                  {crumb}
-                </span>
+            <Link
+              href={getCleanHref("/admin")}
+              className="hover:text-text-primary transition-colors cursor-pointer"
+            >
+              [ ADMIN ]
+            </Link>
+            {breadcrumbs.map((crumb) => (
+              <React.Fragment key={crumb.href + crumb.label}>
+                <span className="text-text-secondary/30">/</span>
+                {crumb.isLast ? (
+                  <span className="text-text-primary">
+                    {crumb.label}
+                  </span>
+                ) : (
+                  <Link
+                    href={getCleanHref(crumb.href)}
+                    className="hover:text-text-primary transition-colors cursor-pointer"
+                  >
+                    {crumb.label}
+                  </Link>
+                )}
               </React.Fragment>
             ))}
           </div>
