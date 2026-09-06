@@ -613,34 +613,37 @@ export default function MembersClient({
     document.body.removeChild(link);
   };
 
-  const renderTierBadge = (m: Member, pkgName?: string | null) => {
+  const renderTierBadge = (m: Member, pkgName?: string | null, isCompact = false) => {
+    const badgePadding = isCompact ? "px-2 py-0.5 text-[8px]" : "px-2.5 py-1 text-[10px]";
+    const dotSize = isCompact ? "w-1 h-1" : "w-1.5 h-1.5";
+
     if (m.membership_tier === "priority") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-red-500/10 text-red-600 dark:text-red-400 font-bold border border-red-500/20 uppercase tracking-wider">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+        <span className={`inline-flex items-center gap-1.5 rounded-full ${badgePadding} bg-red-500/10 text-red-600 dark:text-red-400 font-bold border border-red-500/20 uppercase tracking-wider`}>
+          <span className={`${dotSize} rounded-full bg-red-500 animate-pulse`}></span>
           Member Priority
         </span>
       );
     }
     if (pkgName) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 uppercase tracking-wider">
-          <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+        <span className={`inline-flex items-center gap-1.5 rounded-full ${badgePadding} bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 uppercase tracking-wider`}>
+          <span className={`${dotSize} rounded-full bg-sky-500`}></span>
           {pkgName}
         </span>
       );
     }
     if (m.membership_tier === "membership" || m.membership_tier === "regular" || m.membership_tier === "mvp") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 uppercase tracking-wider">
-          <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+        <span className={`inline-flex items-center gap-1.5 rounded-full ${badgePadding} bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 uppercase tracking-wider`}>
+          <span className={`${dotSize} rounded-full bg-sky-500`}></span>
           Membership
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 font-bold border border-zinc-500/20 uppercase tracking-wider">
-        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+      <span className={`inline-flex items-center gap-1.5 rounded-full ${badgePadding} bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 font-bold border border-zinc-500/20 uppercase tracking-wider`}>
+        <span className={`${dotSize} rounded-full bg-zinc-400`}></span>
         General (Free)
       </span>
     );
@@ -965,13 +968,7 @@ export default function MembersClient({
               >
                 {/* Top: Tier Badge & Community Dot */}
                 <div className="flex items-center justify-between gap-2">
-                  <div>{renderTierBadge(m, pkgName)}</div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${m.community === 'berani_tampil_bicara' ? 'bg-amber-500' : 'bg-emerald-500'} shrink-0`}></span>
-                    <span className="text-[11px] font-semibold text-text-secondary tracking-tight">
-                      {m.community === 'berani_tampil_bicara' ? 'BTB' : 'PK'}
-                    </span>
-                  </div>
+                  <div>{renderTierBadge(m, pkgName, true)}</div>
                 </div>
 
                 {/* Middle: Member info */}
@@ -987,15 +984,10 @@ export default function MembersClient({
                     )}
                   </div>
                   <p className="text-xs text-text-secondary font-mono mt-0.5">@{m.username}</p>
-                  {m.occupation && (
-                    <p className="text-[11px] text-text-muted mt-1 font-medium">
-                      {formatOccupation(m.occupation)}
-                    </p>
-                  )}
                 </div>
 
                 {/* Bottom: Contact info & Action buttons */}
-                <div className="pt-3 border-t border-border-default/40 flex items-center justify-between gap-2">
+                <div className="pt-1 border-t border-border-default/40 flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-[11px] font-mono text-text-secondary truncate">
                       {m.whatsapp_number || m.email || "-"}
