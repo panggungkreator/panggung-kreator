@@ -435,7 +435,7 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
           {activeTab === "bio" && (
             <div className="space-y-5 sm:space-y-6 animate-fade-in">
               {/* FOTO PROFIL */}
-              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-center text-center sm:text-left py-1">
+              <div className="flex flex-col items-center justify-center text-center gap-2.5 sm:gap-3 py-2">
                 <div className="shrink-0">
                   <ImageUploader
                     memberId={member.id}
@@ -453,9 +453,9 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
                     }}
                   />
                 </div>
-                <div className="space-y-1">
-                  <span className="text-xs font-bold uppercase tracking-wider block">FOTO PROFIL</span>
-                  <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block max-w-sm leading-relaxed">
+                <div className="space-y-1 max-w-sm">
+                  <span className="text-xs font-bold uppercase tracking-wider block text-neutral-900 dark:text-white">FOTO PROFIL</span>
+                  <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block leading-relaxed">
                     Ukuran gambar harus kurang dari <strong className="font-semibold text-zinc-700 dark:text-zinc-300">2MB</strong> (JPG, PNG, atau WebP).
                   </span>
                 </div>
