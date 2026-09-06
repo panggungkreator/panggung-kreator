@@ -27,7 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Modal, ModalSection } from "@/components/ui/Modal";
 import { toast } from "sonner";
 import AdminPagination from "@/components/admin/AdminPagination";
-import { sendMemberCredentialsAction, deleteMemberAction } from "./actions";
+import { sendMemberCredentialsAction, deleteMemberAction, fetchLatestMembersAction } from "./actions";
 import { MemberFormRecapModal } from "./MemberFormRecapModal";
 
 type Member = {
@@ -107,8 +107,55 @@ export default function MembersClient({
   const [tierFilter, setTierFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name_asc">("newest");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const limit = paginationLimit > 0 ? paginationLimit : 10;
+
+  // Fungsi scroll ke bagian paling atas baik untuk window maupun container utama admin layout
+  const scrollToTop = () => {
+    // Scroll window/document
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    }
+    // Scroll main container jika overflow berada di elemen <main> admin layout
+    const mainEl = document.querySelector("main");
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    }
+  };
+
+  // Handler Refresh: Ambil data terbaru dari server, reset ke halaman pertama, dan scroll ke paling atas
+  const handleRefreshMemberData = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+
+    // 1. Reset halaman ke halaman pertama
+    setCurrentPage(1);
+
+    // 2. Gulir ke bagian paling atas (desktop & seluler)
+    scrollToTop();
+
+    try {
+      // 3. Ambil data member terbaru langsung via server action
+      const res = await fetchLatestMembersAction();
+      if (res.success && res.data) {
+        setMembers(res.data);
+        toast.success("Data member berhasil diperbarui!");
+      } else {
+        // Fallback panggil router.refresh() jika server action gagal
+        router.refresh();
+        toast.info("Memperbarui data member dari server...");
+      }
+    } catch (err) {
+      console.error("Error refreshing member data:", err);
+      router.refresh();
+      toast.info("Memperbarui data member...");
+    } finally {
+      // Pastikan router.refresh() tetap dipanggil untuk sinkronisasi server cache Next.js
+      router.refresh();
+      setIsRefreshing(false);
+    }
+  };
 
   // Sinkronkan state members ketika initialMembers dari server berubah
   useEffect(() => {
@@ -621,14 +668,12 @@ export default function MembersClient({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => {
-              router.refresh();
-              toast.info("Memperbarui data member...");
-            }}
+            onClick={handleRefreshMemberData}
+            disabled={isRefreshing}
             title="Segarkan data member"
-            className="inline-flex items-center justify-center h-9 w-9 text-text-muted hover:text-text-primary bg-bg-well/60 hover:bg-bg-well border border-border-default rounded-full transition-all cursor-pointer"
+            className="hidden sm:inline-flex items-center justify-center h-9 w-9 text-text-muted hover:text-text-primary bg-bg-well/60 hover:bg-bg-well border border-border-default rounded-full transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={14} className={isRefreshing ? "animate-spin text-text-primary" : ""} />
           </button>
           <button
             onClick={handleExportExcel}
@@ -1014,6 +1059,17 @@ export default function MembersClient({
       {/* ═══ FLOATING BOTTOM CONTROLS (Compact Proportional Dock Persis admin-mobile.md) ═══ */}
       <div className="md:hidden fixed bottom-6 inset-x-0 z-30 pointer-events-none flex justify-center px-4">
         <div className="pointer-events-auto bg-zinc-900/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-2 text-white">
+          {/* 0. Refresh Button (Mobile FAB) */}
+          <button
+            type="button"
+            onClick={handleRefreshMemberData}
+            disabled={isRefreshing}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            title="Segarkan data member"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-white" : ""}`} />
+          </button>
+
           {/* 1. Sort Button (Popover) */}
           <Popover>
             <PopoverTrigger asChild>

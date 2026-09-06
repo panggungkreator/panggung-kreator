@@ -362,3 +362,83 @@ export async function deleteMemberAction(memberId: string): Promise<ActionRespon
   }
 }
 
+export async function fetchLatestMembersAction(): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  try {
+    const supabase = await createClient();
+
+    // Verifikasi sesi dan role admin
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return { success: false, error: "Sesi telah berakhir. Silakan login kembali." };
+    }
+
+    const { data: currentMember } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!currentMember || currentMember.role !== "admin") {
+      return { success: false, error: "Akses ditolak. Hanya admin yang diizinkan." };
+    }
+
+    // Ambil daftar member_id yang berstatus admin untuk diexclude
+    const { data: adminRoles } = await supabase
+      .from("admin_roles")
+      .select("member_id")
+      .neq("status", "revoked");
+
+    const adminMemberIds = (adminRoles || []).map((r) => r.member_id).filter(Boolean);
+
+    let membersQuery = supabase
+      .from("members")
+      .select("*, interests:member_interests(*), package:packages(id, name)")
+      .neq("role", "admin")
+      .or("payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership");
+
+    if (adminMemberIds.length > 0) {
+      membersQuery = membersQuery.not("id", "in", `(${adminMemberIds.join(",")})`);
+    }
+
+    let { data: members, error } = await membersQuery.order("created_at", { ascending: false });
+
+    if (error) {
+      console.warn("Fallback query for members in fetchLatestMembersAction:", error.message);
+      let fallbackQuery = supabase
+        .from("members")
+        .select("*")
+        .neq("role", "admin")
+        .or("payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership");
+
+      if (adminMemberIds.length > 0) {
+        fallbackQuery = fallbackQuery.not("id", "in", `(${adminMemberIds.join(",")})`);
+      }
+
+      const { data: rawMembers, error: rawError } = await fallbackQuery.order("created_at", { ascending: false });
+
+      if (rawError) {
+        return { success: false, error: rawError.message };
+      }
+
+      if (rawMembers) {
+        const { data: interestsData } = await supabase.from("member_interests").select("*");
+        const interestsMap = new Map((interestsData || []).map((item: any) => [item.member_id, item]));
+
+        members = rawMembers.map((m: any) => ({
+          ...m,
+          interests: interestsMap.get(m.id) || null,
+        }));
+      }
+    }
+
+    return { success: true, data: members || [] };
+  } catch (err: any) {
+    console.error("Error in fetchLatestMembersAction:", err);
+    return { success: false, error: err.message || "Gagal mengambil data terbaru." };
+  }
+}
+
+

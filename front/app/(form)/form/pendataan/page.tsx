@@ -15,18 +15,23 @@ function MemberCollectionRegisterInner() {
   const referralCode = searchParams.get("ref");
 
   // Navigation Steps: 2 = Profile Onboarding (StepEssential), 3 = Success Screen
-  // Mendukung query param ?step=3 atau ?preview=success untuk preview tampilan sukses secara instan
-  const isPreviewSuccess = searchParams.get("step") === "3" || searchParams.get("preview") === "success";
-  const [step, setStep] = useState(isPreviewSuccess ? 3 : 2);
+  // Step state hanya bisa berubah melalui alur internal aplikasi (setelah validasi & registrasi berhasil)
+  const [step, setStep] = useState(2);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
+  // Proteksi & Redirect: Blokir akses langsung ke step lanjutan via URL (contoh: ?step=3 atau ?preview=success)
   useEffect(() => {
-    if (searchParams.get("step") === "3" || searchParams.get("preview") === "success") {
-      setStep(3);
+    const hasStepParam = searchParams.has("step");
+    const hasPreviewParam = searchParams.has("preview");
+
+    if (hasStepParam || hasPreviewParam) {
+      // Jika mencoba melompat ke step tertentu tanpa menyelesaikan alur, redirect bersih kembali ke /form/pendataan
+      const cleanUrl = referralCode ? `/form/pendataan?ref=${encodeURIComponent(referralCode)}` : "/form/pendataan";
+      router.replace(cleanUrl);
     }
-  }, [searchParams]);
+  }, [searchParams, referralCode, router]);
 
   useEffect(() => {
     // Theme initialization (Light mode default)
