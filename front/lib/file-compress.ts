@@ -42,36 +42,100 @@ export async function compressImage(
           height = Math.round(height * ratio);
         }
 
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
+        // Multi-step downscaling (halving) if downscaling by more than 2x to avoid aliasing and preserve sharpness
+        let currentCanvas = document.createElement("canvas");
+        currentCanvas.width = img.width;
+        currentCanvas.height = img.height;
+        let currentCtx = currentCanvas.getContext("2d");
 
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
+        if (!currentCtx) {
           resolve(file);
           return;
         }
 
-        // Draw image onto canvas
-        ctx.drawImage(img, 0, 0, width, height);
+        currentCtx.imageSmoothingEnabled = true;
+        currentCtx.imageSmoothingQuality = "high";
+        currentCtx.drawImage(img, 0, 0);
 
-        // Determine output type
-        let outputType = file.type;
-        if (file.type === "image/png" || file.type === "image/jpeg") {
-          outputType = "image/jpeg"; // convert to jpeg for much better compression ratio
+        let curW = img.width;
+        let curH = img.height;
+
+        // Step-down by halving dimensions until close to target
+        while (curW / 2 > width && curH / 2 > height) {
+          const nextW = Math.round(curW / 2);
+          const nextH = Math.round(curH / 2);
+          const stepCanvas = document.createElement("canvas");
+          stepCanvas.width = nextW;
+          stepCanvas.height = nextH;
+          const stepCtx = stepCanvas.getContext("2d");
+          if (stepCtx) {
+            stepCtx.imageSmoothingEnabled = true;
+            stepCtx.imageSmoothingQuality = "high";
+            stepCtx.drawImage(currentCanvas, 0, 0, curW, curH, 0, 0, nextW, nextH);
+            currentCanvas = stepCanvas;
+            curW = nextW;
+            curH = nextH;
+          } else {
+            break;
+          }
         }
 
-        canvas.toBlob(
+        // Final canvas with exact target dimensions
+        const finalCanvas = document.createElement("canvas");
+        finalCanvas.width = width;
+        finalCanvas.height = height;
+        const finalCtx = finalCanvas.getContext("2d");
+
+        if (!finalCtx) {
+          resolve(file);
+          return;
+        }
+
+        finalCtx.imageSmoothingEnabled = true;
+        finalCtx.imageSmoothingQuality = "high";
+        finalCtx.drawImage(currentCanvas, 0, 0, curW, curH, 0, 0, width, height);
+
+        // Prefer modern WebP for smaller size and high quality preservation, fallback to jpeg
+        let outputType = "image/webp";
+        if (file.type === "image/png") {
+          // Check if canvas toBlob supports image/webp
+          outputType = "image/webp";
+        } else if (file.type === "image/jpeg" || file.type === "image/jpg") {
+          outputType = "image/webp";
+        }
+
+        // Test webp support or fallback to jpeg
+        finalCanvas.toBlob(
           (blob) => {
             if (!blob) {
-              resolve(file);
+              // Fallback to image/jpeg if webp not supported
+              finalCanvas.toBlob(
+                (jpegBlob) => {
+                  if (!jpegBlob) {
+                    resolve(file);
+                    return;
+                  }
+                  if (jpegBlob.size < file.size) {
+                    const compressedFile = new File([jpegBlob], file.name.replace(/\.[^.]+$/, ".jpg"), {
+                      type: "image/jpeg",
+                      lastModified: Date.now(),
+                    });
+                    resolve(compressedFile);
+                  } else {
+                    resolve(file);
+                  }
+                },
+                "image/jpeg",
+                quality
+              );
               return;
             }
 
-            // Only return the compressed file if it's actually smaller
-            if (blob.size < file.size) {
-              const compressedFile = new File([blob], file.name, {
-                type: outputType,
+            // If compressed blob is smaller or if resizing reduced dimensions significantly
+            if (blob.size < file.size || width < img.width || height < img.height) {
+              const newFileName = file.name.replace(/\.[^.]+$/, ".webp");
+              const compressedFile = new File([blob], newFileName, {
+                type: "image/webp",
                 lastModified: Date.now(),
               });
               resolve(compressedFile);

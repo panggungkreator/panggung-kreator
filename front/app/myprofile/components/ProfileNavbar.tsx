@@ -53,6 +53,7 @@ export default function ProfileNavbar({ member }: ProfileNavbarProps) {
   const initials = member
     ? (member.stage_name || member.full_name || "M").substring(0, 2).toUpperCase()
     : "M";
+  const isEditPage = pathname === "/myprofile/edit" || pathname?.startsWith("/myprofile/edit");
 
   return (
     <>
@@ -81,7 +82,9 @@ export default function ProfileNavbar({ member }: ProfileNavbarProps) {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
+              className={`p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer items-center justify-center ${
+                isEditPage ? "hidden md:inline-flex" : "inline-flex"
+              }`}
               title={theme === "dark" ? "Mode Terang" : "Mode Gelap"}
             >
               {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
@@ -128,30 +131,33 @@ export default function ProfileNavbar({ member }: ProfileNavbarProps) {
             </div>
 
             {/* Mobile Hamburger Toggle Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-neutral-800 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-transform active:scale-95 cursor-pointer"
-              aria-label="Toggle Navigation Menu"
-            >
-              <div className="relative w-5 h-5 flex items-center justify-center">
-                <Menu
-                  className={`w-5 h-5 absolute transition-all duration-300 ease-in-out ${isMenuOpen ? "opacity-0 rotate-90 scale-50" : "opacity-100 rotate-0 scale-100"
-                    }`}
-                />
-                <X
-                  className={`w-5 h-5 absolute transition-all duration-300 ease-in-out ${isMenuOpen ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-50"
-                    }`}
-                />
-              </div>
-            </button>
+            {!isEditPage && (
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="md:hidden p-2 text-neutral-800 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-transform active:scale-95 cursor-pointer"
+                aria-label="Toggle Navigation Menu"
+              >
+                <div className="relative w-5 h-5 flex items-center justify-center">
+                  <Menu
+                    className={`w-5 h-5 absolute transition-all duration-300 ease-in-out ${isMenuOpen ? "opacity-0 rotate-90 scale-50" : "opacity-100 rotate-0 scale-100"
+                      }`}
+                  />
+                  <X
+                    className={`w-5 h-5 absolute transition-all duration-300 ease-in-out ${isMenuOpen ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-50"
+                      }`}
+                  />
+                </div>
+              </button>
+            )}
           </div>
         </div>
 
         {/* CUSTOM ANIMATED MOBILE HAMBURGER NAV DRAWER */}
-        <div
-          className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out border-t border-neutral-200 dark:border-neutral-800 bg-white/98 dark:bg-[#0A0A0A]/98 backdrop-blur-xl ${isMenuOpen ? "max-h-[85vh] opacity-100 py-6 px-6 shadow-2xl" : "max-h-0 opacity-0 py-0 px-6 pointer-events-none"
-            }`}
-        >
+        {!isEditPage && (
+          <div
+            className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out border-t border-neutral-200 dark:border-neutral-800 bg-white/98 dark:bg-[#0A0A0A]/98 backdrop-blur-xl ${isMenuOpen ? "max-h-[85vh] opacity-100 py-6 px-6 shadow-2xl" : "max-h-0 opacity-0 py-0 px-6 pointer-events-none"
+              }`}
+          >
           {/* MEMBER QUICK CARD HEADER IN NAV */}
           {member && (
             <div className="flex flex-col items-center text-center gap-3 pb-5 mb-5 border-b border-neutral-200 dark:border-neutral-800">
@@ -238,6 +244,7 @@ export default function ProfileNavbar({ member }: ProfileNavbarProps) {
             </div>
           </nav>
         </div>
+        )}
       </header>
     </>
   );

@@ -92,6 +92,8 @@ export interface MemberProfile {
   referred_by: string | null
   commission_balance: number
   profile_completed_at: string | null
+  username_changes_count?: number
+  last_username_change?: string | null
   interests?: MemberInterests
   portfolio?: PortfolioItem[]
 }

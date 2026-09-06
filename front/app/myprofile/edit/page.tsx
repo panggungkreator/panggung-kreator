@@ -97,28 +97,28 @@ export default function EditProfilePage() {
     <div className="min-h-screen w-full bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 font-sans flex flex-col justify-between">
       <ProfileNavbar member={member} />
 
-      <div className="max-w-4xl w-full mx-auto pt-28 pb-16 px-4 sm:px-6 lg:px-8 space-y-6 flex-1">
+      <div className="max-w-4xl w-full mx-auto pt-20 sm:pt-28 pb-28 lg:pb-16 px-3.5 sm:px-6 lg:px-8 space-y-4 sm:space-y-6 flex-1">
         {/* TOP BACK BAR & HEADER */}
-        <div className="space-y-4 border-b border-neutral-200 dark:border-neutral-800 pb-6">
+        <div className="space-y-2 sm:space-y-3 border-b border-neutral-200 dark:border-neutral-800 pb-3 sm:pb-5">
           <Link
             href="/myprofile"
-            className="inline-block text-xs font-mono uppercase tracking-widest text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-mono uppercase tracking-widest text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors"
           >
             &larr; Kembali ke Profil
           </Link>
 
           <div>
-            <h1 className="font-serif text-3xl text-neutral-900 dark:text-white font-normal">
+            <h1 className="font-serif text-xl sm:text-2xl md:text-3xl text-neutral-900 dark:text-white font-normal">
               Edit Profil Member
             </h1>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-sans">
+            <p className="text-[11px] sm:text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 font-sans">
               Perbarui data diri, foto profil, jejaring sosial, serta minat pilar keahlianmu.
             </p>
           </div>
         </div>
 
         {/* PROFILE FORM CONTAINER */}
-        <div className="shadow-sm">
+        <div className="shadow-none sm:shadow-sm">
           <ProfileForm member={member} onSave={handleSaveSuccess} />
         </div>
       </div>

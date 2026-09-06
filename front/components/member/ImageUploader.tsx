@@ -39,6 +39,13 @@ export default function ImageUploader({
       return;
     }
 
+    const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+    if (file.size > MAX_SIZE) {
+      setError("Ukuran gambar melebihi batas maksimal 2MB!");
+      e.target.value = "";
+      return;
+    }
+
     setError("");
 
     // Mode deferred: simpan lokal (penampungan sementara) dan buat object URL untuk preview
@@ -104,9 +111,7 @@ export default function ImageUploader({
   };
 
   return (
-    <div className="space-y-2">
-      {error && <span className="text-[10px] text-red-500 font-mono block">{error}</span>}
-
+    <div className="flex flex-col items-center justify-center space-y-2">
       {imageUrl ? (
         <div className="relative inline-block group">
           <img
@@ -153,6 +158,8 @@ export default function ImageUploader({
           />
         </label>
       )}
+
+      {error && <span className="text-[10px] text-red-500 font-mono block text-center max-w-[150px] leading-tight">{error}</span>}
     </div>
   );
 }

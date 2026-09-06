@@ -23,6 +23,14 @@ const dateSanitizer = z.string().optional().nullable().transform((val) => {
 const profileSchema = z.object({
   full_name: z.string().min(2).max(100),
   stage_name: z.string().min(2).max(50),
+  username: z.string()
+    .trim()
+    .toLowerCase()
+    .min(3, "Username minimal 3 karakter")
+    .max(30, "Username maksimal 30 karakter")
+    .regex(/^[a-z0-9_.]+$/, "Username hanya boleh huruf kecil, angka, titik (.), atau garis bawah (_)")
+    .optional()
+    .nullable(),
   whatsapp_number: z.string().min(10).max(20),
   occupation: emptyStringSanitizer,
   description: emptyStringSanitizer,
@@ -84,20 +92,23 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     // Validate only provided fields (partial update support)
-    const profileResult = profileSchema.partial().safeParse(body.profile)
-    if (!profileResult.success) {
+    const profileResult = body.profile ? profileSchema.partial().safeParse(body.profile) : null
+    if (profileResult && !profileResult.success) {
       return NextResponse.json({ error: profileResult.error.flatten() }, { status: 400 })
     }
 
-    const interestsResult = interestsSchema.partial().safeParse(body.interests)
-    if (!interestsResult.success) {
+    const interestsResult = body.interests ? interestsSchema.partial().safeParse(body.interests) : null
+    if (interestsResult && !interestsResult.success) {
       return NextResponse.json({ error: interestsResult.error.flatten() }, { status: 400 })
     }
 
-    // Ambil data member saat ini untuk audit/affiliate
+    const profileData = profileResult?.data || {}
+    const interestsData = interestsResult?.data || {}
+
+    // Ambil data member saat ini untuk audit/affiliate/username
     const { data: currentMember, error: fetchError } = await supabase
       .from('members')
-      .select('affiliate_code, referred_by')
+      .select('username, username_changes_count, last_username_change, affiliate_code, referred_by')
       .eq('id', user.id)
       .single()
 
@@ -107,8 +118,8 @@ export async function POST(req: NextRequest) {
 
     // Logika Affiliate Code / Referral Code
     let affiliate_code = currentMember?.affiliate_code
-    if (!affiliate_code && profileResult.data.stage_name) {
-      affiliate_code = generateAffiliateCode(profileResult.data.stage_name)
+    if (!affiliate_code && profileData.stage_name) {
+      affiliate_code = generateAffiliateCode(profileData.stage_name)
       
       // Sinkronisasi ke tabel referral_codes (Single Source of Truth)
       try {
@@ -119,7 +130,7 @@ export async function POST(req: NextRequest) {
           .insert({
             code: affiliate_code,
             owner_member_id: user.id,
-            description: `Auto-generated referral code untuk ${profileResult.data.stage_name}`,
+            description: `Auto-generated referral code untuk ${profileData.stage_name}`,
             is_active: true,
           })
       } catch (err) {
@@ -128,8 +139,8 @@ export async function POST(req: NextRequest) {
     }
 
     let referred_by = currentMember?.referred_by
-    if (!referred_by && profileResult.data.referred_by_code) {
-      const cleanCode = profileResult.data.referred_by_code.trim()
+    if (!referred_by && profileData.referred_by_code) {
+      const cleanCode = profileData.referred_by_code.trim()
       // Cari pemilik code di referral_codes atau fallback ke members
       const { data: refCode } = await supabase
         .from('referral_codes')
@@ -154,7 +165,7 @@ export async function POST(req: NextRequest) {
 
     // Update members
     const updateData: any = {
-      ...profileResult.data,
+      ...profileData,
       profile_completed_at: new Date().toISOString(),
     }
     if (affiliate_code) updateData.affiliate_code = affiliate_code
@@ -163,12 +174,64 @@ export async function POST(req: NextRequest) {
     // Hapus referred_by_code karena tidak ada di kolom members
     delete updateData.referred_by_code
 
+    // Logika Perubahan Username
+    if (profileData.username !== undefined) {
+      const rawNewUsername = profileData.username;
+      const cleanNewUsername = rawNewUsername ? rawNewUsername.trim().toLowerCase() : null;
+      const currentUsername = currentMember?.username ? currentMember.username.toLowerCase() : null;
+
+      // Jika username diubah dan ada isinya
+      if (cleanNewUsername && cleanNewUsername !== currentUsername) {
+        const changesCount = currentMember?.username_changes_count || 0;
+        const lastChange = currentMember?.last_username_change;
+
+        // Aturan: Jeda waktu 14 hari untuk perubahan berikutnya (aturan batas 3x dinonaktifkan sementara)
+        if (lastChange) {
+          const lastChangeTime = new Date(lastChange).getTime();
+          const daysSinceLastChange = (Date.now() - lastChangeTime) / (1000 * 60 * 60 * 24);
+
+          if (daysSinceLastChange < 14) {
+            const remainingDays = Math.ceil(14 - daysSinceLastChange);
+            return NextResponse.json(
+              { error: `Anda baru saja mengubah username. Anda dapat mengganti username kembali dalam ${remainingDays} hari.` },
+              { status: 400 }
+            );
+          }
+        }
+
+        // Cek apakah username baru sudah digunakan oleh member lain
+        const { data: existingUser } = await supabase
+          .from('members')
+          .select('id')
+          .ilike('username', cleanNewUsername)
+          .neq('id', user.id)
+          .maybeSingle();
+
+        if (existingUser) {
+          return NextResponse.json(
+            { error: `Username @${cleanNewUsername} sudah digunakan. Silakan pilih username lain.` },
+            { status: 400 }
+          );
+        }
+
+        updateData.username = cleanNewUsername;
+        updateData.username_changes_count = changesCount + 1;
+        updateData.last_username_change = new Date().toISOString();
+      } else {
+        // Tidak ada perubahan username, jangan update kolom username / counter
+        delete updateData.username;
+      }
+    }
+
     const { error: memberError } = await supabase
       .from('members')
       .update(updateData)
       .eq('id', user.id)
 
     if (memberError) {
+      if (memberError.code === '23505' || memberError.message?.includes('members_username_key')) {
+        return NextResponse.json({ error: 'Username sudah digunakan oleh pengguna lain.' }, { status: 400 });
+      }
       return NextResponse.json({ error: memberError.message }, { status: 500 })
     }
 
@@ -178,7 +241,7 @@ export async function POST(req: NextRequest) {
         .from('member_interests')
         .upsert({
           member_id: user.id,
-          ...interestsResult.data,
+          ...interestsData,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'member_id' })
 

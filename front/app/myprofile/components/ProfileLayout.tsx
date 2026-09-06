@@ -46,7 +46,7 @@ export default function ProfileLayout({
   return (
     <div className="min-h-screen w-full bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 font-sans flex flex-col justify-between">
       {/* TOP BAR ON MOBILE — ONLY HAMBURGER TOGGLE BUTTON ALIGNED RIGHT */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-neutral-50/90 dark:bg-[#0A0A0A]/90 backdrop-blur-md h-14 px-4 flex items-center justify-end">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md h-14 px-4 flex items-center justify-end border-b border-neutral-200/60 dark:border-neutral-800/60">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 text-neutral-900 dark:text-white transition-transform active:scale-95 cursor-pointer flex items-center justify-center"
@@ -67,13 +67,13 @@ export default function ProfileLayout({
 
       {/* MOBILE ANIMATED HAMBURGER MENU DRAWER — CONTENT COMES DIRECTLY FROM SIDEBAR PROP (PROFILE SIDEBAR) */}
       <div
-        className={`lg:hidden fixed top-14 left-0 right-0 z-40 bg-white/98 dark:bg-[#0A0A0A]/98 backdrop-blur-xl border-b border-neutral-200 dark:border-neutral-800 transition-all duration-300 ease-in-out overflow-y-auto ${isMobileMenuOpen
-          ? "h-[calc(100vh-3.5rem)] opacity-100 py-6 px-6 shadow-2xl"
-          : "h-0 opacity-0 py-0 px-6 pointer-events-none"
+        className={`lg:hidden fixed top-14 left-0 right-0 bottom-0 z-50 bg-white dark:bg-[#0A0A0A] transition-all duration-300 ease-in-out overflow-y-auto ${isMobileMenuOpen
+          ? "opacity-100 py-6 px-6 shadow-2xl pointer-events-auto"
+          : "opacity-0 py-0 px-6 pointer-events-none translate-y-[-10px]"
           }`}
         onClick={() => setIsMobileMenuOpen(false)}
       >
-        <div className="w-full max-w-sm mx-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="w-full max-w-sm mx-auto pb-12" onClick={(e) => e.stopPropagation()}>
           {sidebar}
         </div>
       </div>

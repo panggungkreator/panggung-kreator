@@ -5,9 +5,9 @@ export async function compressImageForTarget(
   target: 'avatar' | 'portfolio' | 'thumbnail'
 ): Promise<File> {
   const configs = {
-    avatar: { maxW: 400, maxH: 400, quality: 0.8 },
-    portfolio: { maxW: 1200, maxH: 800, quality: 0.85 },
-    thumbnail: { maxW: 400, maxH: 300, quality: 0.8 },
+    avatar: { maxW: 500, maxH: 500, quality: 0.88 },
+    portfolio: { maxW: 1440, maxH: 960, quality: 0.88 },
+    thumbnail: { maxW: 500, maxH: 375, quality: 0.85 },
   }
 
   const { maxW, maxH, quality } = configs[target]

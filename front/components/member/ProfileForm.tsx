@@ -3,13 +3,13 @@
 import React, { useState } from "react";
 import ImageUploader from "./ImageUploader";
 import ChangePasswordModal from "./ChangePasswordModal";
+import ChangeUsernameModal from "./ChangeUsernameModal";
 import { MemberProfile, PrimaryInterest } from "@/lib/types/member";
 import { createClient } from "@/lib/supabase/client";
 import { compressImageForTarget } from "@/lib/utils/image-compress";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner"; // sonner is used for toasts
-import { Lock, Check } from "lucide-react";
+import { toast } from "sonner";
+import { Lock, Check, User, Share2, Target, Sparkles, Edit3, ChevronRight } from "lucide-react";
 import { DateBirthLine } from "@/components/ui/style-line/DateBirthLine";
 import { MultiSelectLine } from "@/components/ui/style-line/MultiSelectLine";
 import { ScaleSelectorLine } from "@/components/ui/style-line/ScaleSelectorLine";
@@ -88,11 +88,15 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
   const [activeTab, setActiveTab] = useState<"bio" | "social" | "goals" | "persona">("bio");
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isChangeUsernameOpen, setIsChangeUsernameOpen] = useState(false);
 
   // --- FORM STATES ---
   // Section A: Bio & Data Diri
   const [fullName, setFullName] = useState(member.full_name || "");
   const [stageName, setStageName] = useState(member.stage_name || "");
+  const [username, setUsername] = useState(member.username || "");
+  const [usernameChangesCount, setUsernameChangesCount] = useState(member.username_changes_count ?? 0);
+  const [lastUsernameChange, setLastUsernameChange] = useState<string | null>(member.last_username_change ?? null);
   const [whatsappNumber, setWhatsappNumber] = useState(member.whatsapp_number || "");
   const [birthDate, setBirthDate] = useState(member.birth_date || "");
   const [address, setAddress] = useState(member.address || "");
@@ -101,6 +105,19 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url || "");
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [isAvatarRemoved, setIsAvatarRemoved] = useState(false);
+
+  // Username change cooldown (jeda 14 hari setelah pergantian username)
+  let isCoolingDown = false;
+  let daysRemaining = 0;
+
+  if (lastUsernameChange) {
+    const lastChangeTime = new Date(lastUsernameChange).getTime();
+    const diffDays = (Date.now() - lastChangeTime) / (1000 * 60 * 60 * 24);
+    if (diffDays < 14) {
+      isCoolingDown = true;
+      daysRemaining = Math.ceil(14 - diffDays);
+    }
+  }
 
   // Section B: Sosial Media & Tautan
   const [instagramUsername, setInstagramUsername] = useState(member.social_media?.instagram || "");
@@ -382,665 +399,763 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
     }
   };
 
+  const editTabs: { key: "bio" | "social" | "goals"; label: string; icon: React.ElementType }[] = [
+    { key: "bio", label: "Bio & Diri", icon: User },
+    { key: "social", label: "Sosial & Portofolio", icon: Share2 },
+    { key: "goals", label: "Minat & Target", icon: Target },
+  ];
+
   return (
-    <div className="bg-white dark:bg-[#121212] border border-zinc-250 dark:border-zinc-800 text-black dark:text-white rounded-none">
-      {/* TABS HEADER */}
-      <div className="flex border-b border-zinc-250 dark:border-zinc-800">
-        {(["bio", "social", "goals"] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-4 text-[10px] font-mono uppercase tracking-widest border-r last:border-r-0 border-zinc-250 dark:border-zinc-800 transition-all cursor-pointer ${activeTab === tab
-              ? "bg-neutral-50 dark:bg-zinc-900/50 font-bold border-b-2 border-black dark:border-white text-black dark:text-white"
-              : "text-zinc-500 hover:text-black dark:hover:text-white"
-              }`}
-          >
-            {tab === "bio" ? "[ 01. BIO & DATA DIRI ]" : tab === "social" ? "[ 02. SOSIAL & PORTFOLIO ]" : "[ 03. MINAT & GOALS ]"}
-          </button>
-        ))}
-      </div>
+    <>
+      <div className="bg-transparent sm:bg-white dark:sm:bg-[#121212] border-0 sm:border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none">
+        {/* ═══ DESKTOP TABS HEADER (hidden on mobile, visible on sm/md/lg) ═══ */}
+        <div className="hidden sm:flex border-b border-zinc-200 dark:border-zinc-800">
+          {editTabs.map((tab, idx) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex-1 py-3.5 px-4 text-xs font-mono uppercase tracking-wider border-r last:border-r-0 border-zinc-200 dark:border-zinc-800 transition-all cursor-pointer flex items-center justify-center gap-2 ${isActive
+                  ? "bg-neutral-100 dark:bg-zinc-900 font-bold border-b-2 border-black dark:border-white text-black dark:text-white"
+                  : "text-zinc-500 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-zinc-900/30"
+                  }`}
+              >
+                <Icon size={14} className={isActive ? "text-black dark:text-white" : "text-zinc-400"} />
+                <span>{`[ 0${idx + 1}. ${tab.label.toUpperCase()} ]`}</span>
+              </button>
+            );
+          })}
+        </div>
 
-      <form onSubmit={handleSave} className="p-6 md:p-8 space-y-6">
-        {/* TAB 1: BIO & DATA DIRI */}
-        {activeTab === "bio" && (
-          <div className="space-y-6 animate-fade-in">
-            {/* FOTO PROFIL */}
-            <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
-              <ImageUploader
-                memberId={member.id}
-                target="avatar"
-                mode="deferred"
-                initialImageUrl={avatarUrl}
-                onUploadSuccess={setAvatarUrl}
-                onFileSelect={(file) => {
-                  setPendingAvatarFile(file);
-                  if (file === null) {
-                    setIsAvatarRemoved(true);
-                  } else {
-                    setIsAvatarRemoved(false);
-                  }
-                }}
-              />
-              <div className="space-y-1">
-                <span className="text-xs font-bold uppercase tracking-wider block">FOTO PROFIL</span>
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-450 block max-w-sm">
-                  Kompresi WebP otomatis dilakukan setelah upload (target &lt;200KB). Foto ini akan digunakan di halaman talent showcase.
-                </span>
-              </div>
-            </div>
-
-            {/* READ-ONLY ACCOUNT & SECURITY PANEL */}
-            <div className="p-4 border border-zinc-200 dark:border-zinc-800 bg-neutral-50/70 dark:bg-zinc-900/40 space-y-4">
-              <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                <Lock className="w-4 h-4 text-zinc-500" />
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-black dark:text-white">
-                  Data Akun & Keamanan (Read-Only)
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                {/* EMAIL */}
-                <div className="space-y-0.5">
-                  <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
-                    EMAIL AKUN
-                  </span>
-                  <p className="font-mono font-medium text-black dark:text-white truncate">
-                    {member.email || "-"}
-                  </p>
-                  <span className="text-[9px] text-zinc-400 block">Dikelola oleh sistem otentikasi.</span>
+        <form onSubmit={handleSave} className="p-0 sm:p-6 md:p-8 space-y-5 sm:space-y-6">
+          {/* TAB 1: BIO & DATA DIRI */}
+          {activeTab === "bio" && (
+            <div className="space-y-5 sm:space-y-6 animate-fade-in">
+              {/* FOTO PROFIL */}
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-center text-center sm:text-left py-1">
+                <div className="shrink-0">
+                  <ImageUploader
+                    memberId={member.id}
+                    target="avatar"
+                    mode="deferred"
+                    initialImageUrl={avatarUrl}
+                    onUploadSuccess={setAvatarUrl}
+                    onFileSelect={(file) => {
+                      setPendingAvatarFile(file);
+                      if (file === null) {
+                        setIsAvatarRemoved(true);
+                      } else {
+                        setIsAvatarRemoved(false);
+                      }
+                    }}
+                  />
                 </div>
-
-                {/* USERNAME */}
-                <div className="space-y-0.5">
-                  <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
-                    USERNAME
+                <div className="space-y-1">
+                  <span className="text-xs font-bold uppercase tracking-wider block">FOTO PROFIL</span>
+                  <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block max-w-sm leading-relaxed">
+                    Ukuran gambar harus kurang dari <strong className="font-semibold text-zinc-700 dark:text-zinc-300">2MB</strong> (JPG, PNG, atau WebP).
                   </span>
-                  <p className="font-mono font-medium text-black dark:text-white truncate">
-                    @{member.username || "-"}
-                  </p>
-                  <span className="text-[9px] text-zinc-400 block">Hubungi admin untuk perubahan username.</span>
                 </div>
+              </div>
 
-                {/* MEMBERSHIP TIER */}
-                <div className="space-y-0.5">
-                  <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
-                    MEMBERSHIP TIER
-                  </span>
-                  <span className="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-mono font-bold uppercase border border-neutral-900 dark:border-white bg-neutral-900 dark:bg-white text-white dark:text-neutral-900">
-                    {member.membership_tier?.toUpperCase() || "FREE"}
+              {/* READ-ONLY ACCOUNT & SECURITY PANEL */}
+              <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-xl sm:rounded-2xl overflow-hidden">
+                <div className="flex items-center gap-2 p-3.5 sm:p-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-neutral-50/70 dark:bg-zinc-900/40">
+                  <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-500 shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider text-black dark:text-white">
+                    Data Akun & Keamanan
                   </span>
                 </div>
 
-                {/* KODE REFERRAL */}
-                <div className="space-y-0.5">
-                  <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
-                    KODE REFERRAL / AFILIASI
-                  </span>
-                  <p className="font-mono font-bold text-black dark:text-white">
-                    {member.affiliate_code || "-"}
-                  </p>
+                <div className="divide-y divide-zinc-200/80 dark:divide-zinc-800/80 text-xs px-3.5 sm:px-4">
+                  {/* EMAIL */}
+                  <div className="py-3 sm:py-3.5 flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] sm:text-[11px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
+                        EMAIL AKUN
+                      </span>
+                      <span className="text-[9px] text-zinc-400 dark:text-zinc-500 block">
+                        Dikelola oleh sistem otentikasi.
+                      </span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-mono text-xs font-medium text-black dark:text-white break-all sm:truncate">
+                        {member.email || "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* USERNAME (FULL ROW BUTTON) */}
+                  <button
+                    type="button"
+                    onClick={() => setIsChangeUsernameOpen(true)}
+                    className="w-full py-3 sm:py-3.5 flex items-center justify-between gap-4 text-left group hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 -mx-1.5 px-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] sm:text-[11px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block group-hover:text-black dark:group-hover:text-white transition-colors">
+                        USERNAME
+                      </span>
+                      <span className="text-[9px] text-zinc-400 dark:text-zinc-500 block">
+                        {isCoolingDown
+                          ? `Jeda 14 hari aktif (${daysRemaining} hari lagi)`
+                          : `Ketuk untuk mengganti username`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 text-right">
+                      <span className="font-mono text-xs font-medium text-black dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        @{username || "-"}
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:text-black dark:group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                  </button>
+
+                  {/* MEMBERSHIP TIER */}
+                  <div className="py-3 sm:py-3.5 flex items-center justify-between gap-4">
+                    <span className="text-[10px] sm:text-[11px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
+                      MEMBERSHIP TIER
+                    </span>
+                    <div className="text-right shrink-0">
+                      <span className="inline-block px-2 py-0.5 text-[9px] sm:text-[10px] font-mono font-bold uppercase border border-neutral-900 dark:border-white bg-neutral-900 dark:bg-white text-white dark:text-neutral-900">
+                        {member.membership_tier?.toUpperCase() || "FREE"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* KODE REFERRAL */}
+                  <div className="py-3 sm:py-3.5 flex items-center justify-between gap-4">
+                    <span className="text-[10px] sm:text-[11px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
+                      KODE REFERRAL / AFILIASI
+                    </span>
+                    <div className="text-right shrink-0">
+                      <p className="font-mono text-xs font-bold text-black dark:text-white">
+                        {member.affiliate_code || "-"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  NAMA LENGKAP *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  NAMA PANGGUNG *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={stageName}
-                  onChange={(e) => setStageName(e.target.value)}
-                  className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  NO. WHATSAPP *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={whatsappNumber}
-                  onChange={handleWhatsappChange}
-                  className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  PROFESI UTAMA
-                </label>
-                <input
-                  type="text"
-                  value={occupation}
-                  onChange={(e) => setOccupation(e.target.value)}
-                  placeholder="Content Creator, Mahasiswa, Pengusaha..."
-                  className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <DateBirthLine
-                  label="TANGGAL LAHIR"
-                  value={birthDate}
-                  onChange={setBirthDate}
-                  placeholder="Pilih Tanggal Lahir"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                ALAMAT LENGKAP
-              </label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Alamat tempat tinggal / jalan, kecamatan, kabupaten..."
-                className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                BIO / DESKRIPSI SINGKAT
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={500}
-                placeholder="Ceritakan sedikit tentang karya, pilar, dan kepribadianmu..."
-                className="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 p-3 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors h-24 resize-none"
-              />
-              <span className="text-[9px] font-mono text-zinc-450 float-right mt-1">
-                {description.length}/500 KARAKTER
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: SOSIAL & TAUTAN PORTFOLIO */}
-        {activeTab === "social" && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Instagram & TikTok */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  INSTAGRAM
-                </label>
-                <div className="relative">
-                  <span className="absolute left-0 top-1.5 text-xs text-zinc-400">@</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
+                    NAMA LENGKAP *
+                  </label>
                   <input
                     type="text"
-                    value={instagramUsername}
-                    onChange={(e) => setInstagramUsername(e.target.value)}
-                    placeholder="username"
-                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 pl-4 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
+                    NAMA PANGGUNG *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={stageName}
+                    onChange={(e) => setStageName(e.target.value)}
+                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
+                    NO. WHATSAPP *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={whatsappNumber}
+                    onChange={handleWhatsappChange}
+                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
+                    PROFESI UTAMA
+                  </label>
+                  <input
+                    type="text"
+                    value={occupation}
+                    onChange={(e) => setOccupation(e.target.value)}
+                    placeholder="Content Creator, Mahasiswa, Pengusaha..."
+                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <DateBirthLine
+                    label="TANGGAL LAHIR"
+                    value={birthDate}
+                    onChange={setBirthDate}
+                    placeholder="Pilih Tanggal Lahir"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  TIKTOK
+                  ALAMAT LENGKAP
                 </label>
-                <div className="relative">
-                  <span className="absolute left-0 top-1.5 text-xs text-zinc-400">@</span>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Alamat tempat tinggal / jalan, kecamatan, kabupaten..."
+                  className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
+                  BIO / DESKRIPSI SINGKAT
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={500}
+                  placeholder="Ceritakan sedikit tentang karya, pilar, dan kepribadianmu..."
+                  className="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 p-3 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors h-24 resize-none"
+                />
+                <span className="text-[9px] font-mono text-zinc-450 float-right mt-1">
+                  {description.length}/500 KARAKTER
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: SOSIAL & TAUTAN PORTFOLIO */}
+          {activeTab === "social" && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Instagram & TikTok */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
+                    INSTAGRAM
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-0 top-1.5 text-xs text-zinc-400">@</span>
+                    <input
+                      type="text"
+                      value={instagramUsername}
+                      onChange={(e) => setInstagramUsername(e.target.value)}
+                      placeholder="username"
+                      className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 pl-4 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
+                    TIKTOK
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-0 top-1.5 text-xs text-zinc-400">@</span>
+                    <input
+                      type="text"
+                      value={tiktokUsername}
+                      onChange={(e) => setTiktokUsername(e.target.value)}
+                      placeholder="username"
+                      className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 pl-4 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* YouTube & LinkedIn */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
+                    YOUTUBE
+                  </label>
                   <input
                     type="text"
-                    value={tiktokUsername}
-                    onChange={(e) => setTiktokUsername(e.target.value)}
-                    placeholder="username"
-                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 pl-4 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    placeholder="Channel / @handle"
+                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
+                    LINKEDIN
+                  </label>
+                  <input
+                    type="text"
+                    value={linkedinUrl}
+                    onChange={(e) => setLinkedinUrl(e.target.value)}
+                    placeholder="linkedin.com/in/username"
+                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
                   />
                 </div>
               </div>
-            </div>
 
-            {/* YouTube & LinkedIn */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {/* Portfolio / Website */}
               <div>
                 <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  YOUTUBE
+                  TAUTAN WEBSITE / PORTFOLIO UTAMA
                 </label>
                 <input
                   type="text"
-                  value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
-                  placeholder="Channel / @handle"
-                  className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  LINKEDIN
-                </label>
-                <input
-                  type="text"
-                  value={linkedinUrl}
-                  onChange={(e) => setLinkedinUrl(e.target.value)}
-                  placeholder="linkedin.com/in/username"
+                  value={portfolioUrl}
+                  onChange={(e) => setPortfolioUrl(e.target.value)}
+                  placeholder="https://mywebsite.com"
                   className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
                 />
               </div>
             </div>
+          )}
 
-            {/* Portfolio / Website */}
-            <div>
-              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                TAUTAN WEBSITE / PORTFOLIO UTAMA
-              </label>
-              <input
-                type="text"
-                value={portfolioUrl}
-                onChange={(e) => setPortfolioUrl(e.target.value)}
-                placeholder="https://mywebsite.com"
-                className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: MINAT & GOALS */}
-        {activeTab === "goals" && (
-          <div className="space-y-8 animate-fade-in">
-            {/* 01. Minat Utama */}
-            <div className="space-y-3">
-              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                01. PILIH MINAT & PILAR UTAMAMU * (Bisa pilih lebih dari 1)
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {INTEREST_OPTIONS.map((item) => {
-                  const isSelected = selectedInterests.includes(item.value);
-                  return (
-                    <button
-                      key={item.value}
-                      type="button"
-                      onClick={() => toggleInterest(item.value)}
-                      className={`relative flex items-center space-x-2 px-3 py-2.5 border text-[11px] uppercase font-mono tracking-wider transition-all outline-none rounded-none cursor-pointer ${isSelected
-                        ? "bg-[#0A0A0A] dark:bg-white text-white dark:text-black border-black dark:border-white font-bold"
-                        : "bg-transparent border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
-                        }`}
-                    >
-                      <span
-                        className="h-2 w-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="truncate">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 02. Tingkat Pengalaman */}
-            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                02. TINGKAT PENGALAMAN & KEMATANGAN *
-              </label>
-              <div className="flex flex-col sm:flex-row gap-3">
-                {EXPERIENCE_OPTIONS.map((opt) => {
-                  const isSelected = experienceLevel === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setExperienceLevel(opt.value)}
-                      className={`flex-1 p-3.5 border text-left rounded-none transition-all cursor-pointer ${isSelected
-                        ? "border-black dark:border-white bg-[#0A0A0A]/5 dark:bg-white/5 font-bold"
-                        : "border-zinc-300 dark:border-zinc-800 hover:border-black dark:hover:border-white"
-                        }`}
-                    >
-                      <span className="text-xs font-mono uppercase block">{opt.label}</span>
-                      <span className="text-[10px] text-zinc-500 dark:text-zinc-450 leading-tight block mt-1">{opt.desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 03. Goal Utama */}
-            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                03. APA GOAL UTAMAMU BERGABUNG DI PANGGUNG KREATOR?
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {GOAL_OPTIONS.map((g) => {
-                  const isSelected = goals.includes(g.value);
-                  return (
-                    <button
-                      key={g.value}
-                      type="button"
-                      onClick={() => toggleGoal(g.value)}
-                      className={`flex items-center justify-between p-3 border text-left text-xs rounded-none transition-all cursor-pointer ${isSelected
-                        ? "border-black dark:border-white bg-neutral-100 dark:bg-zinc-800/50 font-bold"
-                        : "border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
-                        }`}
-                    >
-                      <span className="leading-snug">{g.label}</span>
-                      {isSelected && <Check size={14} className="flex-shrink-0 ml-2" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 04. Topik Konten Favorit */}
-            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                04. TOPIK KONTEN & PEMINATAN BAHASAN
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {TOPIC_PRESETS.map((topic) => {
-                  const isSelected = contentTopics.includes(topic);
-                  return (
-                    <button
-                      key={topic}
-                      type="button"
-                      onClick={() => toggleTopic(topic)}
-                      className={`px-3 py-1.5 border text-xs font-mono uppercase tracking-wider transition-all rounded-none cursor-pointer ${isSelected
-                        ? "bg-black dark:bg-white text-white dark:text-black border-black dark:border-white font-bold"
-                        : "bg-transparent border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-black dark:hover:border-white"
-                        }`}
-                    >
-                      {isSelected ? `✓ ${topic}` : topic}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 05. Preferensi Metode Belajar */}
-            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                05. PREFERENSI & METODE BELAJAR
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {LEARNING_PREFERENCE_OPTIONS.map((pref) => {
-                  const isSelected = learningPreference.includes(pref.value);
-                  return (
-                    <button
-                      key={pref.value}
-                      type="button"
-                      onClick={() => togglePreference(pref.value)}
-                      className={`flex items-center justify-between p-3 border text-left text-xs rounded-none transition-all cursor-pointer ${isSelected
-                        ? "border-black dark:border-white bg-neutral-100 dark:bg-zinc-800/50 font-bold"
-                        : "border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
-                        }`}
-                    >
-                      <span>{pref.label}</span>
-                      {isSelected && <Check size={14} className="flex-shrink-0 ml-2" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 06. Skill Fokus & Target Audiens */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <RadioGroupLine
-                id="skillsToMaster"
-                label="SKILL FOKUS YANG INGIN DIKUASAI"
-                options={SKILLS_TO_MASTER_OPTIONS}
-                value={skillsToMaster}
-                onValueChange={setSkillsToMaster}
-                customValue={customSkillsToMaster}
-                onCustomChange={setCustomSkillsToMaster}
-                customPlaceholder="Tuliskan skill lainnya..."
-                idPrefix="stm_t3"
-              />
-
-              <InputLine
-                id="targetAudience"
-                name="targetAudience"
-                label="TARGET AUDIENS UTAMA KREATOR"
-                placeholder="Contoh: Mahasiswa, Gen Z, Professional..."
-                value={targetAudience}
-                onChange={(e) => setTargetAudience(e.target.value)}
-              />
-            </div>
-
-            {/* 07. Jalur Monetisasi & Ketersediaan Waktu */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <RadioGroupLine
-                id="monetizationInterest"
-                label="JALUR MONETISASI YANG DIMINATI"
-                options={MONETIZATION_OPTIONS}
-                value={monetizationInterest}
-                onValueChange={setMonetizationInterest}
-                customValue={customMonetizationInterest}
-                onCustomChange={setCustomMonetizationInterest}
-                customPlaceholder="Tuliskan jalur monetisasi..."
-                idPrefix="mi_t3"
-              />
-
-              <div className="space-y-2">
+          {/* TAB 3: MINAT & GOALS */}
+          {activeTab === "goals" && (
+            <div className="space-y-8 animate-fade-in">
+              {/* 01. Minat Utama */}
+              <div className="space-y-3">
                 <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                  KAPAN WAKTU LUANG TERBAIKMU UNTUK SESI KELAS?
+                  01. PILIH MINAT & PILAR UTAMAMU * (Bisa pilih lebih dari 1)
                 </label>
-                <Select value={availability} onValueChange={setAvailability}>
-                  <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1.5 px-0 h-auto text-xs font-normal rounded-none focus:outline-none focus:ring-0 focus:border-black dark:focus:border-white transition-colors">
-                    <SelectValue placeholder="Pilih Waktu" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none p-1">
-                    <SelectItem value="morning" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Pagi Hari</SelectItem>
-                    <SelectItem value="afternoon" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Siang Hari</SelectItem>
-                    <SelectItem value="evening" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Sore Hari</SelectItem>
-                    <SelectItem value="night" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Malam Hari</SelectItem>
-                    <SelectItem value="flexible" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Fleksibel (Kapan Saja)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: PUBLIC SPEAKING & PERSONA */}
-        {activeTab === "persona" && (
-          <div className="space-y-8 animate-fade-in">
-            {/* SUB-SEKSI 1: TANTANGAN & DIAGNOSIS PUBLIC SPEAKING */}
-            <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
-              <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
-                [ 01. TANTANGAN & DIAGNOSIS PUBLIC SPEAKING ]
-              </span>
-
-              <MultiSelectLine
-                id="psChallenges"
-                label="APA KENDALA TERBESAR YANG KAMU RASAKAN SAAT HARUS BICARA DI DEPAN UMUM? (PILIH MAKSIMAL 3)"
-                options={PS_CHALLENGE_OPTIONS}
-                selected={psChallenges}
-                onToggle={togglePsChallenge}
-                maxSelect={3}
-                showRemaining
-              />
-
-              <div className="pt-4">
-                <ScaleSelectorLine
-                  id="confidenceScale"
-                  label="DALAM SKALA 1-10, SEBERAPA PERCAYA DIRI KAMU SAAT INI JIKA DIMINTA BICARA MENDADAK?"
-                  min={1}
-                  max={10}
-                  value={confidenceScale}
-                  onChange={setConfidenceScale}
-                  minLabel="1 (SANGAT RAGU)"
-                  maxLabel="10 (SANGAT YAKIN)"
-                />
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {INTEREST_OPTIONS.map((item) => {
+                    const isSelected = selectedInterests.includes(item.value);
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => toggleInterest(item.value)}
+                        className={`relative flex items-center space-x-2 px-3 py-2.5 border text-[11px] uppercase font-mono tracking-wider transition-all outline-none rounded-none cursor-pointer ${isSelected
+                          ? "bg-[#0A0A0A] dark:bg-white text-white dark:text-black border-black dark:border-white font-bold"
+                          : "bg-transparent border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
+                          }`}
+                      >
+                        <span
+                          className="h-2 w-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="pt-4">
+              {/* 02. Tingkat Pengalaman */}
+              <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
+                  02. TINGKAT PENGALAMAN & KEMATANGAN *
+                </label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {EXPERIENCE_OPTIONS.map((opt) => {
+                    const isSelected = experienceLevel === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setExperienceLevel(opt.value)}
+                        className={`flex-1 p-3.5 border text-left rounded-none transition-all cursor-pointer ${isSelected
+                          ? "border-black dark:border-white bg-[#0A0A0A]/5 dark:bg-white/5 font-bold"
+                          : "border-zinc-300 dark:border-zinc-800 hover:border-black dark:hover:border-white"
+                          }`}
+                      >
+                        <span className="text-xs font-mono uppercase block">{opt.label}</span>
+                        <span className="text-[10px] text-zinc-500 dark:text-zinc-450 leading-tight block mt-1">{opt.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 03. Goal Utama */}
+              <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
+                  03. APA GOAL UTAMAMU BERGABUNG DI PANGGUNG KREATOR?
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {GOAL_OPTIONS.map((g) => {
+                    const isSelected = goals.includes(g.value);
+                    return (
+                      <button
+                        key={g.value}
+                        type="button"
+                        onClick={() => toggleGoal(g.value)}
+                        className={`flex items-center justify-between p-3 border text-left text-xs rounded-none transition-all cursor-pointer ${isSelected
+                          ? "border-black dark:border-white bg-neutral-100 dark:bg-zinc-800/50 font-bold"
+                          : "border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
+                          }`}
+                      >
+                        <span className="leading-snug">{g.label}</span>
+                        {isSelected && <Check size={14} className="flex-shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 04. Topik Konten Favorit */}
+              <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
+                  04. TOPIK KONTEN & PEMINATAN BAHASAN
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {TOPIC_PRESETS.map((topic) => {
+                    const isSelected = contentTopics.includes(topic);
+                    return (
+                      <button
+                        key={topic}
+                        type="button"
+                        onClick={() => toggleTopic(topic)}
+                        className={`px-3 py-1.5 border text-xs font-mono uppercase tracking-wider transition-all rounded-none cursor-pointer ${isSelected
+                          ? "bg-black dark:bg-white text-white dark:text-black border-black dark:border-white font-bold"
+                          : "bg-transparent border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-black dark:hover:border-white"
+                          }`}
+                      >
+                        {isSelected ? `✓ ${topic}` : topic}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 05. Preferensi Metode Belajar */}
+              <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
+                  05. PREFERENSI & METODE BELAJAR
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {LEARNING_PREFERENCE_OPTIONS.map((pref) => {
+                    const isSelected = learningPreference.includes(pref.value);
+                    return (
+                      <button
+                        key={pref.value}
+                        type="button"
+                        onClick={() => togglePreference(pref.value)}
+                        className={`flex items-center justify-between p-3 border text-left text-xs rounded-none transition-all cursor-pointer ${isSelected
+                          ? "border-black dark:border-white bg-neutral-100 dark:bg-zinc-800/50 font-bold"
+                          : "border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
+                          }`}
+                      >
+                        <span>{pref.label}</span>
+                        {isSelected && <Check size={14} className="flex-shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 06. Skill Fokus & Target Audiens */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-zinc-200 dark:border-zinc-800">
                 <RadioGroupLine
-                  id="nervousTrigger"
-                  label="MANA YANG LEBIH BIKIN KAMU GEMETAR BAIK SEBELUM TAMPIL MAUPUN PADA SAAT TAMPIL?"
-                  options={NERVOUS_TRIGGER_OPTIONS}
-                  value={nervousTrigger}
-                  onValueChange={setNervousTrigger}
-                  idPrefix="nt_pf"
+                  id="skillsToMaster"
+                  label="SKILL FOKUS YANG INGIN DIKUASAI"
+                  options={SKILLS_TO_MASTER_OPTIONS}
+                  value={skillsToMaster}
+                  onValueChange={setSkillsToMaster}
+                  customValue={customSkillsToMaster}
+                  onCustomChange={setCustomSkillsToMaster}
+                  customPlaceholder="Tuliskan skill lainnya..."
+                  idPrefix="stm_t3"
                 />
-              </div>
-            </div>
 
-            {/* SUB-SEKSI 2: PERSONAL BRANDING & MONETISASI */}
-            <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
-              <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
-                [ 02. PERSONAL BRANDING & MONETISASI ]
-              </span>
-
-              <RadioGroupLine
-                id="skillsToMaster"
-                label="SKILL APA YANG PALING INGIN KAMU KUASAI SAAT INI?"
-                options={SKILLS_TO_MASTER_OPTIONS}
-                value={skillsToMaster}
-                onValueChange={setSkillsToMaster}
-                customValue={customSkillsToMaster}
-                onCustomChange={setCustomSkillsToMaster}
-                customPlaceholder="Tuliskan skill lainnya..."
-                idPrefix="stm_pf"
-              />
-
-              <div className="pt-4">
                 <InputLine
-                  id="roleModel"
-                  name="roleModel"
-                  label="SIAPA SOSOK PUBLIC SPEAKER ATAU CONTENT CREATOR YANG JADI PANUTAN KAMU SAAT INI?"
-                  placeholder="Contoh: Raditya Dika, Merry Riana, GaryVee, dll."
-                  value={roleModel}
-                  onChange={(e) => setRoleModel(e.target.value)}
+                  id="targetAudience"
+                  name="targetAudience"
+                  label="TARGET AUDIENS UTAMA KREATOR"
+                  placeholder="Contoh: Mahasiswa, Gen Z, Professional..."
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value)}
                 />
               </div>
 
-              <div className="pt-4">
+              {/* 07. Jalur Monetisasi & Ketersediaan Waktu */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-zinc-200 dark:border-zinc-800">
                 <RadioGroupLine
                   id="monetizationInterest"
-                  label="JALUR MONETISASI APA YANG PALING KAMU MINATI?"
+                  label="JALUR MONETISASI YANG DIMINATI"
                   options={MONETIZATION_OPTIONS}
                   value={monetizationInterest}
                   onValueChange={setMonetizationInterest}
                   customValue={customMonetizationInterest}
                   onCustomChange={setCustomMonetizationInterest}
-                  customPlaceholder="Tuliskan jalur monetisasi lainnya..."
-                  idPrefix="mi_pf"
+                  customPlaceholder="Tuliskan jalur monetisasi..."
+                  idPrefix="mi_t3"
                 />
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
+                    KAPAN WAKTU LUANG TERBAIKMU UNTUK SESI KELAS?
+                  </label>
+                  <Select value={availability} onValueChange={setAvailability}>
+                    <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1.5 px-0 h-auto text-xs font-normal rounded-none focus:outline-none focus:ring-0 focus:border-black dark:focus:border-white transition-colors">
+                      <SelectValue placeholder="Pilih Waktu" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none p-1">
+                      <SelectItem value="morning" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Pagi Hari</SelectItem>
+                      <SelectItem value="afternoon" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Siang Hari</SelectItem>
+                      <SelectItem value="evening" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Sore Hari</SelectItem>
+                      <SelectItem value="night" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Malam Hari</SelectItem>
+                      <SelectItem value="flexible" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Fleksibel (Kapan Saja)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* SUB-SEKSI 3: EKSPLORASI TOPIK & AUDIENS */}
-            <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
-              <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
-                [ 03. EKSPLORASI TOPIK & AUDIENS ]
-              </span>
+          {/* TAB 4: PUBLIC SPEAKING & PERSONA */}
+          {activeTab === "persona" && (
+            <div className="space-y-8 animate-fade-in">
+              {/* SUB-SEKSI 1: TANTANGAN & DIAGNOSIS PUBLIC SPEAKING */}
+              <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+                <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
+                  [ 01. TANTANGAN & DIAGNOSIS PUBLIC SPEAKING ]
+                </span>
 
-              <InputLine
-                id="targetAudience"
-                name="targetAudience"
-                label="SIAPA TARGET AUDIENS YANG PALING INGIN KAMU SAPA MELALUI KONTEN ATAU BICARAMU?"
-                placeholder="Contoh: Mahasiswa tingkat akhir, Ibu rumah tangga berbisnis, Gen Z, dll."
-                value={targetAudience}
-                onChange={(e) => setTargetAudience(e.target.value)}
-              />
+                <MultiSelectLine
+                  id="psChallenges"
+                  label="APA KENDALA TERBESAR YANG KAMU RASAKAN SAAT HARUS BICARA DI DEPAN UMUM? (PILIH MAKSIMAL 3)"
+                  options={PS_CHALLENGE_OPTIONS}
+                  selected={psChallenges}
+                  onToggle={togglePsChallenge}
+                  maxSelect={3}
+                  showRemaining
+                />
 
-              <div className="pt-4">
+                <div className="pt-4">
+                  <ScaleSelectorLine
+                    id="confidenceScale"
+                    label="DALAM SKALA 1-10, SEBERAPA PERCAYA DIRI KAMU SAAT INI JIKA DIMINTA BICARA MENDADAK?"
+                    min={1}
+                    max={10}
+                    value={confidenceScale}
+                    onChange={setConfidenceScale}
+                    minLabel="1 (SANGAT RAGU)"
+                    maxLabel="10 (SANGAT YAKIN)"
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <RadioGroupLine
+                    id="nervousTrigger"
+                    label="MANA YANG LEBIH BIKIN KAMU GEMETAR BAIK SEBELUM TAMPIL MAUPUN PADA SAAT TAMPIL?"
+                    options={NERVOUS_TRIGGER_OPTIONS}
+                    value={nervousTrigger}
+                    onValueChange={setNervousTrigger}
+                    idPrefix="nt_pf"
+                  />
+                </div>
+              </div>
+
+              {/* SUB-SEKSI 2: PERSONAL BRANDING & MONETISASI */}
+              <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+                <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
+                  [ 02. PERSONAL BRANDING & MONETISASI ]
+                </span>
+
                 <RadioGroupLine
-                  id="expertDesire"
-                  label="SEBERAPA BESAR KEINGINANMU UNTUK DIKENAL SEBAGAI 'AHLI' DI BIDANG TERSEBUT?"
-                  options={EXPERT_DESIRE_OPTIONS}
-                  value={expertDesire}
-                  onValueChange={setExpertDesire}
-                  idPrefix="ed_pf"
+                  id="skillsToMaster"
+                  label="SKILL APA YANG PALING INGIN KAMU KUASAI SAAT INI?"
+                  options={SKILLS_TO_MASTER_OPTIONS}
+                  value={skillsToMaster}
+                  onValueChange={setSkillsToMaster}
+                  customValue={customSkillsToMaster}
+                  onCustomChange={setCustomSkillsToMaster}
+                  customPlaceholder="Tuliskan skill lainnya..."
+                  idPrefix="stm_pf"
                 />
+
+                <div className="pt-4">
+                  <InputLine
+                    id="roleModel"
+                    name="roleModel"
+                    label="SIAPA SOSOK PUBLIC SPEAKER ATAU CONTENT CREATOR YANG JADI PANUTAN KAMU SAAT INI?"
+                    placeholder="Contoh: Raditya Dika, Merry Riana, GaryVee, dll."
+                    value={roleModel}
+                    onChange={(e) => setRoleModel(e.target.value)}
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <RadioGroupLine
+                    id="monetizationInterest"
+                    label="JALUR MONETISASI APA YANG PALING KAMU MINATI?"
+                    options={MONETIZATION_OPTIONS}
+                    value={monetizationInterest}
+                    onValueChange={setMonetizationInterest}
+                    customValue={customMonetizationInterest}
+                    onCustomChange={setCustomMonetizationInterest}
+                    customPlaceholder="Tuliskan jalur monetisasi lainnya..."
+                    idPrefix="mi_pf"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* SUB-SEKSI 4: KOMITMEN & KOMUNITAS */}
-            <div className="space-y-6">
-              <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
-                [ 04. KOMITMEN & KOMUNITAS ]
-              </span>
+              {/* SUB-SEKSI 3: EKSPLORASI TOPIK & AUDIENS */}
+              <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+                <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
+                  [ 03. EKSPLORASI TOPIK & AUDIENS ]
+                </span>
 
-              <TextareaLine
-                id="activeCommunities"
-                name="activeCommunities"
-                label="KOMUNITAS APA SAJA YANG KAMU IKUTI SECARA AKTIF SELAIN DI PANGGUNG KREATOR?"
-                rows={2}
-                placeholder="Tuliskan nama komunitas..."
-                value={activeCommunities}
-                onChange={(e) => setActiveCommunities(e.target.value)}
-              />
+                <InputLine
+                  id="targetAudience"
+                  name="targetAudience"
+                  label="SIAPA TARGET AUDIENS YANG PALING INGIN KAMU SAPA MELALUI KONTEN ATAU BICARAMU?"
+                  placeholder="Contoh: Mahasiswa tingkat akhir, Ibu rumah tangga berbisnis, Gen Z, dll."
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value)}
+                />
 
-              <div className="pt-4">
+                <div className="pt-4">
+                  <RadioGroupLine
+                    id="expertDesire"
+                    label="SEBERAPA BESAR KEINGINANMU UNTUK DIKENAL SEBAGAI 'AHLI' DI BIDANG TERSEBUT?"
+                    options={EXPERT_DESIRE_OPTIONS}
+                    value={expertDesire}
+                    onValueChange={setExpertDesire}
+                    idPrefix="ed_pf"
+                  />
+                </div>
+              </div>
+
+              {/* SUB-SEKSI 4: KOMITMEN & KOMUNITAS */}
+              <div className="space-y-6">
+                <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
+                  [ 04. KOMITMEN & KOMUNITAS ]
+                </span>
+
                 <TextareaLine
-                  id="careerObstacle"
-                  name="careerObstacle"
-                  label="APA KENDALA TERBESAR KAMU SAAT INI DALAM BERKARYA/MEMBANGUN KARIR TERMASUK MEWUJUDKAN IMPIAN?"
-                  hint="Contoh: Masih ragu menentukan niche yang tepat karena merasa banyak potensi di berbagai bidang, belum memiliki portofolio yang meyakinkan, dan belum terhubung dengan mentor atau komunitas yang sesuai."
+                  id="activeCommunities"
+                  name="activeCommunities"
+                  label="KOMUNITAS APA SAJA YANG KAMU IKUTI SECARA AKTIF SELAIN DI PANGGUNG KREATOR?"
                   rows={2}
-                  placeholder="Ceritakan kendala terbesarmu saat ini..."
-                  value={careerObstacle}
-                  onChange={(e) => setCareerObstacle(e.target.value)}
+                  placeholder="Tuliskan nama komunitas..."
+                  value={activeCommunities}
+                  onChange={(e) => setActiveCommunities(e.target.value)}
                 />
-              </div>
 
-              <div className="pt-4">
-                <RadioGroupLine
-                  id="timeCommitment"
-                  label="KALAU PANGGUNG KREATOR MENGADAKAN SESI MENTORING ATAU SHARING INTENSIF BUAT BAHAS SEMUA KENDALA KAMU, SEBERAPA BESAR WAKTU YANG SIAP KAMU LUANGKAN?"
-                  options={TIME_COMMITMENT_OPTIONS}
-                  value={timeCommitment}
-                  onValueChange={setTimeCommitment}
-                  idPrefix="tc_pf"
-                />
+                <div className="pt-4">
+                  <TextareaLine
+                    id="careerObstacle"
+                    name="careerObstacle"
+                    label="APA KENDALA TERBESAR KAMU SAAT INI DALAM BERKARYA/MEMBANGUN KARIR TERMASUK MEWUJUDKAN IMPIAN?"
+                    hint="Contoh: Masih ragu menentukan niche yang tepat karena merasa banyak potensi di berbagai bidang, belum memiliki portofolio yang meyakinkan, dan belum terhubung dengan mentor atau komunitas yang sesuai."
+                    rows={2}
+                    placeholder="Ceritakan kendala terbesarmu saat ini..."
+                    value={careerObstacle}
+                    onChange={(e) => setCareerObstacle(e.target.value)}
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <RadioGroupLine
+                    id="timeCommitment"
+                    label="KALAU PANGGUNG KREATOR MENGADAKAN SESI MENTORING ATAU SHARING INTENSIF BUAT BAHAS SEMUA KENDALA KAMU, SEBERAPA BESAR WAKTU YANG SIAP KAMU LUANGKAN?"
+                    options={TIME_COMMITMENT_OPTIONS}
+                    value={timeCommitment}
+                    onValueChange={setTimeCommitment}
+                    idPrefix="tc_pf"
+                  />
+                </div>
               </div>
             </div>
+          )}
+
+          {/* BOTTOM SAVE BAR */}
+          <div className="pt-4 sm:pt-5 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full sm:w-auto px-8 sm:px-12 py-3 bg-[#0A0A0A] dark:bg-white text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold text-[11px] sm:text-[10px] uppercase tracking-widest rounded-none transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
+            >
+              {isLoading ? (
+                <svg className="animate-spin h-3.5 w-3.5 text-current" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <>Simpan Perubahan &rarr;</>
+              )}
+            </button>
           </div>
-        )}
+        </form>
 
-        {/* BOTTOM SAVE BAR */}
-        <div className="pt-4 border-t border-zinc-250 dark:border-zinc-800 flex justify-end">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full sm:w-auto px-12 py-3 bg-[#0A0A0A] dark:bg-white text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold text-[10px] uppercase tracking-widest rounded-none transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            {isLoading ? (
-              <svg className="animate-spin h-3.5 w-3.5 text-current" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : (
-              <>Simpan Perubahan &rarr;</>
-            )}
-          </button>
-        </div>
-      </form>
+        {/* CHANGE USERNAME MODAL */}
+        <ChangeUsernameModal
+          isOpen={isChangeUsernameOpen}
+          onClose={() => setIsChangeUsernameOpen(false)}
+          currentUsername={username}
+          usernameChangesCount={usernameChangesCount}
+          lastUsernameChange={lastUsernameChange}
+          onSuccess={(newU, newCount, newLast) => {
+            setUsername(newU);
+            setUsernameChangesCount(newCount);
+            setLastUsernameChange(newLast);
+          }}
+        />
 
-      {/* CHANGE PASSWORD MODAL */}
-      <ChangePasswordModal
-        isOpen={isChangePasswordOpen}
-        onClose={() => setIsChangePasswordOpen(false)}
-      />
-    </div>
+        {/* CHANGE PASSWORD MODAL */}
+        <ChangePasswordModal
+          isOpen={isChangePasswordOpen}
+          onClose={() => setIsChangePasswordOpen(false)}
+        />
+      </div>
+
+      {/* ═══ MOBILE BOTTOM NAVIGATION BAR FOR EDIT PROFILE (nempel di paling bawah, identik halaman utama profil) ═══ */}
+      <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#0f0f11]/95 backdrop-blur-lg border-t border-neutral-200/90 dark:border-neutral-800 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] pb-[env(safe-area-inset-bottom)]">
+        <nav
+          aria-label="Navigasi Tab Edit Profil"
+          className="flex items-center justify-around px-2 py-2 max-w-lg mx-auto"
+        >
+          {editTabs.map((tab, idx) => {
+            const isActive = activeTab === tab.key;
+            const Icon = tab.icon;
+
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={`relative flex flex-col items-center justify-center flex-1 py-1.5 px-1 transition-colors duration-150 cursor-pointer active:scale-95 ${isActive
+                  ? "text-neutral-950 dark:text-white font-medium"
+                  : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                  }`}
+              >
+                <div className="relative">
+                  <Icon
+                    size={20}
+                    className={`transition-all duration-150 ${isActive
+                      ? "text-neutral-950 dark:text-white stroke-[2.2]"
+                      : "text-neutral-400 dark:text-neutral-500"
+                      }`}
+                  />
+                </div>
+                <span
+                  className={`text-[10px] tracking-tight mt-1 transition-colors duration-150 ${isActive
+                    ? "text-neutral-950 dark:text-white font-semibold"
+                    : "text-neutral-400 dark:text-neutral-500 font-normal"
+                    }`}
+                >
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    </>
   );
 }
