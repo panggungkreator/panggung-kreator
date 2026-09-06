@@ -27,8 +27,12 @@ function MemberCollectionRegisterInner() {
     const hasPreviewParam = searchParams.has("preview");
 
     if (hasStepParam || hasPreviewParam) {
-      // Jika mencoba melompat ke step tertentu tanpa menyelesaikan alur, redirect bersih kembali ke /form/pendataan
       const cleanUrl = referralCode ? `/form/pendataan?ref=${encodeURIComponent(referralCode)}` : "/form/pendataan";
+      // 1. Bersihkan address bar browser secara langsung seketika
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", cleanUrl);
+      }
+      // 2. Sinkronkan Next.js router
       router.replace(cleanUrl);
     }
   }, [searchParams, referralCode, router]);
