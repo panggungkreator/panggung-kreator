@@ -20,7 +20,7 @@ export default function ProfileTabs({
 }: ProfileTabsProps) {
   const allTabs: { key: ProfileTab; label: string; icon: React.ElementType }[] = [
     { key: "overview", label: "Ikhtisar", icon: LayoutDashboard },
-    { key: "attendance", label: "Absensi Event", icon: CalendarCheck },
+    { key: "attendance", label: "Absensi", icon: CalendarCheck },
     { key: "portfolio", label: "Portofolio", icon: FolderKanban },
     { key: "affiliate", label: "Affiliate", icon: Share2 },
   ];
@@ -29,34 +29,84 @@ export default function ProfileTabs({
   const visibleTabs = allTabs;
 
   return (
-    <div className="w-full border-b border-neutral-200 dark:border-neutral-800 pb-3">
-      {/* Scrollable Container with Smooth Scroll & Clean Spacing */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-0.5 scroll-smooth">
-        {visibleTabs.map((tab) => {
-          const isActive = activeTab === tab.key;
-          const isDisabled = !!disabledTabs?.[tab.key];
-          const Icon = tab.icon;
+    <>
+      {/* ═══ DESKTOP TAB BAR (hidden on mobile, visible on lg) ═══ */}
+      <div className="hidden lg:block w-full border-b border-neutral-200 dark:border-neutral-800 pb-3">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-0.5 scroll-smooth">
+          {visibleTabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            const isDisabled = !!disabledTabs?.[tab.key];
+            const Icon = tab.icon;
 
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => onTabChange(tab.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono uppercase tracking-wider transition-all duration-200 rounded-none whitespace-nowrap cursor-pointer flex-shrink-0 border ${
-                isActive
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => onTabChange(tab.key)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono uppercase tracking-wider transition-all duration-200 rounded-none whitespace-nowrap cursor-pointer flex-shrink-0 border ${isActive
                   ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-neutral-900 dark:border-white font-bold shadow-sm"
                   : isDisabled
-                  ? "bg-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:border-amber-500/60"
-                  : "bg-transparent text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-neutral-900 dark:hover:text-white"
-              }`}
-            >
-              <Icon size={14} className={`flex-shrink-0 ${isActive ? "text-white dark:text-neutral-900" : isDisabled ? "text-amber-500" : "text-neutral-400 dark:text-neutral-500"}`} />
-              <span>{tab.label}</span>
-              {isDisabled && <span className="text-[10px]" title="Fitur sedang dalam pengembangan">🚧</span>}
-            </button>
-          );
-        })}
+                    ? "bg-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:border-amber-500/60"
+                    : "bg-transparent text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-neutral-900 dark:hover:text-white"
+                  }`}
+              >
+                <Icon size={14} className={`flex-shrink-0 ${isActive ? "text-white dark:text-neutral-900" : isDisabled ? "text-amber-500" : "text-neutral-400 dark:text-neutral-500"}`} />
+                <span>{tab.label}</span>
+                {isDisabled && <span className="text-[10px]" title="Fitur sedang dalam pengembangan">🚧</span>}
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      {/* ═══ MOBILE BOTTOM NAVIGATION BAR (nempel di paling bawah, simple style persis referensi) ═══ */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#0f0f11]/95 backdrop-blur-lg border-t border-neutral-200/90 dark:border-neutral-800 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] pb-[env(safe-area-inset-bottom)]">
+        <nav
+          aria-label="Navigasi Tab Profil"
+          className="flex items-center justify-around px-2 py-2 max-w-lg mx-auto"
+        >
+          {visibleTabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            const isDisabled = !!disabledTabs?.[tab.key];
+            const Icon = tab.icon;
+
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => onTabChange(tab.key)}
+                className={`relative flex flex-col items-center justify-center flex-1 py-1.5 px-1 transition-colors duration-150 cursor-pointer active:scale-95 ${isActive
+                  ? "text-neutral-950 dark:text-white font-medium"
+                  : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                  }`}
+              >
+                <div className="relative">
+                  <Icon
+                    size={22}
+                    className={`transition-all duration-150 ${isActive
+                      ? "text-neutral-950 dark:text-white stroke-[2.2]"
+                      : isDisabled
+                        ? "text-amber-500/70"
+                        : "text-neutral-400 dark:text-neutral-500"
+                      }`}
+                  />
+                  {isDisabled && (
+                    <span className="absolute -top-1 -right-2 text-[8px] leading-none">🚧</span>
+                  )}
+                </div>
+                <span
+                  className={`text-[11px] tracking-tight mt-1 transition-colors duration-150 ${isActive
+                    ? "text-neutral-950 dark:text-white"
+                    : "text-neutral-400 dark:text-neutral-500 font-normal"
+                    }`}
+                >
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    </>
   );
 }

@@ -91,11 +91,11 @@ export default function ProfileOverviewContent({
 
       {/* SECTION 1: RINGKASAN ABSENSI & KEHADIRAN */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
-          <h3 className="font-sans font-bold text-lg md:text-xl text-neutral-900 dark:text-white">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-neutral-900 dark:text-white">
             Ringkasan <span className="highlight-stabilo">Kehadiran</span>
           </h3>
-          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+          <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
             [ KEHADIRAN ]
           </span>
         </div>
@@ -129,11 +129,11 @@ export default function ProfileOverviewContent({
 
       {/* SECTION 2: CREATOR READINESS INDEX & STAGE LEVEL */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
-          <h3 className="font-sans font-bold text-lg md:text-xl text-neutral-900 dark:text-white flex items-center gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-neutral-900 dark:text-white flex items-center gap-2">
             Indikator <span className="highlight-stabilo">Kesiapan</span> Panggung
           </h3>
-          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+          <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
             [ READINESS INDEX ]
           </span>
         </div>
@@ -190,11 +190,11 @@ export default function ProfileOverviewContent({
       {/* SECTION 3: SELF-DIAGNOSTIC PUBLIC SPEAKING & MENTAL */}
       {(interests?.ps_challenges || interests?.nervous_trigger || interests?.confidence_scale) && (
         <div className="space-y-4 pt-2">
-          <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
-            <h3 className="font-sans font-bold text-lg md:text-xl text-neutral-900 dark:text-white">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+            <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-neutral-900 dark:text-white">
               Diagnosis & Tantangan <span className="highlight-stabilo">Public Speaking</span>
             </h3>
-            <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+            <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
               [ DIAGNOSIS ]
             </span>
           </div>
@@ -236,11 +236,11 @@ export default function ProfileOverviewContent({
 
       {/* SECTION 4: PERSONA, VISI & MONETISASI KREATOR */}
       <div className="space-y-4 pt-2">
-        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
-          <h3 className="font-sans font-bold text-lg md:text-xl text-neutral-900 dark:text-white">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-neutral-900 dark:text-white">
             Persona, Visi & <span className="highlight-stabilo">Monetisasi</span>
           </h3>
-          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+          <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
             [ METRICS & GOALS ]
           </span>
         </div>
@@ -314,60 +314,84 @@ export default function ProfileOverviewContent({
         )}
       </div>
 
-      {/* SECTION 5: MINAT & PILAR KEAHLIAN */}
-      <div className="space-y-3 pt-2">
-        <h4 className="text-xs font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-          [ PILAR KEAHLIAN UTAMA ]
-        </h4>
+      {/* SECTION 5: PILAR KEAHLIAN & TARGET KREATOR (DISATUKAN DENGAN GAYA SECTION 4) */}
+      <div className="space-y-4 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-neutral-900 dark:text-white">
+            Pilar Keahlian & <span className="highlight-stabilo">Target Kreator</span>
+          </h3>
+          <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+            [ SKILLS & GOALS ]
+          </span>
+        </div>
 
-        {hasInterests ? (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {primaryInterests.map((interest: string, idx: number) => (
-              <span
-                key={idx}
-                className="px-3.5 py-1.5 text-xs font-mono uppercase tracking-wider border border-neutral-300 dark:border-neutral-700 bg-transparent text-neutral-800 dark:text-neutral-200"
-              >
-                {(INTEREST_MAP[interest] || interest.replace(/_/g, " ")).toUpperCase()}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* PILAR KEAHLIAN UTAMA */}
+          <div className="p-4 border border-neutral-200 dark:border-neutral-800 space-y-3 flex flex-col justify-between">
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">
+                [ PILAR KEAHLIAN UTAMA ]
               </span>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {DEFAULT_PILLARS.map((pilar, idx) => (
-              <span
-                key={idx}
-                className="px-3.5 py-1.5 text-xs font-mono uppercase tracking-wider border border-neutral-200 dark:border-neutral-800 bg-transparent text-neutral-600 dark:text-neutral-400"
-              >
-                [ {pilar} ]
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Fokus kompetensi dan bidang kreasi yang ditekuni saat ini.
+              </p>
+            </div>
 
-      {/* SECTION 6: TARGET GOALS */}
-      <div className="space-y-3 pt-1">
-        <h4 className="text-xs font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-          [ TARGET & GOALS KREATOR ]
-        </h4>
-
-        {hasGoals ? (
-          <div className="space-y-2 pt-1">
-            {goals.map((goal: string, idx: number) => (
-              <div
-                key={idx}
-                className="flex items-start gap-2.5 text-xs text-neutral-700 dark:text-neutral-300 font-sans"
-              >
-                <span className="text-neutral-400 dark:text-neutral-600 font-mono mt-0.5">•</span>
-                <span className="leading-relaxed">{goal}</span>
+            {hasInterests ? (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {primaryInterests.map((interest: string, idx: number) => (
+                  <span
+                    key={idx}
+                    className="px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200"
+                  >
+                    {(INTEREST_MAP[interest] || interest.replace(/_/g, " ")).toUpperCase()}
+                  </span>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {DEFAULT_PILLARS.map((pilar, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider border border-neutral-200 dark:border-neutral-800 bg-transparent text-neutral-600 dark:text-neutral-400"
+                  >
+                    [ {pilar} ]
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <p className="text-xs text-neutral-500 font-mono italic">
-            [ Belum ada target spesifik yang disimpan. Perbarui di Edit Profil. ]
-          </p>
-        )}
+
+          {/* TARGET & GOALS KREATOR */}
+          <div className="p-4 border border-neutral-200 dark:border-neutral-800 space-y-3 flex flex-col justify-between">
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">
+                [ TARGET & GOALS KREATOR ]
+              </span>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Arah pengembangan diri, bisnis, dan pencapaian karier panggung.
+              </p>
+            </div>
+
+            {hasGoals ? (
+              <div className="space-y-2 pt-1">
+                {goals.map((goal: string, idx: number) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-2 text-xs text-neutral-700 dark:text-neutral-300 font-sans"
+                  >
+                    <span className="text-neutral-400 dark:text-neutral-600 font-mono mt-0.5">•</span>
+                    <span className="leading-relaxed">{goal}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-neutral-500 font-mono italic pt-1">
+                [ Belum ada target spesifik yang disimpan. Perbarui di Edit Profil. ]
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
