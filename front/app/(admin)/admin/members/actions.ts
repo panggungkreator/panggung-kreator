@@ -194,69 +194,20 @@ export async function sendMemberCredentialsAction(
         const appUrl =
           process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
+        const { getMemberCredentialsEmailHtml } = await import("@/lib/email-templates/member-credentials");
+        const emailHtml = getMemberCredentialsEmailHtml({
+          memberName,
+          email: member.email.trim(),
+          username: finalUsername,
+          password: finalPassword,
+          appUrl,
+        });
+
         await transporter.sendMail({
           from: `"Panggung Kreator" <${process.env.SMTP_USER}>`,
           to: member.email.trim(),
           subject: "Kredensial Akses Akun - Panggung Kreator",
-          html: `
-            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; background-color: #f8fafc; padding: 20px;">
-              <div style="background-color: #18181b; color: #ffffff; padding: 28px 24px; text-align: center; border-radius: 12px 12px 0 0;">
-                <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; text-transform: uppercase;">
-                  Panggung Kreator
-                </h1>
-                <p style="margin: 6px 0 0 0; font-size: 13px; color: #a1a1aa;">
-                  Kredensial Akses Akun Komunitas & Akademi
-                </p>
-              </div>
-
-              <div style="background-color: #ffffff; padding: 28px 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
-                <p style="margin-top: 0; font-size: 15px; color: #334155;">
-                  Halo <strong>${memberName}</strong>,
-                </p>
-                
-                <p style="font-size: 14px; color: #475569; line-height: 1.6;">
-                  Berikut adalah informasi kredensial akses untuk login ke platform <strong>Panggung Kreator</strong> Anda:
-                </p>
-
-                <!-- CREDENTIAL BOX -->
-                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; margin: 24px 0;">
-                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
-                    🔑 KREDENSIAL LOGIN ANDA
-                  </div>
-                  <table style="width: 100%; border-collapse: collapse; font-family: monospace; font-size: 14px;">
-                    <tr>
-                      <td style="width: 100px; color: #64748b; padding: 6px 0; font-weight: 600;">Username:</td>
-                      <td style="color: #0f172a; padding: 6px 0; font-weight: 700;">${finalUsername}</td>
-                    </tr>
-                    <tr>
-                      <td style="color: #64748b; padding: 6px 0; font-weight: 600;">Password:</td>
-                      <td style="color: #0f172a; padding: 6px 0; font-weight: 700;">${finalPassword}</td>
-                    </tr>
-                  </table>
-                </div>
-
-                <!-- LOGIN BUTTON -->
-                <div style="margin: 28px 0; text-align: center;">
-                  <a href="${appUrl}/login" 
-                     style="background-color: #18181b; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    Login ke Dashboard Member
-                  </a>
-                </div>
-
-                <div style="background-color: #fff1f2; border: 1px solid #fecdd3; padding: 12px 16px; border-radius: 8px; margin-top: 20px;">
-                  <p style="margin: 0; font-size: 12px; color: #9f1239; line-height: 1.5;">
-                    💡 <strong>Tips Keamanan:</strong> Demi keamanan akun Anda, silakan ubah password sementara ini melalui halaman profil setelah pertama kali berhasil login.
-                  </p>
-                </div>
-
-                <p style="margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 18px; font-size: 13px; color: #64748b; line-height: 1.5;">
-                  Salam hangat,<br />
-                  <strong style="color: #0f172a;">Tim Panggung Kreator</strong><br />
-                  <span style="font-size: 11px; color: #94a3b8;">#OneStageOneProgress</span>
-                </p>
-              </div>
-            </div>
-          `,
+          html: emailHtml,
         });
 
         emailSent = true;
