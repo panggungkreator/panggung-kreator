@@ -7,7 +7,7 @@ import Logo from "@/components/ui/Logo";
 import StepEssential from "@/app/(form)/form/pendataan/StepEssential";
 import { registerCollectionMemberAction } from "@/lib/actions/auth-actions";
 import { scrollToFirstError } from "@/lib/formValidation";
-import { CheckCircle2, Sun, Moon, Mail, ArrowRight } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 
 function MemberCollectionRegisterInner() {
   const router = useRouter();
@@ -15,10 +15,18 @@ function MemberCollectionRegisterInner() {
   const referralCode = searchParams.get("ref");
 
   // Navigation Steps: 2 = Profile Onboarding (StepEssential), 3 = Success Screen
-  const [step, setStep] = useState(2);
+  // Mendukung query param ?step=3 atau ?preview=success untuk preview tampilan sukses secara instan
+  const isPreviewSuccess = searchParams.get("step") === "3" || searchParams.get("preview") === "success";
+  const [step, setStep] = useState(isPreviewSuccess ? 3 : 2);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    if (searchParams.get("step") === "3" || searchParams.get("preview") === "success") {
+      setStep(3);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     // Theme initialization (Light mode default)
@@ -77,20 +85,20 @@ function MemberCollectionRegisterInner() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center font-sans selection:bg-black selection:text-white bg-neutral-50 dark:bg-[#0A0A0A] py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+    <div className="min-h-screen w-full flex items-center justify-center font-sans selection:bg-black selection:text-white bg-white sm:bg-neutral-50 dark:bg-[#0A0A0A] p-0 sm:py-12 sm:px-6 lg:px-8 transition-colors duration-200">
       <div
         data-lenis-prevent
-        className="max-w-2xl w-full p-8 md:p-12 bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white shadow-xl dark:shadow-none relative animate-fade-in transition-colors duration-200"
+        className="max-w-2xl w-full min-h-screen sm:min-h-0 flex flex-col justify-between p-5 sm:p-8 md:p-12 bg-white dark:bg-[#121212] border-0 sm:border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white shadow-none sm:shadow-xl dark:shadow-none rounded-none relative animate-fade-in transition-colors duration-200"
       >
-        {/* Top Header Row: Logo on left, Theme Switcher on right */}
-        <div className="absolute top-6 left-6 right-6 md:top-8 md:left-8 md:right-8 z-10 flex items-center justify-between">
+        {/* Top Header Row: Logo di paling atas screen, Theme switcher di desktop */}
+        <div className="w-full pt-2 pb-4 sm:pt-0 sm:pb-0 sm:absolute sm:top-6 sm:left-6 sm:right-6 md:top-8 md:left-8 md:right-8 z-10 flex items-center justify-center sm:justify-between shrink-0">
           <Logo size="sm" isLink={true} className="text-black dark:text-white" />
 
           <button
             type="button"
             onClick={toggleTheme}
             aria-label="Toggle Theme"
-            className="relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full bg-[#27272a] p-1 transition-colors duration-200 ease-in-out focus:outline-none"
+            className="hidden sm:inline-flex relative h-7 w-13 shrink-0 cursor-pointer rounded-full bg-[#27272a] p-1 transition-colors duration-200 ease-in-out focus:outline-none"
           >
             <span className="sr-only">Toggle Theme</span>
 
@@ -111,10 +119,10 @@ function MemberCollectionRegisterInner() {
         </div>
 
         {/* Branding & Form Area */}
-        <div className="w-full pt-10 md:pt-12">
+        <div className="w-full flex-1 flex flex-col pt-0 sm:pt-10 md:pt-12">
           {step === 2 && (
-            <div className="mb-8 pt-2">
-              <h2 className="text-3xl lg:text-4xl font-serif italic tracking-tight leading-tight mb-3 text-zinc-900 dark:text-white">
+            <div className="mb-6 sm:mb-8 pt-2">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif italic tracking-tight leading-tight mb-2 text-zinc-900 dark:text-white">
                 Halo, <br />
                 <span className="not-italic font-sans font-black tracking-wide text-zinc-700 dark:text-zinc-300 uppercase">
                   Teman Sepanggung
@@ -152,57 +160,56 @@ function MemberCollectionRegisterInner() {
 
           {/* Step 3: Success Screen */}
           {step === 3 && (
-            <div className="w-full space-y-6 py-2 animate-fade-in text-zinc-900 dark:text-white">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>You&apos;re In! Registrasi Sukses 🎉</span>
-              </div>
+            <div className="w-full flex-1 flex flex-col justify-between py-1 animate-fade-in text-zinc-900 dark:text-white">
+              {/* Content Section yang diposisikan di tengah secara vertikal */}
+              <div className="my-auto space-y-4 sm:space-y-5 py-6">
+                {/* Badge Status */}
+                <div>
+                  <span className="inline-block px-2 py-0.5 text-[9px] sm:text-[10px] font-mono font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60">
+                    You&apos;re In! Registrasi Sukses
+                  </span>
+                </div>
 
-              <div className="space-y-1">
-                <h2 className="text-3xl lg:text-4xl font-serif italic tracking-tight leading-tight text-zinc-900 dark:text-white">
-                  Halo, Teman Sepanggung!
-                </h2>
-                <p className="not-italic font-sans font-black tracking-wide text-zinc-800 dark:text-zinc-200 text-lg lg:text-xl uppercase">
-                  Selamat Datang di Member Panggung Kreator
-                </p>
-              </div>
+                {/* Title & Welcome */}
+                <div className="space-y-1 sm:space-y-1.5">
+                  <h2 className="text-xl sm:text-xl md:text-2xl font-serif italic tracking-tight leading-snug text-zinc-900 dark:text-white">
+                    Halo, Teman Sepanggung!
+                  </h2>
+                  <p className="font-sans font-black tracking-wide text-zinc-800 dark:text-zinc-200 text-xs sm:text-lg md:text-xl uppercase">
+                    Selamat Datang di Member Panggung Kreator
+                  </p>
+                </div>
 
-              {/* Informational Callout Box */}
-              <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/60 p-5 sm:p-6 space-y-4 max-w-lg shadow-sm">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shrink-0 shadow-sm">
-                    <Mail className="w-5 h-5" />
-                  </div>
+                {/* Informational Clean Text Flow (Tanpa card, tanpa border, tanpa icon) */}
+                <div className="space-y-3 max-w-lg pt-0.5">
                   <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white leading-snug">
+                    <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-white leading-snug">
                       Langkah Selanjutnya: Cek Email untuk Akses Akun
                     </h3>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-sans">
-                      Formulirmu sudah tersimpan aman. Kami telah mengirimkan detail akun berupa <strong className="text-zinc-900 dark:text-white">Username</strong> dan <strong className="text-zinc-900 dark:text-white">Password</strong> ke alamat email kamu untuk masuk ke profil member.
+                    <p className="text-xs sm:text-[13px] text-zinc-600 dark:text-zinc-400 leading-relaxed font-sans">
+                      Formulirmu sudah tersimpan aman. Kami telah mengirimkan detail akun berupa <strong className="text-zinc-900 dark:text-white font-semibold">Username</strong> dan <strong className="text-zinc-900 dark:text-white font-semibold">Password</strong> ke alamat email kamu untuk masuk ke profil member.
+                    </p>
+                  </div>
+
+                  <div className="pt-0.5">
+                    <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                      Belum melihat email masuk? Silakan periksa folder <strong className="font-semibold text-zinc-700 dark:text-zinc-300 underline underline-offset-2">Spam</strong> atau tab <strong className="font-semibold text-zinc-700 dark:text-zinc-300 underline underline-offset-2">Promosi</strong> di email kamu.
                     </p>
                   </div>
                 </div>
-
-                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 p-3.5 flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300">
-                  <span className="text-sm leading-none mt-0.5 select-none">💡</span>
-                  <p className="text-[11px] leading-relaxed font-medium">
-                    Belum melihat email masuk? Silakan periksa folder <strong className="font-bold underline">Spam</strong> atau tab <strong className="font-bold underline">Promosi</strong> di email kamu.
-                  </p>
-                </div>
               </div>
 
-              {/* Action Buttons Group */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1 max-w-lg">
+              {/* Action Buttons Group: ditaruh di paling bawah screen mobile */}
+              <div className="pt-4 pb-2 w-full max-w-lg flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
                 <Link
                   href="/login"
-                  className="flex-1 h-12 rounded-xl bg-zinc-900 hover:bg-[#bc151b] dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-bold text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer inline-flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
+                  className="w-full sm:flex-1 h-12 rounded-none bg-black hover:bg-[#bc151b] dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-bold text-xs uppercase tracking-widest transition-colors duration-200 cursor-pointer inline-flex items-center justify-center select-none active:opacity-90"
                 >
                   <span>Login ke Profil</span>
-                  <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   href="/"
-                  className="flex-1 h-12 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white hover:bg-zinc-50 dark:bg-zinc-900/50 dark:hover:bg-zinc-800/80 text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer inline-flex items-center justify-center gap-2 active:scale-[0.98]"
+                  className="w-full sm:flex-1 h-12 rounded-none border border-zinc-300 dark:border-zinc-700 hover:border-black dark:hover:border-white bg-white hover:bg-zinc-50 dark:bg-transparent dark:hover:bg-zinc-900/50 text-zinc-800 hover:text-black dark:text-zinc-200 dark:hover:text-white font-bold text-xs uppercase tracking-widest transition-colors duration-200 cursor-pointer inline-flex items-center justify-center select-none active:bg-zinc-100 dark:active:bg-zinc-800"
                 >
                   <span>Kembali ke Beranda</span>
                 </Link>
