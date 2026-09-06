@@ -20,14 +20,14 @@ const MONTH_NAMES = [
   { short: "Feb", full: "Februari", index: 1 },
   { short: "Mar", full: "Maret", index: 2 },
   { short: "Apr", full: "April", index: 3 },
-  { short: "May", full: "Mei", index: 4 },
+  { short: "Mei", full: "Mei", index: 4 },
   { short: "Jun", full: "Juni", index: 5 },
   { short: "Jul", full: "Juli", index: 6 },
-  { short: "Aug", full: "Agustus", index: 7 },
+  { short: "Agu", full: "Agustus", index: 7 },
   { short: "Sep", full: "September", index: 8 },
-  { short: "Oct", full: "Oktober", index: 9 },
+  { short: "Okt", full: "Oktober", index: 9 },
   { short: "Nov", full: "November", index: 10 },
-  { short: "Dec", full: "Desember", index: 11 },
+  { short: "Des", full: "Desember", index: 11 },
 ];
 
 export const DateBirthLine: React.FC<DateBirthLineProps> = ({
@@ -169,7 +169,7 @@ export const DateBirthLine: React.FC<DateBirthLineProps> = ({
   }, [parsedDate]);
 
   return (
-    <div id={id} className={cn("w-full", className)}>
+    <div id={id} className={cn("w-full notranslate", className)} translate="no">
       <label className="text-[11px] font-bold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase block mb-1">
         {label}
       </label>
@@ -177,19 +177,21 @@ export const DateBirthLine: React.FC<DateBirthLineProps> = ({
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div
-            className={`flex items-center justify-between w-full border-b py-1.5 cursor-pointer transition-colors ${
+            className={`flex items-center justify-between w-full border-b py-1.5 cursor-pointer transition-colors notranslate ${
               error
                 ? "border-red-500 dark:border-red-500"
                 : "border-zinc-300 dark:border-zinc-700 hover:border-black dark:hover:border-white focus-within:border-black dark:focus-within:border-white"
             }`}
+            translate="no"
           >
             <span
               className={cn(
-                "text-sm",
+                "text-sm notranslate",
                 displayString
                   ? "text-zinc-900 dark:text-white font-medium"
                   : "text-zinc-400 dark:text-zinc-500"
               )}
+              translate="no"
             >
               {displayString || placeholder}
             </span>
@@ -201,12 +203,13 @@ export const DateBirthLine: React.FC<DateBirthLineProps> = ({
           data-lenis-prevent
           align="start"
           sideOffset={8}
-          className="w-[300px] sm:w-[320px] p-4 bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-2xl z-50 text-zinc-900 dark:text-white animate-fade-in"
+          translate="no"
+          className="w-[300px] sm:w-[320px] p-4 bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-2xl z-50 text-zinc-900 dark:text-white animate-fade-in notranslate select-none"
         >
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/80">
             <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mx-auto pl-4">
-              SET BIRTHDAY
+              PILIH TANGGAL LAHIR
             </span>
             <button
               type="button"
@@ -218,7 +221,7 @@ export const DateBirthLine: React.FC<DateBirthLineProps> = ({
           </div>
 
           {/* Wheel Picker Container */}
-          <div className="relative my-4 h-[180px] overflow-hidden select-none">
+          <div className="relative my-4 h-[180px] overflow-hidden select-none notranslate" translate="no">
             {/* Middle Active Highlight Bar */}
             <div className="absolute top-[72px] left-0 right-0 h-9 bg-zinc-100 dark:bg-zinc-800/80 rounded-xl pointer-events-none z-0" />
 
@@ -241,7 +244,7 @@ export const DateBirthLine: React.FC<DateBirthLineProps> = ({
                 items={availableMonths}
                 selectedValue={MONTH_NAMES[tempMonthIndex]}
                 onSelect={(m) => setTempMonthIndex(m.index)}
-                renderLabel={(m) => m.short}
+                renderLabel={(m) => m.full}
               />
 
               {/* Day Column */}
@@ -260,7 +263,7 @@ export const DateBirthLine: React.FC<DateBirthLineProps> = ({
             onClick={handleSubmit}
             className="w-full py-3 bg-black dark:bg-white text-white dark:text-black font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all cursor-pointer shadow-md"
           >
-            SUBMIT
+            PILIH TANGGAL
           </button>
         </PopoverContent>
       </Popover>
@@ -447,7 +450,8 @@ function WheelColumn<T>({
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="h-full overflow-y-auto scrollbar-none py-[72px] space-y-0 text-center"
+      className="h-full overflow-y-auto scrollbar-none py-[72px] space-y-0 text-center notranslate"
+      translate="no"
       style={{ scrollSnapType: "y mandatory" }}
     >
       {items.map((item, idx) => {
@@ -456,9 +460,10 @@ function WheelColumn<T>({
           <div
             key={idx}
             onClick={() => handleClick(item, idx)}
+            translate="no"
             style={{ scrollSnapAlign: "center" }}
             className={cn(
-              "h-9 flex items-center justify-center text-xs font-semibold cursor-pointer transition-all duration-150 rounded-lg",
+              "h-9 flex items-center justify-center text-xs font-semibold cursor-pointer transition-all duration-150 rounded-lg notranslate",
               selected
                 ? "text-zinc-900 dark:text-white font-bold scale-110"
                 : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300"

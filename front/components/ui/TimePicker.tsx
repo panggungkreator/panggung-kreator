@@ -95,17 +95,18 @@ export function TimePicker({
       <PopoverTrigger asChild>
         <button
           type="button"
+          translate="no"
           className={cn(
-            "flex h-12 w-full items-center justify-between rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all font-bold cursor-pointer text-left",
+            "flex h-12 w-full items-center justify-between rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all font-bold cursor-pointer text-left notranslate",
             !formattedDisplay && "text-zinc-400 font-medium",
             className
           )}
         >
-          <span>{formattedDisplay || placeholder}</span>
+          <span className="notranslate" translate="no">{formattedDisplay || placeholder}</span>
           <Clock size={16} className="text-zinc-400" />
         </button>
       </PopoverTrigger>
-      <PopoverContent data-lenis-prevent className="w-[180px] p-3 z-[60]" align="start">
+      <PopoverContent data-lenis-prevent translate="no" className="w-[180px] p-3 z-[60] notranslate select-none" align="start">
         <div className="flex gap-2">
           {/* Hours Column */}
           <div className="flex flex-col flex-1">

@@ -130,3 +130,89 @@ export async function deleteVenueAction(id: string) {
   revalidatePath("/admin/venue");
   return { success: true };
 }
+
+/**
+ * Memastikan venue tersimpan di tabel `venues`.
+ * Jika sudah ada, memperbarui timestamp `last_used_at`.
+ * Jika belum ada, otomatis menyimpannya ke kedua database (Dev & Prod).
+ */
+export async function ensureVenueExistsAction(locationStr: string) {
+  if (!locationStr || !locationStr.trim()) {
+    return { success: false, error: "Lokasi tidak boleh kosong." };
+  }
+
+  const trimmed = locationStr.trim();
+  let name = trimmed;
+  let address = trimmed;
+
+  if (trimmed.includes(" - ")) {
+    const parts = trimmed.split(" - ");
+    name = parts[0].trim();
+    address = parts.slice(1).join(" - ").trim();
+  } else if (trimmed.includes(", ")) {
+    const parts = trimmed.split(", ");
+    name = parts[0].trim();
+    address = parts.slice(1).join(", ").trim();
+  }
+
+  const todayDate = new Date().toISOString().split("T")[0];
+
+  const { devResult, error } = await syncDualOperation(async (client) => {
+    // 1. Cek apakah venue dengan nama atau alamat serupa sudah ada
+    const { data: existingByName } = await client
+      .from("venues")
+      .select("id, name, address")
+      .ilike("name", name)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingByName) {
+      await client
+        .from("venues")
+        .update({ last_used_at: todayDate })
+        .eq("id", existingByName.id);
+      return existingByName;
+    }
+
+    const { data: existingByAddress } = await client
+      .from("venues")
+      .select("id, name, address")
+      .ilike("address", address)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingByAddress) {
+      await client
+        .from("venues")
+        .update({ last_used_at: todayDate })
+        .eq("id", existingByAddress.id);
+      return existingByAddress;
+    }
+
+    // 2. Jika belum ada, buat entri venue baru
+    const { data: inserted, error: insertErr } = await client
+      .from("venues")
+      .insert([
+        {
+          name,
+          address: address || name,
+          city: "Bandung",
+          description: "Ditambahkan otomatis dari pembuatan acara",
+          last_used_at: todayDate,
+        },
+      ])
+      .select("id, name, address")
+      .single();
+
+    if (insertErr) throw insertErr;
+    return inserted;
+  });
+
+  if (error) {
+    console.warn("ensureVenueExistsAction warning:", error);
+  }
+
+  revalidatePath("/admin/venue");
+  return { success: true, venue: devResult };
+}
+

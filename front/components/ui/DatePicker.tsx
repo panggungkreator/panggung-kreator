@@ -234,20 +234,21 @@ export const DatePicker = memo(function DatePicker({
       <PopoverTrigger asChild>
         <button
           type="button"
+          translate="no"
           className={cn(
-            "flex h-12 w-full items-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-[#2c2c2c] transition-all hover:border-gray-300 focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white font-bold",
+            "flex h-12 w-full items-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-[#2c2c2c] transition-all hover:border-gray-300 focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white font-bold notranslate",
             isOpen ? "ring-2 ring-gray-900 border-transparent" : "",
             className
           )}
         >
           <Calendar className="mr-3 h-5 w-5 text-gray-400 flex-shrink-0" />
-          <span className={cn("flex-grow text-left", !selectedDate && "text-gray-400")}>
+          <span className={cn("flex-grow text-left notranslate", !selectedDate && "text-gray-400")} translate="no">
             {selectedDate ? formatDisplayDate(selectedDate) : placeholder}
           </span>
         </button>
       </PopoverTrigger>
 
-      <PopoverContent data-lenis-prevent className="w-[328px] p-4 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.4)] z-50" align="end" sideOffset={8}>
+      <PopoverContent data-lenis-prevent translate="no" className="w-[328px] p-4 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.4)] z-50 notranslate select-none" align="end" sideOffset={8}>
         {view === "calendar" ? (
           <div>
             {/* Header */}
