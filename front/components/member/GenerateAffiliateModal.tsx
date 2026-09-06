@@ -1,9 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Copy, Check, Sparkles, Share2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import {
+  getReferralCommissionSettingsAction,
+  ReferralCommissionSettings,
+} from "@/lib/actions/settings-actions";
 
 interface GenerateAffiliateModalProps {
   isOpen: boolean;
@@ -18,6 +22,15 @@ export default function GenerateAffiliateModal({
 }: GenerateAffiliateModalProps) {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [commissionSettings, setCommissionSettings] = useState<ReferralCommissionSettings | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      getReferralCommissionSettingsAction()
+        .then((settings) => setCommissionSettings(settings))
+        .catch((err) => console.error("Gagal memuat setting komisi referral:", err));
+    }
+  }, [isOpen]);
 
   const referralLink =
     typeof window !== "undefined"
@@ -46,7 +59,7 @@ export default function GenerateAffiliateModal({
         {/* Header with Icon */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 mb-1">
-
+            <Sparkles className="w-6 h-6" />
           </div>
           <span className="text-[10px] font-mono uppercase tracking-widest text-[#bc151b] font-bold block">
             [ KODE AFFILIATE AKTIF ]
@@ -78,7 +91,18 @@ export default function GenerateAffiliateModal({
             </button>
           </div>
           <p className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400">
-            Komisi standar: <strong>Rp 10.000 / pendaftar terkonfirmasi</strong>
+            Komisi standar:{" "}
+            <strong>
+              {commissionSettings ? (
+                commissionSettings.mode === "percentage" ? (
+                  `${commissionSettings.percentage}% dari total pembayaran member`
+                ) : (
+                  `Rp ${parseInt(commissionSettings.flatAmount.replace(/\D/g, "") || "10000", 10).toLocaleString("id-ID")} / pendaftar terkonfirmasi`
+                )
+              ) : (
+                "Rp 10.000 / pendaftar terkonfirmasi"
+              )}
+            </strong>
           </p>
         </div>
 
