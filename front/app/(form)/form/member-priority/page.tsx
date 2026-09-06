@@ -7,7 +7,7 @@ import Logo from "@/components/ui/Logo";
 import StepEssential from "@/app/(form)/form/member-priority/StepEssential";
 import { registerPriorityMemberAction } from "@/lib/actions/auth-actions";
 import { scrollToFirstError } from "@/lib/formValidation";
-import { CheckCircle2, Sun, Moon } from "lucide-react";
+import { CheckCircle2, Sun, Moon, Mail, ArrowRight } from "lucide-react";
 
 function MemberPriorityRegisterInner() {
   const router = useRouter();
@@ -165,14 +165,41 @@ function MemberPriorityRegisterInner() {
                 </span>
               </h2>
 
-              <p className="text-sm text-zinc-600 dark:text-zinc-400 font-sans leading-relaxed max-w-md">
-                Formulirmu sudah tersimpan aman. Detailnya cek email kamu ya. Kamu akan mendapatkan update keseruan, info event & program terbaru Panggung Kreator.
-              </p>
+              {/* Informational Callout Box */}
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/50 p-5 sm:p-6 space-y-4 max-w-lg">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shrink-0 shadow-sm">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+                      Langkah Selanjutnya: Cek Email untuk Akses Akun
+                    </h3>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-sans">
+                      Formulirmu sudah tersimpan aman. Kami telah mengirimkan detail akun berupa <strong className="text-zinc-900 dark:text-white">Username</strong> dan <strong className="text-zinc-900 dark:text-white">Password</strong> ke alamat email kamu untuk masuk ke profil member.
+                    </p>
+                  </div>
+                </div>
 
-              <div className="pt-2">
+                <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 p-3.5 flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
+                  <span className="text-sm leading-none mt-0.5">💡</span>
+                  <p className="text-[11px] leading-relaxed font-medium">
+                    Belum melihat email masuk? Silakan periksa folder <strong className="font-bold underline">Spam</strong> atau tab <strong className="font-bold underline">Promosi</strong> di email kamu.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <Link
+                  href="/login"
+                  className="px-8 py-3.5 bg-black dark:bg-white text-white dark:text-black hover:bg-[#bc151b] dark:hover:bg-[#bc151b] hover:text-white dark:hover:text-white font-bold text-[11px] uppercase tracking-widest transition-all cursor-pointer inline-flex items-center gap-2 shadow-sm"
+                >
+                  <span>Login ke Profil</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
                 <Link
                   href="/"
-                  className="px-8 py-3.5 bg-black dark:bg-white text-white dark:text-black hover:bg-[#bc151b] dark:hover:bg-[#bc151b] hover:text-white dark:hover:text-white font-bold text-[11px] uppercase tracking-widest transition-all cursor-pointer inline-flex items-center gap-2"
+                  className="px-8 py-3.5 border border-zinc-300 dark:border-zinc-700 hover:border-zinc-900 dark:hover:border-zinc-100 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white font-bold text-[11px] uppercase tracking-widest transition-all cursor-pointer inline-flex items-center gap-2"
                 >
                   &larr; Kembali ke Beranda
                 </Link>
