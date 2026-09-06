@@ -110,6 +110,121 @@ export default function MembersClient({
 
   const limit = paginationLimit > 0 ? paginationLimit : 10;
 
+  // Sinkronkan state members ketika initialMembers dari server berubah
+  useEffect(() => {
+    setMembers(initialMembers);
+  }, [initialMembers]);
+
+  // Real-time Supabase subscription untuk pembaruan live data member tanpa membebani server
+  useEffect(() => {
+    const supabase = createClient();
+    let refreshTimeout: NodeJS.Timeout | null = null;
+
+    const debouncedRefresh = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        router.refresh();
+      }, 1000);
+    };
+
+    const channel = supabase
+      .channel("admin_members_realtime_list")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "members" },
+        async (payload: any) => {
+          if (payload.eventType === "INSERT") {
+            const newMemberBasic = payload.new as Member;
+            // Abaikan akun admin
+            if (newMemberBasic.role === "admin") return;
+
+            // Ambil relasi interests & package secara langsung via Supabase client agar data langsung muncul komplit
+            try {
+              const { data: fullMember } = await supabase
+                .from("members")
+                .select("*, interests:member_interests(*), package:packages(id, name)")
+                .eq("id", newMemberBasic.id)
+                .maybeSingle();
+
+              const memberToAdd = fullMember || newMemberBasic;
+
+              setMembers((prev) => {
+                if (prev.some((m) => m.id === memberToAdd.id)) {
+                  return prev.map((m) => (m.id === memberToAdd.id ? { ...m, ...memberToAdd } : m));
+                }
+                return [memberToAdd, ...prev];
+              });
+            } catch (err) {
+              setMembers((prev) => {
+                if (prev.some((m) => m.id === newMemberBasic.id)) return prev;
+                return [newMemberBasic, ...prev];
+              });
+            }
+            debouncedRefresh();
+          } else if (payload.eventType === "UPDATE") {
+            const updatedMember = payload.new as Member;
+            if (updatedMember.role === "admin") {
+              setMembers((prev) => prev.filter((m) => m.id !== updatedMember.id));
+            } else {
+              setMembers((prev) =>
+                prev.map((m) => (m.id === updatedMember.id ? { ...m, ...updatedMember } : m))
+              );
+            }
+            debouncedRefresh();
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = payload.old?.id;
+            if (deletedId) {
+              setMembers((prev) => prev.filter((m) => m.id !== deletedId));
+            }
+            debouncedRefresh();
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "member_interests" },
+        (payload: any) => {
+          const memberId = payload.new?.member_id || payload.old?.member_id;
+          if (memberId) {
+            setMembers((prev) =>
+              prev.map((m) =>
+                m.id === memberId
+                  ? { ...m, interests: payload.eventType === "DELETE" ? null : payload.new }
+                  : m
+              )
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      supabase.removeChannel(channel);
+    };
+  }, [router]);
+
+  // Auto-sync saat tab aktif kembali (visibility change / window focus) tanpa polling berkala
+  useEffect(() => {
+    let lastSyncTime = Date.now();
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        if (Date.now() - lastSyncTime > 20000) {
+          lastSyncTime = Date.now();
+          router.refresh();
+        }
+      }
+    };
+
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+    };
+  }, [router]);
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -493,12 +608,28 @@ export default function MembersClient({
           <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted block">
             [ ANGGOTA KOMUNITAS ]
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-0.5">
-            Manajemen Data Member
-          </h1>
+          <div className="flex items-center gap-2.5 mt-0.5">
+            <h1 className="text-2xl font-bold tracking-tight text-text-primary">
+              Manajemen Data Member
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 tracking-wider select-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              LIVE
+            </span>
+          </div>
         </div>
 
-        <div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              router.refresh();
+              toast.info("Memperbarui data member...");
+            }}
+            title="Segarkan data member"
+            className="inline-flex items-center justify-center h-9 w-9 text-text-muted hover:text-text-primary bg-bg-well/60 hover:bg-bg-well border border-border-default rounded-full transition-all cursor-pointer"
+          >
+            <RefreshCw size={14} />
+          </button>
           <button
             onClick={handleExportExcel}
             disabled={filteredMembers.length === 0}

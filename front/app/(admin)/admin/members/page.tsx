@@ -36,12 +36,12 @@ export default async function MembersPage() {
 
   const adminMemberIds = (adminRoles || []).map((r) => r.member_id).filter(Boolean);
 
-  // Tarik data seluruh member untuk tabel admin (kecuali admin & pending/active admin, hanya yang konfirmasi pembayaran lunas atau member priority)
+  // Tarik data seluruh member untuk tabel admin (kecuali admin & pending/active admin, hanya yang konfirmasi pembayaran lunas atau member priority/reguler/membership)
   let membersQuery = supabase
     .from("members")
     .select("*, interests:member_interests(*), package:packages(id, name)")
     .neq("role", "admin")
-    .or("payment_status.eq.paid,membership_tier.eq.priority");
+    .or("payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership");
 
   if (adminMemberIds.length > 0) {
     membersQuery = membersQuery.not("id", "in", `(${adminMemberIds.join(",")})`);
@@ -57,7 +57,7 @@ export default async function MembersPage() {
       .from("members")
       .select("*")
       .neq("role", "admin")
-      .or("payment_status.eq.paid,membership_tier.eq.priority");
+      .or("payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership");
 
     if (adminMemberIds.length > 0) {
       fallbackQuery = fallbackQuery.not("id", "in", `(${adminMemberIds.join(",")})`);
