@@ -422,6 +422,7 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         username: generatedUsername,
         temporary_password: generatedPassword,
         payment_status: 'pending',
+        membership_tier: 'new_member',
         role: 'member',
         used_voucher_code: payload.usedVoucherCode || null,
         package_id: payload.packageId || null,
@@ -499,15 +500,8 @@ export async function registerMemberAction(payload: CheckoutPayload) {
       return { success: false, error: txError.message };
     }
 
-    // 5. Sign in the user on the cookie-based client so their session is persisted on the client browser
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: payload.email.trim(),
-      password: generatedPassword,
-    });
-
-    if (signInError) {
-      console.error("Sign in after registration failed:", signInError);
-    }
+    // Note: Do NOT automatically sign in the pending member into the browser session.
+    // The member must login themselves after their payment is confirmed by Admin and credentials are sent to their email.
 
     // Send Registration & Payment Instruction Email via Nodemailer
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
@@ -522,10 +516,14 @@ export async function registerMemberAction(payload: CheckoutPayload) {
           },
         });
 
+        const waConfirmText = encodeURIComponent(
+          `Halo Admin Panggung Kreator, saya sudah melakukan pembayaran pendaftaran Akademi.\n\nNama: ${payload.fullName}\nEmail: ${payload.email.trim()}\nOrder ID: ${orderId}\nTotal: Rp ${finalPriceWithUniqueCode.toLocaleString('id-ID')}`
+        );
+
         await transporter.sendMail({
           from: `"Panggung Kreator" <${process.env.SMTP_USER}>`,
           to: payload.email.trim(),
-          subject: "Instruksi Pembayaran & Kredensial Akun - Panggung Kreator Akademi",
+          subject: "Instruksi Pembayaran - Panggung Kreator Akademi",
           html: `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
               <div style="background-color: #bc151b; color: white; padding: 25px; text-align: center; border-radius: 8px 8px 0 0;">
@@ -534,11 +532,12 @@ export async function registerMemberAction(payload: CheckoutPayload) {
               </div>
               <div style="padding: 25px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
                 <p>Halo <strong>${payload.fullName}</strong>,</p>
-                <p>Terima kasih telah mendaftar di <strong>Panggung Kreator Akademi</strong>. Akun Anda telah berhasil dibuat dengan status <strong>Menunggu Pembayaran</strong>.</p>
+                <p>Terima kasih telah mendaftar di <strong>Panggung Kreator Akademi</strong>. Pendaftaran Anda telah kami terima dengan status <strong>Menunggu Pembayaran</strong>.</p>
+                <p style="font-size: 13px; color: #475569;">Informasi akun dan kredensial login (username & password) akan dikirimkan secara otomatis melalui email setelah pembayaran Anda dikonfirmasi oleh Admin.</p>
 
                 <!-- INSTRUKSI PEMBAYARAN -->
                 <div style="border: 2px dashed #e2e8f0; padding: 20px; border-radius: 12px; margin: 25px 0; background-color: #fffdf5;">
-                  <h3 style="margin-top: 0; color: #bc151b; font-size: 15px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px; text-transform: uppercase; tracking-wider: 1px;">💰 Rincian Transfer Manual (QRIS)</h3>
+                  <h3 style="margin-top: 0; color: #bc151b; font-size: 15px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">💰 Rincian Transfer Manual (QRIS)</h3>
                   
                   <p style="font-size: 13px; margin: 10px 0;">Silakan lakukan transfer dengan nominal presisi berikut:</p>
                   
@@ -559,7 +558,7 @@ export async function registerMemberAction(payload: CheckoutPayload) {
 
                 <!-- TOMBOL KONFIRMASI WA -->
                 <div style="margin: 30px 0; text-align: center;">
-                  <a href="https://wa.me/6281111156736?text=Halo%20Admin%20Panggung%20Kreator%2C%20saya%20sudah%20melakukan%20pembayaran%20pendaftaran%20Akademi.%20Berikut%20bukti%20transfernya.%0A%0AUsername%20Login%20Saya%3A%20${generatedUsername}" style="background-color: #25d366; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px;">Kirim Bukti Pembayaran ke WhatsApp</a>
+                  <a href="https://wa.me/6281111156736?text=${waConfirmText}" style="background-color: #25d366; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px;">Kirim Bukti Pembayaran ke WhatsApp</a>
                 </div>
 
                 <p style="font-size: 13px; color: #64748b; margin-top: 30px; border-top: 1px solid #f1f5f9; padding-top: 15px;">Jika Anda memiliki kendala atau pertanyaan, silakan balas email ini untuk menghubungi tim support kami.</p>
@@ -581,8 +580,9 @@ export async function registerMemberAction(payload: CheckoutPayload) {
 
     return {
       success: true,
+      userId: user.id,
+      orderId: orderId,
       username: generatedUsername,
-      password: generatedPassword,
       finalPrice: finalPriceWithUniqueCode,
       uniqueCode: uniqueCode
     };
@@ -598,15 +598,15 @@ export async function verifyMemberPaymentAction(memberId: string) {
     const supabase = await createClient();
 
     // Cek apakah user yang memanggil adalah admin
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return { success: false, error: "Tidak diotorisasi" };
     }
 
     const { data: adminMember } = await supabase
       .from("members")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (!adminMember || adminMember.role !== "admin") {
@@ -659,7 +659,7 @@ export async function verifyMemberPaymentAction(memberId: string) {
         payment_status: "paid",
         membership_tier: "membership",
         tier_changed_at: new Date().toISOString(),
-        tier_changed_by: session.user.id,
+        tier_changed_by: user.id,
       })
       .eq("id", memberId);
 
@@ -695,7 +695,7 @@ export async function verifyMemberPaymentAction(memberId: string) {
             balance_after: newBalance,
             source: "referral_reward",
             description: `Komisi referral dari pendaftaran ${memberToVerify.full_name || "member"}`,
-            created_by: session.user.id,
+            created_by: user.id,
           });
 
         if (refUser.email) {

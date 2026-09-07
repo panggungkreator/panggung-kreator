@@ -16,10 +16,10 @@ export default async function AddPartnerPage({ searchParams }: PageProps) {
 
   // Check session
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     redirect("/login");
   }
 
@@ -27,7 +27,7 @@ export default async function AddPartnerPage({ searchParams }: PageProps) {
   const { data: member } = await supabase
     .from("members")
     .select("role")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (!member || member.role !== "admin") {

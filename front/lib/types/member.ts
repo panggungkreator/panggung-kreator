@@ -1,5 +1,5 @@
 export type Community = 'panggung_kreator' | 'berani_tampil_bicara'
-export type MembershipTier = 'free' | 'priority' | 'membership'
+export type MembershipTier = 'free' | 'priority' | 'membership' | 'new_member'
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
 export type PrimaryInterest = 'public_speaking' | 'mc_host' | 'voice_over' | 'content_creator' | 'personal_branding' | 'live_host'
 export type Pillar = 'public_speaking' | 'content_creation' | 'personal_branding'

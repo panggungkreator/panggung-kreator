@@ -23,7 +23,9 @@ import {
   X,
   Mail,
   Phone,
+  UserPlus,
 } from "lucide-react";
+import { AddAdminFromMemberDialog } from "./AddAdminFromMemberDialog";
 
 interface AdminUser {
   id: string;
@@ -54,6 +56,7 @@ export default function AdminsClient({
   const [isLoading, setIsLoading] = useState(false);
   const [adminToDelete, setAdminToDelete] = useState<{ id: string; name: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
 
   const limit = paginationLimit && paginationLimit > 0 ? paginationLimit : 10;
 
@@ -180,10 +183,19 @@ export default function AdminsClient({
             )}
           </div>
 
-          {/* Action Button Header Desktop (h-9 px-4 rounded-full) */}
+          {/* Action Buttons Header Desktop (h-9 px-4 rounded-full) */}
+          <button
+            type="button"
+            onClick={() => setIsAddAdminOpen(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition-all shadow-xs cursor-pointer shrink-0"
+          >
+            <UserPlus size={14} className="stroke-[2.5]" />
+            <span>Tambah Admin</span>
+          </button>
+
           <Link
             href="/admin/roles"
-            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition-all shadow-xs cursor-pointer shrink-0"
+            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-xs font-bold text-text-primary bg-bg-well hover:bg-zinc-200/80 dark:hover:bg-zinc-800 border border-border-default transition-all shadow-xs cursor-pointer shrink-0"
           >
             <Shield size={14} className="stroke-[2.5]" />
             <span>Atur Peran Admin</span>
@@ -545,17 +557,35 @@ export default function AdminsClient({
             </PopoverContent>
           </Popover>
 
+          {/* Action: Tambah Admin */}
+          <button
+            type="button"
+            onClick={() => setIsAddAdminOpen(true)}
+            className="h-9 px-3.5 rounded-full bg-white text-zinc-900 dark:bg-white dark:text-zinc-900 hover:bg-zinc-100 flex items-center gap-1.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+            title="Tambah Admin dari Member"
+          >
+            <UserPlus className="w-4 h-4 stroke-[2.5]" />
+            <span>Tambah</span>
+          </button>
+
           {/* Right Action: Atur Roles */}
           <Link
             href="/admin/roles"
-            className="h-9 px-4 rounded-full bg-white text-zinc-900 dark:bg-white dark:text-zinc-900 hover:bg-zinc-100 flex items-center gap-1.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+            className="h-9 px-3 rounded-full bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shrink-0"
             title="Kelola Peran Color Ranger"
           >
-            <Shield className="w-4 h-4 stroke-[2.5]" />
+            <Shield className="w-4 h-4 stroke-[2]" />
             <span>Peran</span>
           </Link>
         </div>
       </div>
+
+      {/* ═══ ADD ADMIN FROM MEMBER DIALOG ═══ */}
+      <AddAdminFromMemberDialog
+        isOpen={isAddAdminOpen}
+        onOpenChange={setIsAddAdminOpen}
+        onSuccess={() => router.refresh()}
+      />
 
       {/* ═══ DELETE CONFIRM DIALOG (Kustom Tanpa window.confirm) ═══ */}
       <DeleteConfirmDialog

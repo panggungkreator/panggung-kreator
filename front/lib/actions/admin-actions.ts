@@ -429,3 +429,177 @@ export async function deleteAdminAction(adminRoleId: string) {
     return { success: false, error: error.message };
   }
 }
+
+export async function searchMembersForAdminPromotionAction(query: string = "") {
+  try {
+    const serviceRoleClient = createServiceRoleClient();
+
+    // 1. Get member_ids that already have an active/pending admin_roles
+    const { data: existingAdminRoles } = await serviceRoleClient
+      .from("admin_roles")
+      .select("member_id")
+      .neq("status", "revoked");
+
+    const existingAdminMemberIds = new Set(
+      (existingAdminRoles || []).map((r: any) => r.member_id).filter(Boolean)
+    );
+
+    // 2. Query members table
+    let queryBuilder = serviceRoleClient
+      .from("members")
+      .select("id, full_name, stage_name, email, whatsapp_number, username, role, avatar_url")
+      .neq("role", "admin");
+
+    const cleanQuery = query.trim();
+    if (cleanQuery) {
+      queryBuilder = queryBuilder.or(
+        `full_name.ilike.%${cleanQuery}%,stage_name.ilike.%${cleanQuery}%,email.ilike.%${cleanQuery}%,username.ilike.%${cleanQuery}%,whatsapp_number.ilike.%${cleanQuery}%`
+      );
+    }
+
+    const { data: members, error } = await queryBuilder
+      .order("full_name", { ascending: true })
+      .limit(30);
+
+    if (error) throw error;
+
+    // Filter out any members who already have active admin_roles or role == admin
+    const filtered = (members || []).filter(
+      (m: any) => !existingAdminMemberIds.has(m.id) && m.role !== "admin"
+    );
+
+    return { success: true, data: filtered };
+  } catch (error: any) {
+    console.error("Error searching members for promotion:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function promoteMemberToAdminAction(input: {
+  memberId: string;
+  color: string;
+  label: string;
+}) {
+  try {
+    const supabase = await getSupabaseClient();
+    const serviceRoleClient = createServiceRoleClient();
+
+    // 1. Check auth user
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+
+    if (!currentUser) {
+      return { success: false, error: "Akses ditolak. Sesi login tidak valid." };
+    }
+
+    // 2. Verify current user is admin
+    const { data: currentMember } = await serviceRoleClient
+      .from("members")
+      .select("role")
+      .eq("id", currentUser.id)
+      .single();
+
+    if (!currentMember || currentMember.role !== "admin") {
+      return { success: false, error: "Akses ditolak. Hanya admin yang dapat menambahkan admin baru." };
+    }
+
+    // 3. Validation
+    if (!input.memberId) {
+      return { success: false, error: "Pilih member terlebih dahulu." };
+    }
+    if (!input.label || !input.label.trim()) {
+      return { success: false, error: "Label jabatan admin wajib diisi." };
+    }
+    if (!input.color) {
+      return { success: false, error: "Warna Ranger wajib dipilih." };
+    }
+
+    // 4. Check if color is already taken
+    const { data: duplicateColor } = await serviceRoleClient
+      .from("admin_roles")
+      .select("id, member_id")
+      .eq("color", input.color)
+      .neq("status", "revoked")
+      .maybeSingle();
+
+    if (duplicateColor && duplicateColor.member_id !== input.memberId) {
+      return { success: false, error: "Warna Ranger ini sudah digunakan oleh admin lain!" };
+    }
+
+    // 5. Fetch target member
+    const { data: targetMember, error: targetError } = await serviceRoleClient
+      .from("members")
+      .select("id, full_name, email, role")
+      .eq("id", input.memberId)
+      .single();
+
+    if (targetError || !targetMember) {
+      return { success: false, error: "Data member tidak ditemukan." };
+    }
+
+    const colorHex = COLOR_RANGERS[input.color as keyof typeof COLOR_RANGERS]?.hex || "#475569";
+    const now = new Date().toISOString();
+
+    // 6. Update member role to admin & insert/update admin_roles with dual sync
+    const { error: dualErr } = await syncDualOperation(async (client) => {
+      // Update role in members table
+      const { error: updateMemberErr } = await client
+        .from("members")
+        .update({ role: "admin" })
+        .eq("id", input.memberId);
+
+      if (updateMemberErr) throw updateMemberErr;
+
+      // Check if admin_roles record already exists (e.g. was previously revoked)
+      const { data: existingRole } = await client
+        .from("admin_roles")
+        .select("id")
+        .eq("member_id", input.memberId)
+        .maybeSingle();
+
+      if (existingRole) {
+        const { error: updateRoleErr } = await client
+          .from("admin_roles")
+          .update({
+            label: input.label.trim(),
+            color: input.color,
+            color_code: colorHex,
+            status: "active",
+            approved_by: currentUser.id,
+            approved_at: now,
+            updated_at: now,
+          })
+          .eq("id", existingRole.id);
+
+        if (updateRoleErr) throw updateRoleErr;
+      } else {
+        const { error: insertRoleErr } = await client
+          .from("admin_roles")
+          .insert({
+            member_id: input.memberId,
+            label: input.label.trim(),
+            color: input.color,
+            color_code: colorHex,
+            status: "active",
+            approved_by: currentUser.id,
+            approved_at: now,
+          });
+
+        if (insertRoleErr) throw insertRoleErr;
+      }
+
+      return true;
+    });
+
+    if (dualErr) throw dualErr;
+
+    revalidatePath("/admin/admins");
+    revalidatePath("/admin/members");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error promoting member to admin:", error);
+    return { success: false, error: error.message || "Gagal menambahkan admin." };
+  }
+}
+

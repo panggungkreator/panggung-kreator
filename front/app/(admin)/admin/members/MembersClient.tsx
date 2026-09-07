@@ -586,7 +586,7 @@ export default function MembersClient({
       m.email || "-",
       `="${m.whatsapp_number || ''}"`,
       m.community === "berani_tampil_bicara" ? "Berani Tampil Bicara" : "Panggung Kreator",
-      m.membership_tier === "priority" ? "Prioritas" : m.membership_tier === "membership" ? "Membership PK" : "General (Free)",
+      m.membership_tier === "priority" ? "Prioritas" : m.membership_tier === "membership" ? "Membership PK" : m.membership_tier === "new_member" ? "New Member" : "General (Free)",
       formatOccupation(m.occupation),
       new Date(m.created_at).toLocaleDateString("id-ID")
     ]);
@@ -1269,6 +1269,7 @@ export default function MembersClient({
                 </SelectTrigger>
                 <SelectContent className="bg-bg-card border-border-default">
                   <SelectItem value="free">General (Free)</SelectItem>
+                  <SelectItem value="new_member">New Member</SelectItem>
                   <SelectItem value="priority">Member Prioritas</SelectItem>
                   <SelectItem value="membership">Membership PK</SelectItem>
                 </SelectContent>

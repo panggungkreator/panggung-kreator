@@ -1,0 +1,1106 @@
+"use client";
+
+import React, { useState, useEffect, useTransition, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { verifyMemberPaymentAction, deleteMembersAction } from "@/lib/actions/checkout-actions";
+import { createClient } from "@/lib/supabase/client";
+import {
+  Search,
+  Trash2,
+  CheckCircle2,
+  X,
+  FileSpreadsheet,
+  ExternalLink,
+  Eye,
+  RefreshCw,
+  ArrowUpDown,
+  SlidersHorizontal,
+  Check,
+  Users,
+} from "lucide-react";
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Modal, ModalSection } from "@/components/ui/Modal";
+import { ModalConfirmation } from "@/components/ui/Modal-Confirmation";
+import AdminPagination from "@/components/admin/AdminPagination";
+import { toast } from "sonner";
+
+type Member = {
+  id: string;
+  full_name: string;
+  stage_name: string;
+  whatsapp_number: string;
+  email: string;
+  instagram_username?: string;
+  tiktok_username?: string;
+  social_media?: {
+    instagram?: string | null;
+    tiktok?: string | null;
+    youtube?: string | null;
+    linkedin?: string | null;
+  } | null;
+  occupation: string;
+  username: string;
+  temporary_password?: string;
+  payment_status: string;
+  created_at: string;
+  final_price?: number;
+  used_voucher_code?: string;
+  referred_by?: string;
+  referrer?: {
+    id: string;
+    full_name: string;
+    stage_name: string;
+    affiliate_code?: string;
+  } | null;
+  unique_code?: number;
+  role?: string;
+  package_id?: string | null;
+  membership_tier?: string;
+};
+
+interface ConfirmationClientProps {
+  initialMembers: Member[];
+  packages?: any[];
+  paginationLimit?: number;
+}
+
+const formatOccupation = (occupation: string | undefined) => {
+  if (!occupation) return "-";
+
+  const mapping: Record<string, string> = {
+    "content_creator": "Content Creator",
+    "kreator konten": "Kreator Konten",
+    "student": "Mahasiswa / Pelajar",
+    "employee": "Karyawan / Profesional",
+    "founder": "Pengusaha / Founder",
+    "executive": "Direktur / C-Level",
+    "designer": "Desainer / Seniman",
+    "writer": "Penulis / Jurnalis",
+    "influencer": "Influencer",
+    "other": "Lainnya"
+  };
+
+  const key = occupation.toLowerCase().trim();
+  if (mapping[key]) return mapping[key];
+
+  return occupation
+    .split(/[_-]/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+export default function ConfirmationClient({
+  initialMembers,
+  packages = [],
+  paginationLimit = 10,
+}: ConfirmationClientProps) {
+  const router = useRouter();
+  const packageMap = useMemo(() => {
+    return new Map(packages.map((p) => [p.id, p.name]));
+  }, [packages]);
+
+  const [members, setMembers] = useState<Member[]>(initialMembers);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "paid">("all");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name_asc">("newest");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [, startTransition] = useTransition();
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [detailMember, setDetailMember] = useState<Member | null>(null);
+
+  const limit = paginationLimit > 0 ? paginationLimit : 10;
+
+  // Sync initialMembers props to local state when Server Component re-fetches
+  useEffect(() => {
+    setMembers(initialMembers);
+  }, [initialMembers]);
+
+  // Real-time Supabase subscription for admin confirmation updates
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("admin_confirmation_realtime_dashboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "members" },
+        (payload: any) => {
+          if (payload.eventType === "INSERT") {
+            const newMember = payload.new as Member;
+            // Only display non-admin members with membership_tier 'new_member'
+            if (newMember.role !== "admin" && (newMember.membership_tier === "new_member" || !newMember.membership_tier)) {
+              setMembers((prev) => {
+                if (prev.some((m) => m.id === newMember.id)) return prev;
+                return [newMember, ...prev];
+              });
+              router.refresh();
+            }
+          } else if (payload.eventType === "UPDATE") {
+            const updatedMember = payload.new as Member;
+            if (updatedMember.role === "admin" || updatedMember.membership_tier === "priority") {
+              setMembers((prev) => prev.filter((m) => m.id !== updatedMember.id));
+            } else {
+              setMembers((prev) =>
+                prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
+              );
+            }
+            router.refresh();
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = payload.old.id;
+            setMembers((prev) => prev.filter((m) => m.id !== deletedId));
+            router.refresh();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [router]);
+
+  // Handle Refresh data
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    setCurrentPage(1);
+
+    try {
+      router.refresh();
+      toast.success("Data konfirmasi berhasil disegarkan!");
+    } catch {
+      toast.info("Memperbarui data...");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const [modal, setModal] = useState<{
+    isOpen: boolean;
+    type: "verify" | "delete";
+    title: string;
+    description: React.ReactNode;
+    onConfirm: () => void;
+    isLoading?: boolean;
+  }>({
+    isOpen: false,
+    type: "verify",
+    title: "",
+    description: "",
+    onConfirm: () => { },
+  });
+
+  // Formatting WhatsApp Link
+  const formatWhatsappLink = (phone: string, stageName: string, fullName: string) => {
+    let cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.startsWith("0")) {
+      cleanPhone = "62" + cleanPhone.slice(1);
+    }
+    const name = stageName || fullName;
+    const text = encodeURIComponent(
+      `Halo Kak ${name}, pendaftaran New Member Panggung Kreator Akademi Anda sudah kami verifikasi dan akun Anda telah aktif! Silakan bergabung dengan Grup WhatsApp Akademi di https://chat.whatsapp.com/JrJ9oXeYmdG4zC40HXMXjt`
+    );
+    return `https://wa.me/${cleanPhone}?text=${text}`;
+  };
+
+  // Format IDR Currency
+  const formatIDR = (value: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
+
+  // Handle Verify Payment Action
+  const handleVerify = (memberId: string, memberName: string) => {
+    if (verifyingId) return;
+
+    setModal({
+      isOpen: true,
+      type: "verify",
+      title: "Konfirmasi Member",
+      description: `Apakah anda yakin ingin mengkonfirmasi pelunasan dan mengaktifkan akses Membership untuk ${memberName}? Email berisi kredensial akun akan dikirim secara otomatis.`,
+      onConfirm: () => executeVerify(memberId, memberName),
+      isLoading: false,
+    });
+  };
+
+  const executeVerify = async (memberId: string, memberName: string) => {
+    setModal(prev => ({ ...prev, isLoading: true }));
+    setVerifyingId(memberId);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    startTransition(async () => {
+      try {
+        const result = await verifyMemberPaymentAction(memberId);
+        if (result.success) {
+          setMembers((prev) =>
+            prev.map((m) =>
+              m.id === memberId ? { ...m, payment_status: "paid", membership_tier: "membership" } : m
+            )
+          );
+          const msg = `Berhasil memverifikasi member ${memberName}. Kredensial telah dikirim ke email.`;
+          setSuccessMessage(msg);
+          toast.success(msg);
+          router.refresh();
+        } else {
+          const errMsg = result.error || "Gagal memverifikasi member.";
+          setErrorMessage(errMsg);
+          toast.error(errMsg);
+        }
+      } catch {
+        setErrorMessage("Terjadi kesalahan koneksi server.");
+        toast.error("Terjadi kesalahan koneksi server.");
+      } finally {
+        setVerifyingId(null);
+        setModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+      }
+    });
+  };
+
+  // Handle Selection
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedMembers.length && paginatedMembers.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedMembers.map(m => m.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      return newSet;
+    });
+  };
+
+  // Handle Delete
+  const handleDelete = (ids: string[]) => {
+    if (ids.length === 0) return;
+
+    let description: React.ReactNode = `Apakah anda yakin ingin menghapus ${ids.length} data secara permanen? Aksi ini tidak dapat dibatalkan.`;
+
+    if (ids.length === 1) {
+      const member = members.find(m => m.id === ids[0]);
+      if (member) {
+        const name = member.full_name || member.username || "Kreator";
+        description = (
+          <span>
+            Apakah anda yakin ingin menghapus data konfirmasi atas nama <span className="font-bold text-[#b91c1c]">{name}</span> secara permanen? Aksi ini tidak dapat dibatalkan.
+          </span>
+        );
+      }
+    }
+
+    setModal({
+      isOpen: true,
+      type: "delete",
+      title: "Hapus Data Konfirmasi",
+      description,
+      onConfirm: () => executeDelete(ids),
+      isLoading: false,
+    });
+  };
+
+  const executeDelete = async (ids: string[]) => {
+    setModal(prev => ({ ...prev, isLoading: true }));
+    setIsDeleting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    startTransition(async () => {
+      try {
+        const result = await deleteMembersAction(ids);
+        if (result.success) {
+          setMembers(prev => prev.filter(m => !ids.includes(m.id)));
+          setSelectedIds(new Set());
+          const msg = `Berhasil menghapus ${ids.length} data member`;
+          setSuccessMessage(msg);
+          toast.success(msg);
+          router.refresh();
+        } else {
+          const errMsg = result.error || "Gagal menghapus data.";
+          setErrorMessage(errMsg);
+          toast.error(errMsg);
+        }
+      } catch {
+        setErrorMessage("Terjadi kesalahan saat menghapus.");
+        toast.error("Terjadi kesalahan saat menghapus.");
+      } finally {
+        setIsDeleting(false);
+        setModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+      }
+    });
+  };
+
+  // Filtered & Sorted members list
+  const filteredMembers = useMemo(() => {
+    const list = members.filter((m) => {
+      const matchSearch =
+        (m.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (m.stage_name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (m.username || "").toLowerCase().includes(search.toLowerCase()) ||
+        (m.email || "").toLowerCase().includes(search.toLowerCase()) ||
+        (m.whatsapp_number || "").includes(search);
+
+      const matchStatus =
+        statusFilter === "all" || m.payment_status === statusFilter;
+
+      return matchSearch && matchStatus;
+    });
+
+    return list.sort((a, b) => {
+      if (sortBy === "newest") {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      if (sortBy === "oldest") {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      if (sortBy === "name_asc") {
+        return (a.full_name || "").localeCompare(b.full_name || "");
+      }
+      return 0;
+    });
+  }, [members, search, statusFilter, sortBy]);
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / limit));
+  const startIndex = (currentPage - 1) * limit;
+  const endIndex = Math.min(startIndex + limit, filteredMembers.length);
+  const paginatedMembers = useMemo(() => {
+    return filteredMembers.slice(startIndex, endIndex);
+  }, [filteredMembers, startIndex, endIndex]);
+
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, sortBy]);
+
+  // Export to Excel (CSV compatible format)
+  const handleExportExcel = () => {
+    if (filteredMembers.length === 0) return;
+
+    const headers = [
+      "ID",
+      "Nama Lengkap",
+      "Nama Panggung",
+      "Username",
+      "Email",
+      "No. WhatsApp",
+      "Pekerjaan",
+      "Status Pembayaran",
+      "Tagihan",
+      "Kode Voucher",
+      "Tanggal Terdaftar"
+    ];
+
+    const rows = filteredMembers.map(m => [
+      m.id,
+      m.full_name || "-",
+      m.stage_name || "-",
+      m.username || "-",
+      m.email || "-",
+      `="${m.whatsapp_number || ''}"`,
+      formatOccupation(m.occupation),
+      m.payment_status === "paid" ? "Lunas" : "Pending",
+      m.final_price || 49000,
+      m.used_voucher_code || "-",
+      new Date(m.created_at).toLocaleDateString("id-ID")
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(value => {
+        const escaped = String(value).replace(/"/g, '""');
+        return `"${escaped}"`;
+      }).join(","))
+    ].join("\n");
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStr = new Date().toISOString().split("T")[0];
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Konfirmasi_Member_${dateStr}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="space-y-6 pb-28 md:pb-12 text-zinc-800 dark:text-zinc-200 animate-fade-in">
+
+      {/* ═══ TOP HEADER (Sesuai admin-mobile.md) ═══ */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-default/60">
+        <div>
+          <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-text-muted">
+            [ DATA CENTER ]
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-0.5">
+            Confirmation
+          </h1>
+          <p className="text-xs text-text-secondary mt-0.5">
+            Daftar antrean konfirmasi pembayaran dan aktivasi member baru Akademi
+          </p>
+        </div>
+
+        {/* Quick Search & Desktop Actions Header */}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 w-3.5 h-3.5" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari konfirmasi..."
+              className="h-9 w-full rounded-full pl-9 pr-8 text-xs font-medium bg-bg-well/70 border border-border-default text-text-primary focus:outline-none focus:border-text-primary transition-colors"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+        </div>
+      </div>
+
+      {/* Alert Messages */}
+      {successMessage && (
+        <div className="p-4 bg-[#dcfce7] border border-emerald-200/50 rounded-2xl text-xs text-[#15803d] dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 flex items-center justify-between font-semibold">
+          <span className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-[#15803d] dark:text-emerald-400" />
+            {successMessage}
+          </span>
+          <button onClick={() => setSuccessMessage(null)} className="hover:opacity-80 p-1 cursor-pointer">✕</button>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="p-4 bg-[#fee2e2] border border-red-200/50 rounded-2xl text-xs text-[#b91c1c] dark:bg-red-950/20 dark:text-red-400 dark:border-red-500/20 flex items-center justify-between font-semibold">
+          <span className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-[#b91c1c] dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            {errorMessage}
+          </span>
+          <button onClick={() => setErrorMessage(null)} className="hover:opacity-80 p-1 cursor-pointer">✕</button>
+        </div>
+      )}
+
+      {/* ═══ DESKTOP CONTROLS TOOLBAR (Hidden on Mobile untuk cegah button ganda) ═══ */}
+      <div className="hidden md:flex items-center justify-between gap-4 bg-white dark:bg-[#121212] border border-border-default/70 p-3.5 rounded-2xl shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs font-bold text-text-secondary">Filter Status:</span>
+          <div className="w-44">
+            <Select
+              value={sortBy}
+              onValueChange={(value) => setSortBy(value as "newest" | "oldest" | "name_asc")}
+            >
+              <SelectTrigger className="h-9 w-full bg-bg-well/60 border border-border-default rounded-xl px-3 text-xs font-bold text-text-primary focus:ring-0 cursor-pointer">
+                <SelectValue placeholder="Urutkan Data" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10">
+                <SelectItem value="newest">Tanggal Terbaru</SelectItem>
+                <SelectItem value="oldest">Tanggal Terlama</SelectItem>
+                <SelectItem value="name_asc">Nama (A-Z)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Refresh button */}
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="h-9 px-3.5 rounded-xl border border-border-default bg-bg-well/60 hover:bg-bg-well text-xs font-bold text-text-secondary hover:text-text-primary flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+          title="Segarkan Data"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          <span>Refresh</span>
+        </button>
+      </div>
+
+      {/* Selected Rows Mass Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="p-3.5 border border-border-default bg-bg-well/70 rounded-2xl flex items-center justify-between animate-fade-in shadow-xs">
+          <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 px-2">
+            {selectedIds.size} data terpilih
+          </span>
+          <button
+            onClick={() => handleDelete(Array.from(selectedIds))}
+            disabled={isDeleting}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#fee2e2] text-[#b91c1c] hover:bg-[#fecaca] transition-all cursor-pointer disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {isDeleting ? "Menghapus..." : "Hapus Terpilih"}
+          </button>
+        </div>
+      )}
+
+      {/* ═══ 1. DESKTOP VIEW: TABLE (hidden on mobile, visible on md/lg) ═══ */}
+      <div className="hidden md:block bg-bg-card border border-border-default rounded-2xl overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="text-zinc-650 dark:text-zinc-400 font-semibold">
+                <th className="py-4 px-6 border-b border-r border-border-default/70 bg-bg-well/50 text-center w-12">
+                  <input
+                    type="checkbox"
+                    className="rounded border-zinc-300 dark:border-white/10 text-zinc-900 focus:ring-zinc-900 dark:bg-zinc-900 cursor-pointer"
+                    checked={selectedIds.size === paginatedMembers.length && paginatedMembers.length > 0}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
+                <th className="py-4 px-4 border-b border-r border-border-default last:border-r-0 bg-bg-well/40 text-center w-12"></th>
+                <th className="py-4 px-6 border-b border-r border-border-default last:border-r-0 bg-bg-well/40">Member</th>
+                <th className="py-4 px-6 border-b border-r border-border-default last:border-r-0 bg-bg-well/40">No. WhatsApp</th>
+                <th className="py-4 px-6 border-b border-r border-border-default last:border-r-0 bg-bg-well/40">Paket</th>
+                <th className="py-4 px-6 border-b border-r border-border-default last:border-r-0 bg-bg-well/40">Nominal</th>
+                <th className="py-4 px-6 border-b border-r border-border-default last:border-r-0 bg-bg-well/40">Tgl Terdaftar</th>
+                <th className="py-4 px-6 border-b border-r border-border-default last:border-r-0 bg-bg-well/40 text-center">Status</th>
+                <th className="py-4 px-6 border-b border-r border-border-default last:border-r-0 bg-bg-well/40 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-default/30">
+              {paginatedMembers.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-text-muted font-semibold">
+                    Tidak ada data konfirmasi member ditemukan.
+                  </td>
+                </tr>
+              ) : (
+                paginatedMembers.map((member, index) => {
+                  const isLastRow = index === paginatedMembers.length - 1;
+                  const cellBorderClass = `${isLastRow ? "" : "border-b"} border-r border-border-default/30 last:border-r-0 py-4 px-5`;
+
+                  return (
+                    <tr key={member.id} className="hover:bg-bg-well/30 transition-colors group">
+                      <td className={`${cellBorderClass} text-center`}>
+                        <input
+                          type="checkbox"
+                          className="rounded border-zinc-300 dark:border-white/10 text-zinc-900 focus:ring-zinc-900 dark:bg-zinc-900 cursor-pointer"
+                          checked={selectedIds.has(member.id)}
+                          onChange={() => toggleSelect(member.id)}
+                        />
+                      </td>
+                      <td className={`${cellBorderClass} text-center`}>
+                        <button
+                          onClick={() => setDetailMember(member)}
+                          className="p-1.5 text-text-secondary hover:text-text-primary bg-bg-well hover:bg-border-default/50 border border-border-default rounded-lg cursor-pointer inline-flex items-center justify-center"
+                          title="Detail"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </td>
+
+                      {/* Member Info */}
+                      <td className={cellBorderClass}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center font-bold text-sm">
+                            {(member.full_name || "M")[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-bold text-zinc-900 dark:text-zinc-100 text-sm leading-tight">{member.full_name}</div>
+                            <div className="text-zinc-400 dark:text-zinc-500 font-medium text-[10px] mt-0.5 flex items-center gap-1.5">
+                              <span>@{member.username || "username"}</span>
+                              {member.stage_name && (
+                                <>
+                                  <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
+                                  <span className="text-zinc-500 dark:text-zinc-400 font-semibold">{member.stage_name}</span>
+                                </>
+                              )}
+                            </div>
+                            {/* Badges Petanda Referral & Voucher */}
+                            {(member.used_voucher_code || member.referrer || member.referred_by) && (
+                              <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                                {member.used_voucher_code && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                                    🎟️ {member.used_voucher_code}
+                                  </span>
+                                )}
+                                {(member.referrer || member.referred_by) && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                    🎁 Ref: {member.referrer?.stage_name || member.referrer?.full_name || "Ada"}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* WhatsApp Details */}
+                      <td className={cellBorderClass}>
+                        <div className="font-semibold text-zinc-700 dark:text-zinc-300">{member.whatsapp_number || "-"}</div>
+                        <a
+                          href={formatWhatsappLink(member.whatsapp_number, member.stage_name, member.full_name)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] font-bold text-[#bc151b] hover:underline mt-1 inline-flex items-center gap-0.5"
+                        >
+                          <span>Kirim Pesan</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </td>
+
+                      {/* Paket */}
+                      <td className={cellBorderClass}>
+                        <div className="font-semibold text-zinc-700 dark:text-zinc-300">
+                          {packageMap.get(member.package_id || "") || "-"}
+                        </div>
+                      </td>
+
+                      {/* Nominal */}
+                      <td className={`${cellBorderClass} font-bold text-zinc-800 dark:text-zinc-200`}>
+                        {member.final_price ? formatIDR(member.final_price) : "-"}
+                      </td>
+
+                      {/* Created date */}
+                      <td className={`${cellBorderClass} font-medium text-zinc-500 dark:text-zinc-400`}>
+                        {new Date(member.created_at).toLocaleDateString("id-ID", {
+                          day: "numeric", month: "short", year: "numeric",
+                        })}
+                      </td>
+
+                      {/* Payment Status Badges */}
+                      <td className={`${cellBorderClass} text-center`}>
+                        {member.payment_status === "pending" ? (
+                          <button
+                            onClick={() => handleVerify(member.id, member.full_name || member.username || "Kreator")}
+                            disabled={verifyingId !== null}
+                            className="px-4 py-1.5 bg-[#BAFF6A] text-zinc-950 hover:bg-[#a5f053] rounded-full text-xs font-bold transition-all disabled:opacity-50 shadow-xs cursor-pointer border border-lime-500/20 active:scale-95"
+                          >
+                            {verifyingId === member.id ? "Memproses..." : "Konfirmasi Lunas"}
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-3.5 py-1 bg-[#dcfce7] text-[#15803d] dark:bg-emerald-950/20 dark:text-emerald-400 rounded-full text-xs font-bold border border-emerald-200/20">
+                            Lunas
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Individual actions */}
+                      <td className={`${cellBorderClass} text-center`}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleDelete([member.id])}
+                            disabled={isDeleting}
+                            className="p-1.5 text-[#b91c1c] hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 disabled:opacity-50 transition-all"
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ═══ 2. MOBILE VIEW: CARDS (Sesuai Standar admin-mobile.md) ═══ */}
+      <div className="md:hidden space-y-4">
+        {paginatedMembers.length === 0 ? (
+          <div className="bg-bg-card border border-border-default/70 rounded-3xl p-8 text-center text-text-muted shadow-xs">
+            <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-xs font-medium">Tidak ada data konfirmasi member ditemukan.</p>
+          </div>
+        ) : (
+          paginatedMembers.map((member) => {
+            const pkgName = packageMap.get(member.package_id || "") || "Akademi Regular";
+            return (
+              <div
+                key={member.id}
+                onClick={() => setDetailMember(member)}
+                className="bg-white dark:bg-[#121212] border border-border-default/70 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-3xl p-4 sm:p-5 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group relative cursor-pointer active:scale-[0.99]"
+              >
+                {/* Top: Status Badge, Nominal, & Checkbox */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="rounded border-zinc-300 dark:border-white/10 text-zinc-900 focus:ring-zinc-900 dark:bg-zinc-900 cursor-pointer w-4 h-4"
+                      checked={selectedIds.has(member.id)}
+                      onChange={() => toggleSelect(member.id)}
+                    />
+                    {member.payment_status === "pending" ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#fef9c3] text-[#854d0e] border border-[#fde047] dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800">
+                        Menunggu Konfirmasi
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#dcfce7] text-[#15803d] border border-[#86efac] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                        Lunas
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="text-xs font-extrabold font-mono text-text-primary">
+                    {formatIDR(member.final_price || 49000)}
+                  </span>
+                </div>
+
+                {/* Middle: Member info */}
+                <div className="my-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 flex items-center justify-center font-bold text-xs shrink-0">
+                      {(member.full_name || "M")[0].toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="text-sm font-bold tracking-tight text-text-primary leading-tight truncate">
+                          {member.full_name}
+                        </h3>
+                        {member.stage_name && (
+                          <span className="text-[10px] font-semibold text-text-muted">
+                            ({member.stage_name})
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-text-secondary font-mono mt-0.5 truncate">
+                        @{member.username || "username"} • <span className="text-text-muted">{formatOccupation(member.occupation)}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Package & Badges */}
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-bg-well border border-border-default/60 text-[10px] font-semibold text-text-secondary">
+                      📦 {pkgName}
+                    </span>
+                    {member.used_voucher_code && (
+                      <span className="px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                        🎟️ {member.used_voucher_code}
+                      </span>
+                    )}
+                    {(member.referrer || member.referred_by) && (
+                      <span className="px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        🎁 Ref: {member.referrer?.stage_name || member.referrer?.full_name || "Ada"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom: Contact info & Action buttons */}
+                <div className="pt-2 border-t border-border-default/40 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-mono text-text-secondary truncate">
+                      {member.whatsapp_number || "-"}
+                    </p>
+                    <p className="text-[10px] text-text-muted mt-0.5">
+                      {new Date(member.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {member.payment_status === "pending" && (
+                      <button
+                        type="button"
+                        onClick={() => handleVerify(member.id, member.full_name || member.username || "Kreator")}
+                        disabled={verifyingId !== null}
+                        className="h-8 px-3 rounded-full text-xs font-bold text-zinc-950 bg-[#BAFF6A] hover:bg-[#a5f053] active:scale-95 transition-all cursor-pointer shadow-2xs flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>{verifyingId === member.id ? "..." : "Konfirmasi"}</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setDetailMember(member)}
+                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
+                      title="Lihat Detail"
+                    >
+                      <Eye size={13} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete([member.id])}
+                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-red-50 text-red-600 dark:hover:bg-red-950/20 active:scale-95 transition-all cursor-pointer"
+                      title="Hapus"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ═══ PAGINATION CONTROLS (Sesuai Standar admin-mobile.md Bagian 5) ═══ */}
+      <AdminPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredMembers.length}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        limit={limit}
+        itemLabel="konfirmasi"
+        onPageChange={setCurrentPage}
+      />
+
+      {/* ═══ FLOATING BOTTOM CONTROLS DOCK (Mobile md:hidden Sesuai admin-mobile.md Bagian 3B) ═══ */}
+      <div className="md:hidden fixed bottom-6 inset-x-0 z-30 pointer-events-none flex justify-center px-4">
+        <div className="pointer-events-auto bg-zinc-900/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-2 text-white">
+
+          {/* 1. Refresh Button */}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer disabled:opacity-60"
+            title="Segarkan Data"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-white" : ""}`} />
+          </button>
+
+          {/* 2. Sort Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer ${sortBy !== "newest" ? "text-white bg-zinc-800" : ""
+                  }`}
+                title="Urutkan Data"
+              >
+                <ArrowUpDown className="w-4 h-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="center"
+              className="w-52 p-2.5 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-1 mb-2 z-50"
+            >
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted px-2.5 py-1 block border-b border-border-default/50 mb-1">
+                Urutkan Berdasarkan
+              </span>
+              <button
+                type="button"
+                onClick={() => setSortBy("newest")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "newest" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                  }`}
+              >
+                <span>Tanggal Terbaru</span>
+                {sortBy === "newest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy("oldest")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "oldest" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                  }`}
+              >
+                <span>Tanggal Terlama</span>
+                {sortBy === "oldest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy("name_asc")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "name_asc" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                  }`}
+              >
+                <span>Nama (A-Z)</span>
+                {sortBy === "name_asc" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+              </button>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      {/* ═══ CONFIRMATION MODALS (rounded-none sm:rounded-3xl border-0 sm:border) ═══ */}
+      <ModalConfirmation
+        isOpen={modal.isOpen}
+        onClose={() => setModal(prev => ({ ...prev, isOpen: false }))}
+        title={modal.title}
+        description={modal.description}
+        onConfirm={modal.onConfirm}
+        isLoading={modal.isLoading}
+        type={modal.type}
+      />
+
+      {/* ═══ DETAIL MEMBER MODAL ═══ */}
+      <Modal
+        isOpen={!!detailMember}
+        onClose={() => setDetailMember(null)}
+        maxWidth="max-w-2xl"
+        icon={(detailMember?.full_name || "M")[0].toUpperCase()}
+        title={detailMember?.full_name}
+        subtitle={`@${detailMember?.username || "username"}`}
+        footer={
+          <div className="flex gap-3">
+            <button
+              onClick={() => setDetailMember(null)}
+              className="px-6 py-2.5 text-xs font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-all w-full cursor-pointer text-center"
+            >
+              Tutup
+            </button>
+            {detailMember?.whatsapp_number && (
+              <a
+                href={formatWhatsappLink(detailMember.whatsapp_number, detailMember.stage_name, detailMember.full_name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-2.5 text-xs font-bold text-white bg-[#15803d] hover:bg-[#166534] rounded-full transition-all w-full flex justify-center items-center gap-2 cursor-pointer shadow-xs text-center"
+              >
+                <span>WhatsApp</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+        }
+      >
+        {detailMember && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+            {/* Personal Section */}
+            <ModalSection title="Informasi Personal" titleColor="text-[#15803d] dark:text-emerald-400">
+              <div className="space-y-2.5">
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Nama Panggung:</span>
+                  <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.stage_name || "-"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Username:</span>
+                  <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.username}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Pekerjaan:</span>
+                  <span className="font-semibold text-zinc-750 dark:text-zinc-200">{formatOccupation(detailMember.occupation)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Tgl Terdaftar:</span>
+                  <span className="font-semibold text-zinc-750 dark:text-zinc-200">
+                    {new Date(detailMember.created_at).toLocaleDateString("id-ID", {
+                      day: "numeric", month: "long", year: "numeric"
+                    })}
+                  </span>
+                </div>
+              </div>
+            </ModalSection>
+
+            {/* Contact & Social Section */}
+            <ModalSection title="Kontak & Sosial Media" titleColor="text-[#b91c1c] dark:text-red-400">
+              <div className="space-y-2.5">
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">No. WhatsApp:</span>
+                  <span className="font-semibold text-zinc-750 dark:text-zinc-200">{detailMember.whatsapp_number || "-"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Instagram:</span>
+                  {(detailMember.social_media?.instagram || detailMember.instagram_username) &&
+                    (detailMember.social_media?.instagram || detailMember.instagram_username || "").trim() !== "" &&
+                    (detailMember.social_media?.instagram || detailMember.instagram_username || "").trim() !== "-" ? (
+                    <a
+                      href={`https://instagram.com/${(detailMember.social_media?.instagram || detailMember.instagram_username || "").replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-[#bc151b] hover:underline"
+                    >
+                      @{(detailMember.social_media?.instagram || detailMember.instagram_username || "").replace("@", "")}
+                    </a>
+                  ) : (
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">TikTok:</span>
+                  {(detailMember.social_media?.tiktok || detailMember.tiktok_username) &&
+                    (detailMember.social_media?.tiktok || detailMember.tiktok_username || "").trim() !== "" &&
+                    (detailMember.social_media?.tiktok || detailMember.tiktok_username || "").trim() !== "-" ? (
+                    <a
+                      href={`https://tiktok.com/@${(detailMember.social_media?.tiktok || detailMember.tiktok_username || "").replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-[#bc151b] hover:underline"
+                    >
+                      @{(detailMember.social_media?.tiktok || detailMember.tiktok_username || "").replace("@", "")}
+                    </a>
+                  ) : (
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Email:</span>
+                  {detailMember.email &&
+                    detailMember.email.trim() !== "" &&
+                    detailMember.email.trim() !== "-" ? (
+                    <a
+                      href={`mailto:${detailMember.email}`}
+                      className="font-bold text-[#bc151b] hover:underline"
+                    >
+                      {detailMember.email}
+                    </a>
+                  ) : (
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-200">-</span>
+                  )}
+                </div>
+              </div>
+            </ModalSection>
+
+            {/* Payment Section */}
+            <ModalSection title="Informasi Paket & Pembayaran" titleColor="text-[#713f12] dark:text-amber-400" className="md:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5">
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Paket Pilihan:</span>
+                  <span className="font-bold text-zinc-750 dark:text-zinc-200">
+                    {packageMap.get(detailMember.package_id || "") || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400 font-medium">Status Pembayaran:</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${detailMember.payment_status === "paid"
+                    ? "bg-[#dcfce7] text-[#15803d] border-emerald-200/20"
+                    : "bg-[#fef9c3] text-[#713f12] border-yellow-200/20"
+                    }`}>
+                    {detailMember.payment_status === "paid" ? "Lunas" : "Pending"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Voucher Terpakai:</span>
+                  <span className="font-bold text-purple-600 dark:text-purple-400">
+                    {detailMember.used_voucher_code ? `🎟️ ${detailMember.used_voucher_code}` : "Tidak ada"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Referral by:</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">
+                    {detailMember.referrer?.stage_name || detailMember.referrer?.full_name || (detailMember.referred_by ? "Ada (Referral)" : "Tidak ada")}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400 font-medium">Kode Unik:</span>
+                  <span className="font-bold text-zinc-750 dark:text-zinc-200">{detailMember.unique_code ?? "-"}</span>
+                </div>
+              </div>
+              <div className="flex justify-between pt-3 mt-3 border-t border-zinc-200/40 dark:border-white/5">
+                <span className="text-zinc-400 font-bold">Total Pembayaran:</span>
+                <span className="font-extrabold text-zinc-900 dark:text-white text-sm">
+                  Rp {(detailMember.final_price ?? (49000 + (detailMember.unique_code ?? 0))).toLocaleString('id-ID')}
+                </span>
+              </div>
+            </ModalSection>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}

@@ -20,10 +20,10 @@ export default async function AcaraDetailPage({
   const supabase = await createClient();
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     redirect("/login");
   }
 
@@ -31,7 +31,7 @@ export default async function AcaraDetailPage({
   const { data: adminRole } = await supabase
     .from("admin_roles")
     .select("id, status")
-    .eq("member_id", session.user.id)
+    .eq("member_id", user.id)
     .maybeSingle();
 
   let permMap: Record<string, string[]> = {};
@@ -45,7 +45,7 @@ export default async function AcaraDetailPage({
   const { data: member } = await supabase
     .from("members")
     .select("role")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (!member || member.role !== "admin") {

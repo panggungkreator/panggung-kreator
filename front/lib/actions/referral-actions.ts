@@ -216,15 +216,15 @@ export async function confirmPaymentWithRewardAction({
     const supabase = await createClient();
 
     // 1. Verifikasi Admin Session
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return { success: false, error: "Tidak diotorisasi. Silakan login kembali." };
     }
 
     const { data: currentAdmin } = await supabase
       .from("members")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (!currentAdmin || currentAdmin.role !== "admin") {
@@ -350,7 +350,7 @@ export async function confirmPaymentWithRewardAction({
       payment_status: "paid",
       membership_tier: targetTier,
       tier_changed_at: nowStr,
-      tier_changed_by: session.user.id,
+      tier_changed_by: user.id,
     };
 
     if (referrerId) {
@@ -415,7 +415,7 @@ export async function confirmPaymentWithRewardAction({
             referred_id: tx.member_id,
             reward_amount: cleanRewardAmount,
             status: "confirmed",
-            confirmed_by: session.user.id,
+            confirmed_by: user.id,
             confirmed_at: nowStr,
             notes: notes || null,
           })
@@ -446,7 +446,7 @@ export async function confirmPaymentWithRewardAction({
               source: "referral_reward",
               reference_id: rewardRecord?.id || tx.id,
               description: `Komisi referral dari pendaftaran ${payingMember?.full_name || "member"}`,
-              created_by: session.user.id,
+              created_by: user.id,
             });
         }
 

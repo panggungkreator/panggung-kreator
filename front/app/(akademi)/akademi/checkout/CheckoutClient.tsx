@@ -8,13 +8,6 @@ import { signout } from '@/lib/actions/auth-actions';
 import { createClient } from '@/lib/supabase/client';
 import { registerMemberAction, validateVoucherAction } from '@/lib/actions/checkout-actions';
 import { validateReferralCodeAction } from '@/lib/actions/referral-actions';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Modal } from '@/components/ui/Modal';
 import { InputLine } from '@/components/ui/style-line/InputLine';
 import { PhoneNumberLine } from '@/components/ui/style-line/PhoneNumberLine';
@@ -48,7 +41,6 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [dbMember, setDbMember] = useState<any>(null);
   const [loadingSession, setLoadingSession] = useState(true);
-  const [generatedAccount, setGeneratedAccount] = useState<{ username: string, password: string } | null>(null);
   const [error, setError] = useState("");
   const [isBenefitsModalOpen, setIsBenefitsModalOpen] = useState(false);
   const [showVoucherInput, setShowVoucherInput] = useState(false);
@@ -82,77 +74,15 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
     const checkSession = async () => {
       const supabase = createClient();
 
-      // Check localStorage for cached checkout state first to load payment section instantly
+      // Check localStorage for cached checkout state first to load QRIS payment section if exists
       const cachedStateStr = typeof window !== 'undefined' ? localStorage.getItem("pangkreas_checkout_state") : null;
       if (cachedStateStr) {
         try {
           const cached = JSON.parse(cachedStateStr);
           if (cached && cached.expiry && Date.now() < cached.expiry) {
-            setGeneratedAccount(cached.accountData);
             setDbMember(cached.memberData);
             setQrisGenerated(true);
             setLoadingSession(false);
-
-            // Fetch session in the background to verify/redirect if paid
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-              setCurrentUser(session.user);
-              const { data: member } = await supabase
-                .from("members")
-                .select("*")
-                .eq("id", session.user.id)
-                .maybeSingle();
-
-              if (member) {
-                if (member.role === 'admin') {
-                  localStorage.removeItem("pangkreas_checkout_state");
-                  setCurrentUser(null);
-                  setDbMember(null);
-                  setQrisGenerated(false);
-                } else if (member.payment_status === 'paid') {
-                  await supabase.auth.signOut();
-                  localStorage.removeItem("pangkreas_checkout_state");
-                  setCurrentUser(null);
-                  setDbMember(null);
-                  setQrisGenerated(false);
-                  router.push('/login');
-                } else {
-                  const { data: transaction } = await supabase
-                    .from("transactions")
-                    .select("unique_code")
-                    .eq("member_id", session.user.id)
-                    .eq("status", "pending")
-                    .order("created_at", { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                  const derivedUniqueCode = transaction?.unique_code || (member.final_price ? member.final_price % 1000 : 0);
-                  const updatedMemberData = {
-                    ...member,
-                    unique_code: derivedUniqueCode
-                  };
-                  setDbMember(updatedMemberData);
-                  localStorage.setItem("pangkreas_checkout_state", JSON.stringify({
-                    accountData: cached.accountData,
-                    memberData: updatedMemberData,
-                    expiry: cached.expiry
-                  }));
-                }
-              } else {
-                // If member record doesn't exist in database (e.g. deleted by admin), clear session and cache
-                await supabase.auth.signOut();
-                localStorage.removeItem("pangkreas_checkout_state");
-                setCurrentUser(null);
-                setDbMember(null);
-                setQrisGenerated(false);
-              }
-            } else {
-              localStorage.removeItem("pangkreas_checkout_state");
-              setCurrentUser(null);
-              setDbMember(null);
-              setQrisGenerated(false);
-              router.push('/login');
-            }
             return;
           } else {
             localStorage.removeItem("pangkreas_checkout_state");
@@ -162,11 +92,10 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
         }
       }
 
+      // Check if there is an active session (e.g. existing member browsing)
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setCurrentUser(session.user);
-
-        // Fetch member profile
         const { data: member } = await supabase
           .from("members")
           .select("*")
@@ -174,86 +103,39 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
           .maybeSingle();
 
         if (member) {
-          if (member.role === 'admin') {
-            // Jika admin, biarkan form kosong dan jangan ambil data admin ke form
-            setCurrentUser(null);
+          if (member.role === 'admin' || member.payment_status === 'paid') {
+            // User sudah aktif/admin, biarkan sesi login tetap aman dan jangan kunci form
+            setCurrentUser(session.user);
             setDbMember(null);
             setQrisGenerated(false);
-          } else {
-            if (member.payment_status === 'paid') {
-              // Redirect member yang sudah lunas ke login
-              await supabase.auth.signOut();
-              localStorage.removeItem("pangkreas_checkout_state");
-              setCurrentUser(null);
-              setDbMember(null);
-              setQrisGenerated(false);
-              router.push('/login');
-            } else {
-              // Fetch pending transaction to get unique_code
-              const { data: transaction } = await supabase
-                .from("transactions")
-                .select("unique_code")
-                .eq("member_id", session.user.id)
-                .eq("status", "pending")
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
+          } else if (member.payment_status === 'pending') {
+            // Fetch pending transaction to get unique_code
+            const { data: transaction } = await supabase
+              .from("transactions")
+              .select("unique_code")
+              .eq("member_id", session.user.id)
+              .eq("status", "pending")
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
 
-              const derivedUniqueCode = transaction?.unique_code || (member.final_price ? member.final_price % 1000 : 0);
-              const memberData = {
-                ...member,
-                unique_code: derivedUniqueCode
-              };
-              setDbMember(memberData);
-              // Set values to form
-              setFormData({
-                fullName: member.full_name || '',
-                stageName: member.stage_name || '',
-                instagram: member.instagram_username || '',
-                tiktok: member.tiktok_username || '',
-                whatsapp: member.whatsapp_number || '',
-                email: member.email || session.user.email || '',
-                profession: member.occupation || ''
-              });
-              // Set applied voucher if exists
-              if (member.used_voucher_code && member.final_price) {
-                // Determine base price based on member's package or fallback to selectedPackage
-                const parsedPrice = selectedPackage?.price ? parseInt(selectedPackage.price.replace(/\D/g, ""), 10) : 49000;
-                const activeBasePrice = isNaN(parsedPrice) ? 49000 : parsedPrice;
-
-                const discount = activeBasePrice - (member.final_price - (transaction?.unique_code || 0));
-                setAppliedVoucher({
-                  code: member.used_voucher_code,
-                  discountNominal: discount > 0 ? discount : 0
-                });
-              }
-              if (member.payment_status === 'pending') {
-                setQrisGenerated(true);
-                // Cache this state
-                localStorage.setItem("pangkreas_checkout_state", JSON.stringify({
-                  accountData: null,
-                  memberData,
-                  expiry: Date.now() + 3 * 60 * 60 * 1000 // 3 hours
-                }));
-              }
-            }
+            const derivedUniqueCode = transaction?.unique_code || (member.final_price ? member.final_price % 1000 : 0);
+            const memberData = {
+              ...member,
+              unique_code: derivedUniqueCode
+            };
+            setDbMember(memberData);
+            setFormData({
+              fullName: member.full_name || '',
+              stageName: member.stage_name || '',
+              instagram: member.instagram_username || '',
+              tiktok: member.tiktok_username || '',
+              whatsapp: member.whatsapp_number || '',
+              email: member.email || session.user.email || '',
+              profession: member.occupation || ''
+            });
+            setQrisGenerated(true);
           }
-        } else {
-          // If logged in via Auth but no record in members table (deleted by admin), clear session and cache
-          await supabase.auth.signOut();
-          localStorage.removeItem("pangkreas_checkout_state");
-          setCurrentUser(null);
-          setDbMember(null);
-          setQrisGenerated(false);
-          setFormData({
-            fullName: '',
-            stageName: '',
-            instagram: '',
-            tiktok: '',
-            whatsapp: '',
-            email: '',
-            profession: ''
-          });
         }
       }
       setLoadingSession(false);
@@ -477,34 +359,22 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
       const result = await registerMemberAction(payloadData);
 
       if (result.success) {
-        const accountData = {
-          username: result.username!,
-          password: result.password!
-        };
         const memberData = {
           username: result.username!,
+          orderId: result.orderId,
           final_price: result.finalPrice!,
           unique_code: result.uniqueCode!,
           used_voucher_code: appliedVoucher?.code || null
         };
 
-        setGeneratedAccount(accountData);
         setDbMember(memberData);
         setQrisGenerated(true);
 
-        // Save to localStorage to persist across reloads (expires in 3 hours)
+        // Save to localStorage to persist QRIS screen across reloads (expires in 3 hours)
         localStorage.setItem("pangkreas_checkout_state", JSON.stringify({
-          accountData,
           memberData,
           expiry: Date.now() + 3 * 60 * 60 * 1000 // 3 hours
         }));
-
-        // Refresh session state local
-        const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setCurrentUser(session.user);
-        }
       } else {
         setError(result.error || "Gagal memproses pendaftaran.");
       }
@@ -538,8 +408,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
     }
   };
 
-  const activeUsername = dbMember?.username || generatedAccount?.username || '';
-  const activePassword = generatedAccount?.password || '';
+  const activeUsername = dbMember?.username || '';
 
   const parsedBasePrice = selectedPackage?.price ? parseInt(selectedPackage.price.replace(/\D/g, ""), 10) : 49000;
   const basePrice = isNaN(parsedBasePrice) ? 49000 : parsedBasePrice;
@@ -786,25 +655,15 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                   />
 
                   {/* Profesi */}
-                  <div>
-                    <label className="text-[11px] font-bold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase block mb-1">Profesi Saat Ini</label>
-                    <Select
-                      value={formData.profession}
-                      onValueChange={(value) => setFormData((prev) => ({ ...prev, profession: value }))}
-                    >
-                      <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 rounded-none px-0 py-1.5 h-auto text-zinc-900 dark:text-white focus:ring-0 focus:border-[#bc151b] focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-offset-0 transition-all cursor-pointer shadow-none">
-                        <SelectValue placeholder="Pilih Profesi" />
-                      </SelectTrigger>
-                      <SelectContent side="top" className="bg-white dark:bg-[#2c2c2c] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white shadow-xl z-50 w-full max-h-[220px]">
-                        <SelectItem value="mahasiswa">Mahasiswa / Pelajar</SelectItem>
-                        <SelectItem value="karyawan">Karyawan / Profesional</SelectItem>
-                        <SelectItem value="freelancer">Freelancer</SelectItem>
-                        <SelectItem value="content_creator">Content Creator</SelectItem>
-                        <SelectItem value="entrepreneur">Entrepreneur / Bisnis</SelectItem>
-                        <SelectItem value="lainnya">Lainnya</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <InputLine
+                    label="Profesi Saat Ini"
+                    type="text"
+                    name="profession"
+                    value={formData.profession}
+                    onChange={handleChange}
+                    placeholder="Contoh: Content Creator, Mahasiswa, Karyawan, dsb."
+                    focusClassName="focus-within:border-[#bc151b] dark:focus-within:border-[#bc151b]"
+                  />
                 </form>
               </div>
             </div>

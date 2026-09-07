@@ -8,12 +8,12 @@ export const dynamic = "force-dynamic";
 export default async function GaleriCMSPage() {
   const supabase = await createClient();
 
-  // Ambil sesi user
+  // Ambil user yang terotentikasi
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     redirect("/login");
   }
 
@@ -21,7 +21,7 @@ export default async function GaleriCMSPage() {
   const { data: member } = await supabase
     .from("members")
     .select("role")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (!member || member.role !== "admin") {

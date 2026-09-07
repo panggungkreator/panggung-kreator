@@ -317,19 +317,19 @@ export async function fetchLatestMembersAction(): Promise<{ success: boolean; da
   try {
     const supabase = await createClient();
 
-    // Verifikasi sesi dan role admin
+    // Verifikasi user dan role admin
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (!user) {
       return { success: false, error: "Sesi telah berakhir. Silakan login kembali." };
     }
 
     const { data: currentMember } = await supabase
       .from("members")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (!currentMember || currentMember.role !== "admin") {
