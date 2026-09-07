@@ -326,78 +326,159 @@ export default function AffiliatePanel({
         </div>
       )}
 
-      {/* RIWAYAT MUTASI & KOMISI LIST (COMPACT INVOICE STYLE) */}
-      <div className="pt-2 space-y-2">
+      {/* RIWAYAT MUTASI KOMISI */}
+      <div className="pt-2 space-y-3">
+        <div className="flex items-center justify-between pb-1">
+          <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest block">
+            [ RIWAYAT MUTASI KOMISI & REWARD ]
+          </span>
+          <span className="text-[10px] font-mono text-neutral-400">
+            {ledgerList.length} TRANSAKSI
+          </span>
+        </div>
+
         {ledgerList.length === 0 ? (
           <div className="border border-dashed border-neutral-300 dark:border-neutral-800 py-8 text-center text-xs text-neutral-500 font-mono rounded-none">
             [ BELUM ADA RIWAYAT MUTASI KOMISI ]
           </div>
         ) : (
-          <div className="divide-y divide-neutral-100 dark:divide-neutral-800/80 border-t border-b border-neutral-200/60 dark:border-neutral-800/60">
-            {ledgerList.map((entry) => {
-              const isPaid = entry.type === "paid" || entry.source === "affiliate_payout";
-              const formattedDate = new Date(entry.created_at).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              });
-              const title =
-                entry.referred_member_name ||
-                entry.description ||
-                (isPaid ? "Pencairan Komisi" : "Komisi Referral");
+          <>
+            {/* DESKTOP TABLE VIEW (MD & UP) */}
+            <div className="hidden md:block border border-neutral-200 dark:border-neutral-800 overflow-x-auto rounded-none">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-transparent border-b border-neutral-200 dark:border-neutral-800 text-[10px] font-mono uppercase text-neutral-500 tracking-wider">
+                    <th className="p-3.5">Tanggal</th>
+                    <th className="p-3.5">Keterangan</th>
+                    <th className="p-3.5">Tipe</th>
+                    <th className="p-3.5 text-right">Nominal</th>
+                    <th className="p-3.5 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledgerList.map((entry) => {
+                    const isPaid = entry.type === "paid" || entry.source === "affiliate_payout";
+                    const title =
+                      entry.referred_member_name ||
+                      entry.description ||
+                      (isPaid ? "Pencairan Komisi" : "Komisi Referral Masuk");
+                    return (
+                      <tr
+                        key={entry.id}
+                        className="border-b border-neutral-100 dark:border-neutral-900 last:border-b-0 hover:bg-neutral-100/50 dark:hover:bg-neutral-900/50 transition-colors"
+                      >
+                        <td className="p-3.5 text-neutral-500 dark:text-neutral-400 font-mono whitespace-nowrap">
+                          {new Date(entry.created_at).toLocaleDateString("id-ID", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </td>
+                        <td className="p-3.5 text-neutral-800 dark:text-neutral-200 font-medium">
+                          {title}
+                        </td>
+                        <td className="p-3.5 whitespace-nowrap">
+                          {isPaid ? (
+                            <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider inline-flex items-center gap-1 bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 rounded-sm">
+                              <Check size={10} /> Sudah Terbayar
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider inline-flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-sm">
+                              <Clock size={10} /> Siap Cair
+                            </span>
+                          )}
+                        </td>
+                        <td
+                          className={`p-3.5 text-right font-mono font-bold whitespace-nowrap ${isPaid ? "text-neutral-900 dark:text-white" : "text-emerald-600 dark:text-emerald-400"
+                            }`}
+                        >
+                          {isPaid ? "" : "+"} Rp {entry.amount.toLocaleString("id-ID")}
+                        </td>
+                        <td className="p-3.5 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDetail(entry)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono font-medium rounded border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 transition-colors cursor-pointer"
+                            title="Lihat Rincian & Bukti Transfer"
+                          >
+                            <Eye size={12} />
+                            <span>Detail</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-              return (
-                <div
-                  key={entry.id}
-                  onClick={() => setSelectedDetail(entry)}
-                  className="flex items-center justify-between py-2.5 sm:py-3 px-1 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition-colors cursor-pointer group gap-3"
-                >
-                  {/* Left Column: Title & Issued Date */}
-                  <div className="flex-1 min-w-0">
-                    <h5 className="font-semibold text-xs sm:text-sm text-neutral-900 dark:text-white truncate group-hover:text-neutral-700 dark:group-hover:text-neutral-200 transition-colors">
-                      {title}
-                    </h5>
-                    <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
-                      Issued {formattedDate}
-                    </p>
-                  </div>
+            {/* MOBILE COMPACT LIST VIEW (BELOW MD) */}
+            <div className="block md:hidden divide-y divide-neutral-100 dark:divide-neutral-800/80 border-t border-b border-neutral-200/60 dark:border-neutral-800/60">
+              {ledgerList.map((entry) => {
+                const isPaid = entry.type === "paid" || entry.source === "affiliate_payout";
+                const formattedDate = new Date(entry.created_at).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                });
+                const title =
+                  entry.referred_member_name ||
+                  entry.description ||
+                  (isPaid ? "Pencairan Komisi" : "Komisi Referral");
 
-                  {/* Right Column: Amount & Status Badge */}
-                  <div className="text-right shrink-0">
-                    <div className={`font-semibold text-sm sm:text-md font-mono ${isPaid ? "text-neutral-900 dark:text-white" : "text-emerald-600 dark:text-emerald-400"}`}>
-                      {isPaid ? "" : "+"}Rp {entry.amount.toLocaleString("id-ID")}
+                return (
+                  <div
+                    key={entry.id}
+                    onClick={() => setSelectedDetail(entry)}
+                    className="flex items-center justify-between py-2.5 px-1 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition-colors cursor-pointer group gap-3"
+                  >
+                    {/* Left Column: Title & Issued Date */}
+                    <div className="flex-1 min-w-0">
+                      <h5 className="font-semibold text-xs text-neutral-900 dark:text-white truncate group-hover:text-neutral-700 dark:group-hover:text-neutral-200 transition-colors">
+                        {title}
+                      </h5>
+                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
+                        Issued {formattedDate}
+                      </p>
                     </div>
-                    <div className="">
-                      {isPaid ? (
-                        <span className="inline-block px-1.5 py-0.5 text-[7px] font-semibold tracking-wider uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-sm">
-                          PAID
-                        </span>
-                      ) : (
-                        <span className="inline-block px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-sm">
-                          PENDING
-                        </span>
-                      )}
+
+                    {/* Right Column: Amount & Status Badge */}
+                    <div className="text-right shrink-0">
+                      <div className={`font-semibold text-xs font-mono ${isPaid ? "text-neutral-900 dark:text-white" : "text-emerald-600 dark:text-emerald-400"}`}>
+                        {isPaid ? "" : "+"}Rp {entry.amount.toLocaleString("id-ID")}
+                      </div>
+                      <div className="mt-0.5">
+                        {isPaid ? (
+                          <span className="inline-block px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-sm">
+                            PAID
+                          </span>
+                        ) : (
+                          <span className="inline-block px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-sm">
+                            PENDING
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Far Right: 3-dots action icon */}
+                    <div className="shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDetail(entry);
+                        }}
+                        className="p-1 text-neutral-300 hover:text-neutral-700 dark:text-neutral-600 dark:hover:text-neutral-300 transition-colors cursor-pointer"
+                        title="Lihat Detail Transaksi"
+                      >
+                        <MoreVertical size={15} />
+                      </button>
                     </div>
                   </div>
-
-                  {/* Far Right: 3-dots action icon */}
-                  <div className="shrink-0">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedDetail(entry);
-                      }}
-                      className="p-1 text-neutral-300 hover:text-neutral-700 dark:text-neutral-600 dark:hover:text-neutral-300 transition-colors cursor-pointer"
-                      title="Lihat Detail Transaksi"
-                    >
-                      <MoreVertical size={15} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
