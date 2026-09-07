@@ -197,6 +197,11 @@ export interface CommissionLedgerEntry {
   account_number?: string | null
   account_holder?: string | null
   notes?: string | null
+  referred_member_name?: string | null
+  referred_member_email?: string | null
+  referred_member_tier?: string | null
+  order_id?: string | null
+  transaction_amount?: number | null
 }
 
 

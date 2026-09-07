@@ -20,6 +20,8 @@ import { getReferredMembersAction, getMyCommissionLedgerAction } from "@/lib/act
 import { getTabVisibilitySettingsAction, TabVisibilitySettings } from "@/lib/actions/settings-actions";
 import UnderConstruction from "./components/UnderConstruction";
 
+const TAB_ORDER: ProfileTab[] = ["overview", "attendance", "portfolio", "affiliate"];
+
 export default function MyProfilePage() {
   const router = useRouter();
   const [member, setMember] = useState<MemberProfile | null>(null);
@@ -28,11 +30,20 @@ export default function MyProfilePage() {
   const [attendanceCount, setAttendanceCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
+  const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
   const [tabSettings, setTabSettings] = useState<TabVisibilitySettings>({
     tab_attendance_enabled: true,
     tab_portfolio_enabled: true,
     tab_affiliate_enabled: true,
   });
+
+  const handleTabChange = (newTab: ProfileTab) => {
+    if (newTab === activeTab) return;
+    const oldIndex = TAB_ORDER.indexOf(activeTab);
+    const newIndex = TAB_ORDER.indexOf(newTab);
+    setSlideDirection(newIndex >= oldIndex ? "right" : "left");
+    setActiveTab(newTab);
+  };
 
   const fetchMemberData = useCallback(async () => {
     setIsLoading(true);
@@ -170,7 +181,7 @@ export default function MyProfilePage() {
       tabs={
         <ProfileTabs
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           isAffiliateActive={isAffiliateActive}
           disabledTabs={disabledTabs}
         />
@@ -179,58 +190,67 @@ export default function MyProfilePage() {
         <ProfileSidebar member={member} onSignout={handleSignout} isLoggingOut={isLoggingOut} />
       }
     >
-      {activeTab === "overview" && (
-        <ProfileOverviewContent
-          member={member}
-          totalAttended={attendanceCount}
-          totalReferrals={referrals.length}
-        />
-      )}
-
-      {activeTab === "attendance" && (
-        disabledTabs.attendance ? (
-          <UnderConstruction
-            title="Absensi Event"
-            description="Fitur Absensi Event sedang dalam peningkatan performa sistem. Terima kasih atas kesabaran Anda."
-            onBackToOverview={() => setActiveTab("overview")}
-          />
-        ) : (
-          <AttendanceTracker memberId={member.id} />
-        )
-      )}
-
-      {activeTab === "portfolio" && (
-        disabledTabs.portfolio ? (
-          <UnderConstruction
-            title="Portofolio Kreator"
-            description="Fitur manajemen portofolio karya sedang dalam pengembangan."
-            onBackToOverview={() => setActiveTab("overview")}
-          />
-        ) : (
-          <div className="bg-transparent border-0 p-0 shadow-none">
-            <PortfolioManager memberId={member.id} />
-          </div>
-        )
-      )}
-
-      {activeTab === "affiliate" && (
-        disabledTabs.affiliate ? (
-          <UnderConstruction
-            title="Program Affiliate"
-            description="Panel Affiliate sedang menjalani penyesuaian sistem komisi. Silakan hubungi admin untuk info lebih lanjut."
-            onBackToOverview={() => setActiveTab("overview")}
-          />
-        ) : (
-          <AffiliatePanel
+      <div
+        key={activeTab}
+        className={
+          slideDirection === "right"
+            ? "animate-tab-slide-right w-full"
+            : "animate-tab-slide-left w-full"
+        }
+      >
+        {activeTab === "overview" && (
+          <ProfileOverviewContent
             member={member}
-            referrals={referrals}
-            ledger={ledger}
-            onAffiliateGenerated={(newCode) => {
-              setMember((prev) => (prev ? { ...prev, affiliate_code: newCode } : prev));
-            }}
+            totalAttended={attendanceCount}
+            totalReferrals={referrals.length}
           />
-        )
-      )}
+        )}
+
+        {activeTab === "attendance" && (
+          disabledTabs.attendance ? (
+            <UnderConstruction
+              title="Absensi Event"
+              description="Fitur Absensi Event sedang dalam peningkatan performa sistem. Terima kasih atas kesabaran Anda."
+              onBackToOverview={() => handleTabChange("overview")}
+            />
+          ) : (
+            <AttendanceTracker memberId={member.id} />
+          )
+        )}
+
+        {activeTab === "portfolio" && (
+          disabledTabs.portfolio ? (
+            <UnderConstruction
+              title="Portofolio Kreator"
+              description="Fitur manajemen portofolio karya sedang dalam pengembangan."
+              onBackToOverview={() => handleTabChange("overview")}
+            />
+          ) : (
+            <div className="bg-transparent border-0 p-0 shadow-none">
+              <PortfolioManager memberId={member.id} />
+            </div>
+          )
+        )}
+
+        {activeTab === "affiliate" && (
+          disabledTabs.affiliate ? (
+            <UnderConstruction
+              title="Program Affiliate"
+              description="Panel Affiliate sedang menjalani penyesuaian sistem komisi. Silakan hubungi admin untuk info lebih lanjut."
+              onBackToOverview={() => handleTabChange("overview")}
+            />
+          ) : (
+            <AffiliatePanel
+              member={member}
+              referrals={referrals}
+              ledger={ledger}
+              onAffiliateGenerated={(newCode) => {
+                setMember((prev) => (prev ? { ...prev, affiliate_code: newCode } : prev));
+              }}
+            />
+          )
+        )}
+      </div>
     </ProfileLayout>
   );
 }

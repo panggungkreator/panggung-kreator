@@ -468,3 +468,36 @@ html:hover {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Lightweight Hardware-Accelerated Tab Slide Animations */
+@keyframes tab-slide-from-right {
+  from {
+    opacity: 0;
+    transform: translate3d(20px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes tab-slide-from-left {
+  from {
+    opacity: 0;
+    transform: translate3d(-20px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-tab-slide-right {
+  animation: tab-slide-from-right 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.animate-tab-slide-left {
+  animation: tab-slide-from-left 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}

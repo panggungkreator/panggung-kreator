@@ -39,10 +39,6 @@ export default function ProfileLayout({
     }
   };
 
-  const initials = member
-    ? (member.stage_name || member.full_name || "M").substring(0, 2).toUpperCase()
-    : "M";
-
   return (
     <div className="min-h-screen w-full bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 font-sans flex flex-col justify-between">
       {/* TOP BAR ON MOBILE — ONLY HAMBURGER TOGGLE BUTTON ALIGNED RIGHT */}
@@ -59,7 +55,7 @@ export default function ProfileLayout({
             />
             <X
               className={`w-6 h-6 absolute transition-all duration-300 ease-in-out ${isMobileMenuOpen ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-50"
-                }`}
+              }`}
             />
           </div>
         </button>
@@ -87,39 +83,9 @@ export default function ProfileLayout({
 
           {/* RIGHT COLUMN: TAB NAVIGATION & DATA DETAILS */}
           <main className="lg:col-span-9 w-full space-y-6">
-            {/* MOBILE COMPACT PROFILE HEADER (ABOVE TABS ON MOBILE) — TRANSPARENT BG, LARGER AVATAR & NAME */}
-            {member && (
-              <div className="lg:hidden flex items-center gap-4 sm:gap-6 py-2 px-0 bg-transparent border-0 shadow-none mx-8">
-                <div className="w-20 h-20 sm:w-30 sm:h-30 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-900 flex-shrink-0">
-                  {member.avatar_url ? (
-                    <img
-                      src={member.avatar_url}
-                      alt={member.stage_name || member.full_name}
-                      className="w-full h-full object-cover transition-all duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 flex items-center justify-center text-2xl font-bold font-mono">
-                      {initials}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  <p className="text-lg mb-0.5 sm:text-3xl text-neutral-900 dark:text-white leading-tight">
-                    <span className="font-bold">{member.stage_name || member.full_name}</span>
-                  </p>
-                  {member.username && (
-                    <p className="text-xs font-mono text-neutral-500 dark:text-neutral-400 truncate">
-                      @{member.username}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
             {statsCards && <div className="w-full">{statsCards}</div>}
             {tabs && <div className="w-full">{tabs}</div>}
-            <div className="animate-fade-in w-full">{children}</div>
+            <div className="w-full overflow-x-clip">{children}</div>
           </main>
         </div>
       </div>

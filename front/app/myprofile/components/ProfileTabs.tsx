@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { LayoutDashboard, CalendarCheck, FolderKanban, Share2 } from "lucide-react";
+import { LayoutDashboard, CalendarCheck, FolderKanban, Share2, Home } from "lucide-react";
 
 export type ProfileTab = "overview" | "attendance" | "portfolio" | "affiliate";
 
@@ -19,7 +19,7 @@ export default function ProfileTabs({
   disabledTabs,
 }: ProfileTabsProps) {
   const allTabs: { key: ProfileTab; label: string; icon: React.ElementType }[] = [
-    { key: "overview", label: "Ikhtisar", icon: LayoutDashboard },
+    { key: "overview", label: "Ikhtisar", icon: Home },
     { key: "attendance", label: "Absensi", icon: CalendarCheck },
     { key: "portfolio", label: "Portofolio", icon: FolderKanban },
     { key: "affiliate", label: "Affiliate", icon: Share2 },
@@ -50,7 +50,7 @@ export default function ProfileTabs({
                     : "bg-transparent text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-neutral-900 dark:hover:text-white"
                   }`}
               >
-                <Icon size={14} className={`flex-shrink-0 ${isActive ? "text-white dark:text-neutral-900" : isDisabled ? "text-amber-500" : "text-neutral-400 dark:text-neutral-500"}`} />
+                <Icon size={11} className={`flex-shrink-0 ${isActive ? "text-white dark:text-neutral-900" : isDisabled ? "text-amber-500" : "text-neutral-400 dark:text-neutral-500"}`} />
                 <span>{tab.label}</span>
                 {isDisabled && <span className="text-[10px]" title="Fitur sedang dalam pengembangan">🚧</span>}
               </button>
@@ -59,11 +59,11 @@ export default function ProfileTabs({
         </div>
       </div>
 
-      {/* ═══ MOBILE BOTTOM NAVIGATION BAR (nempel di paling bawah, simple style persis referensi) ═══ */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#0f0f11]/95 backdrop-blur-lg border-t border-neutral-200/90 dark:border-neutral-800 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] pb-[env(safe-area-inset-bottom)]">
+      {/* ═══ MOBILE FLOATING PILL / FLOATING ACTION DOCK (Persis Sesuai Gambar Referensi) ═══ */}
+      <div className="lg:hidden fixed bottom-2.5 left-1/2 -translate-x-1/2 z-50">
         <nav
           aria-label="Navigasi Tab Profil"
-          className="flex items-center justify-around px-2 py-2 max-w-lg mx-auto"
+          className="flex items-center gap-1.5 p-1.5 bg-black/90 dark:bg-neutral-950/95 backdrop-blur-md rounded-full border border-neutral-800/80 shadow-[0_10px_35px_rgba(0,0,0,0.4)]"
         >
           {visibleTabs.map((tab) => {
             const isActive = activeTab === tab.key;
@@ -75,33 +75,21 @@ export default function ProfileTabs({
                 key={tab.key}
                 type="button"
                 onClick={() => onTabChange(tab.key)}
-                className={`relative flex flex-col items-center justify-center flex-1 py-1.5 px-1 transition-colors duration-150 cursor-pointer active:scale-95 ${isActive
-                  ? "text-neutral-950 dark:text-white font-medium"
-                  : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                  }`}
+                aria-label={tab.label}
+                title={tab.label}
+                className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-95 ${isActive
+                  ? "bg-white text-neutral-950 shadow-md scale-105"
+                  : "text-neutral-400 hover:text-white bg-transparent"
+                  } ${isDisabled ? "opacity-60" : ""}`}
               >
-                <div className="relative">
-                  <Icon
-                    size={22}
-                    className={`transition-all duration-150 ${isActive
-                      ? "text-neutral-950 dark:text-white stroke-[2.2]"
-                      : isDisabled
-                        ? "text-amber-500/70"
-                        : "text-neutral-400 dark:text-neutral-500"
-                      }`}
-                  />
-                  {isDisabled && (
-                    <span className="absolute -top-1 -right-2 text-[8px] leading-none">🚧</span>
-                  )}
-                </div>
-                <span
-                  className={`text-[11px] tracking-tight mt-1 transition-colors duration-150 ${isActive
-                    ? "text-neutral-950 dark:text-white"
-                    : "text-neutral-400 dark:text-neutral-500 font-normal"
+                <Icon
+                  size={14}
+                  className={`transition-all duration-150 ${isActive ? "stroke-[2.4]" : "stroke-[1.8]"
                     }`}
-                >
-                  {tab.label}
-                </span>
+                />
+                {isDisabled && (
+                  <span className="absolute -top-1 -right-1 text-[8px] leading-none">🚧</span>
+                )}
               </button>
             );
           })}
@@ -110,3 +98,4 @@ export default function ProfileTabs({
     </>
   );
 }
+

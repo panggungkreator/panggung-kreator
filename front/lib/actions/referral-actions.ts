@@ -879,7 +879,40 @@ export async function getMyCommissionLedgerAction() {
     const payouts = rawPayouts || [];
     const latestPayout = payouts.find((p: any) => p.status === "completed");
 
-    // 3. Gabungkan info payout (tanggal ditransfer, bukti transfer, dsb) ke tiap item ledger
+    // 3. Ambil data referral_rewards dan referred members untuk melengkapi data teman yang diaffiliatekan
+    const [{ data: rawRewards }, { data: rawReferredMembers }] = await Promise.all([
+      supabaseAdmin
+        .from("referral_rewards")
+        .select(`
+          id,
+          transaction_id,
+          referred_id,
+          reward_amount,
+          created_at,
+          referred:members!referred_id (
+            id,
+            full_name,
+            stage_name,
+            email,
+            membership_tier
+          ),
+          transaction:transactions!transaction_id (
+            id,
+            order_id,
+            final_amount
+          )
+        `)
+        .eq("referrer_id", user.id),
+      supabaseAdmin
+        .from("members")
+        .select("id, full_name, stage_name, email, membership_tier, created_at")
+        .or(`referred_by.eq.${user.id},referred_by_member_id.eq.${user.id}`),
+    ]);
+
+    const rewards = rawRewards || [];
+    const referredMembers = rawReferredMembers || [];
+
+    // 4. Gabungkan info payout & data teman yang diaffiliatekan ke tiap item ledger
     const enrichedLedger = (rawLedger || []).map((entry: any) => {
       let matchingPayout = null;
       if (entry.reference_id) {
@@ -887,6 +920,27 @@ export async function getMyCommissionLedgerAction() {
       }
       if (!matchingPayout && entry.type === "paid") {
         matchingPayout = latestPayout;
+      }
+
+      // Cari data referral reward terkait
+      let matchingReward: any = null;
+      if (entry.reference_id) {
+        matchingReward = rewards.find(
+          (r: any) => r.id === entry.reference_id || r.transaction_id === entry.reference_id
+        );
+      }
+
+      let referredMember: any = matchingReward?.referred;
+      if (!referredMember && entry.source === "referral_reward") {
+        if (entry.description) {
+          referredMember = referredMembers.find((m: any) =>
+            entry.description.toLowerCase().includes((m.full_name || "").toLowerCase()) ||
+            (m.stage_name && entry.description.toLowerCase().includes(m.stage_name.toLowerCase()))
+          );
+        }
+        if (!referredMember && referredMembers.length === 1) {
+          referredMember = referredMembers[0];
+        }
       }
 
       return {
@@ -897,6 +951,11 @@ export async function getMyCommissionLedgerAction() {
         account_number: matchingPayout?.account_number || null,
         account_holder: matchingPayout?.account_holder || null,
         notes: matchingPayout?.notes || null,
+        referred_member_name: referredMember?.stage_name || referredMember?.full_name || null,
+        referred_member_email: referredMember?.email || null,
+        referred_member_tier: referredMember?.membership_tier || null,
+        order_id: matchingReward?.transaction?.order_id || null,
+        transaction_amount: matchingReward?.transaction?.final_amount || null,
       };
     });
 
