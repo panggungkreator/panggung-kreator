@@ -83,6 +83,8 @@ const staticNavGroups: NavGroup[] = [
     title: "DATA CENTER",
     items: [
       { label: "Membership", href: "/admin/members", icon: getIconComponent("users"), module: "members" },
+      { label: "Confirmation", href: "/admin/confirmation", icon: getIconComponent("check-square"), module: "confirmation" },
+      { label: "Affiliate Payout", href: "/admin/affiliate-payout", icon: getIconComponent("dollar-sign"), module: "affiliate_payout" },
       { label: "Transactions", href: "/admin/transactions", icon: getIconComponent("credit-card"), module: "transactions" },
       { label: "Attendance", href: "/admin/attendance", icon: getIconComponent("check-square"), module: "attendance" },
     ]

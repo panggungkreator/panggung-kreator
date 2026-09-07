@@ -242,6 +242,7 @@ export async function confirmPaymentWithRewardAction({
         package_id,
         referral_code,
         referred_by_id,
+        gross_amount,
         final_amount,
         status,
         members:member_id (
@@ -307,6 +308,9 @@ export async function confirmPaymentWithRewardAction({
     let cleanRewardAmount = Math.max(0, Number(rewardAmount) || 0);
 
     if (cleanRewardAmount === 0 && (referrerId || tx.referral_code)) {
+      const settings = await getReferralCommissionSettingsAction();
+
+      let customReward = 0;
       if (tx.referral_code) {
         const { data: rc } = await supabaseAdmin
           .from("referral_codes")
@@ -314,15 +318,30 @@ export async function confirmPaymentWithRewardAction({
           .eq("code", tx.referral_code)
           .maybeSingle();
         if (rc?.default_reward && Number(rc.default_reward) > 0) {
-          cleanRewardAmount = Number(rc.default_reward);
+          customReward = Number(rc.default_reward);
         }
       }
 
-      if (cleanRewardAmount === 0) {
-        const settings = await getReferralCommissionSettingsAction();
+      if (customReward > 0) {
+        cleanRewardAmount = customReward;
+      } else {
         if (settings.mode === "percentage") {
-          const pct = parseFloat(settings.percentage) || 10;
-          cleanRewardAmount = Math.round((Number(tx.final_amount || 0) * pct) / 100);
+          const pct = parseFloat(settings.percentage) || 30;
+          // 1. Ambil nilai dasar dari harga produk murni (gross_amount) sebelum nomor unik
+          let pureProductPrice = Number(tx.gross_amount) || 0;
+
+          if (pureProductPrice <= 0) {
+            const finalAmt = Number(tx.final_amount) || 0;
+            const uniqueCode = finalAmt > 1000 ? finalAmt % 1000 : 0;
+            pureProductPrice = Math.max(0, finalAmt - uniqueCode);
+          }
+
+          if (pureProductPrice <= 0) {
+            pureProductPrice = 49000;
+          }
+
+          // 2. Hitung persentase komisi murni dari harga produk asli (tanpa nomor unik)
+          cleanRewardAmount = Math.round((pureProductPrice * pct) / 100);
         } else {
           cleanRewardAmount = parseInt(settings.flatAmount.replace(/\D/g, ""), 10) || 10000;
         }
@@ -435,12 +454,12 @@ export async function confirmPaymentWithRewardAction({
             })
             .eq("id", refUser.id);
 
-          // Catat ke commission_ledger
+          // Catat ke commission_ledger (status pending siap cair)
           await supabaseAdmin
             .from("commission_ledger")
             .insert({
               member_id: refUser.id,
-              type: "credit",
+              type: "pending",
               amount: cleanRewardAmount,
               balance_after: newReferrerBalance,
               source: "referral_reward",
@@ -822,6 +841,73 @@ export async function getReferredMembersAction() {
 }
 
 /**
+  * Member Action: Mengambil riwayat mutasi komisi & bukti transfer payout untuk user yang sedang login
+  */
+export async function getMyCommissionLedgerAction() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, data: [] };
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
+
+    // 1. Ambil mutasi komisi member dari tabel commission_ledger
+    const { data: rawLedger, error: ledgerError } = await supabaseAdmin
+      .from("commission_ledger")
+      .select("*")
+      .eq("member_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (ledgerError) {
+      console.error("Error fetching member commission ledger:", ledgerError);
+      return { success: false, data: [] };
+    }
+
+    // 2. Ambil seluruh riwayat payouts member dari tabel affiliate_payouts
+    const { data: rawPayouts } = await supabaseAdmin
+      .from("affiliate_payouts")
+      .select("*")
+      .eq("member_id", user.id)
+      .order("created_at", { ascending: false });
+
+    const payouts = rawPayouts || [];
+    const latestPayout = payouts.find((p: any) => p.status === "completed");
+
+    // 3. Gabungkan info payout (tanggal ditransfer, bukti transfer, dsb) ke tiap item ledger
+    const enrichedLedger = (rawLedger || []).map((entry: any) => {
+      let matchingPayout = null;
+      if (entry.reference_id) {
+        matchingPayout = payouts.find((p: any) => p.id === entry.reference_id);
+      }
+      if (!matchingPayout && entry.type === "paid") {
+        matchingPayout = latestPayout;
+      }
+
+      return {
+        ...entry,
+        paid_at: entry.type === "paid" ? (matchingPayout?.created_at || entry.created_at) : null,
+        proof_url: matchingPayout?.proof_url || null,
+        bank_name: matchingPayout?.bank_name || null,
+        account_number: matchingPayout?.account_number || null,
+        account_holder: matchingPayout?.account_holder || null,
+        notes: matchingPayout?.notes || null,
+      };
+    });
+
+    return { success: true, data: enrichedLedger };
+  } catch (err: any) {
+    console.error("getMyCommissionLedgerAction error:", err);
+    return { success: false, data: [] };
+  }
+}
+
+/**
  * Member Action: Generate Kode Affiliate Unik
  * Logika: Kombinasi nama akun (username / stage_name / full_name) + 3-4 digit angka random
  * Contoh: BAGASKAWAN550 atau BAGAS842
@@ -927,7 +1013,7 @@ export async function generateAffiliateCodeAction() {
             description: `Kode Affiliate untuk ${member.stage_name || member.full_name || member.username || "Member"}`,
             is_active: true,
             max_usage: 0,
-            default_reward: 10000,
+            default_reward: 0,
           },
           { onConflict: "code" }
         );
@@ -946,4 +1032,497 @@ export async function generateAffiliateCodeAction() {
     return { success: false, error: err.message || "Terjadi kesalahan pada server." };
   }
 }
+
+/**
+ * Admin Action: Mengambil data seluruh affiliator (saldo aktif & total pencairan), riwayat payout, dan seluruh mutasi komisi (ledger)
+ */
+export async function getAffiliatePayoutDataAction() {
+  try {
+    const supabaseAdmin = createServiceRoleClient();
+
+    // 1. Ambil seluruh data members
+    const { data: rawMembers, error: membersError } = await supabaseAdmin
+      .from("members")
+      .select(`
+        id,
+        full_name,
+        stage_name,
+        email,
+        whatsapp_number,
+        role,
+        affiliate_code,
+        commission_balance,
+        created_at
+      `)
+      .order("commission_balance", { ascending: false });
+
+    if (membersError) {
+      console.error("Error fetching members for payout:", membersError);
+      return { success: false, error: "Gagal mengambil data member." };
+    }
+
+    const membersMap = new Map<string, any>();
+    (rawMembers || []).forEach((m: any) => {
+      membersMap.set(m.id, m);
+    });
+
+    // 2. Ambil seluruh riwayat payout dari tabel affiliate_payouts
+    const { data: rawPayouts, error: payoutsError } = await supabaseAdmin
+      .from("affiliate_payouts")
+      .select(`
+        id,
+        member_id,
+        amount,
+        bank_name,
+        account_number,
+        account_holder,
+        proof_url,
+        notes,
+        status,
+        confirmed_by,
+        created_at
+      `)
+      .order("created_at", { ascending: false });
+
+    if (payoutsError) {
+      console.error("Error fetching payouts history:", payoutsError);
+    }
+
+    const payouts = rawPayouts || [];
+
+    // Hitung total paid per member
+    const totalPaidByMember: Record<string, number> = {};
+    payouts.forEach((p: any) => {
+      if (p.status === "completed") {
+        totalPaidByMember[p.member_id] = (totalPaidByMember[p.member_id] || 0) + Number(p.amount || 0);
+      }
+    });
+
+    // 3. Ambil seluruh riwayat mutasi komisi dari tabel commission_ledger
+    const { data: rawLedger, error: ledgerError } = await supabaseAdmin
+      .from("commission_ledger")
+      .select(`
+        id,
+        member_id,
+        type,
+        amount,
+        balance_after,
+        source,
+        description,
+        created_by,
+        created_at
+      `)
+      .order("created_at", { ascending: false });
+
+    if (ledgerError) {
+      console.error("Error fetching commission ledger:", ledgerError);
+    }
+
+    // Map tanggal produk terakhir berhasil diaffiliatekan
+    const lastAffiliatedDateMap = new Map<string, string>();
+    (rawLedger || []).forEach((entry: any) => {
+      if (entry.type === "pending" || entry.type === "paid" || entry.type === "credit") {
+        const existing = lastAffiliatedDateMap.get(entry.member_id);
+        if (!existing || new Date(entry.created_at).getTime() > new Date(existing).getTime()) {
+          lastAffiliatedDateMap.set(entry.member_id, entry.created_at);
+        }
+      }
+    });
+
+    const mutations = (rawLedger || []).map((entry: any) => {
+      const targetMember = membersMap.get(entry.member_id);
+      return {
+        id: entry.id,
+        member_id: entry.member_id,
+        member_name: targetMember?.stage_name || targetMember?.full_name || "Member",
+        member_email: targetMember?.email || "-",
+        member_code: targetMember?.affiliate_code || "-",
+        type: entry.type,
+        amount: Number(entry.amount || 0),
+        balance_after: Number(entry.balance_after || 0),
+        source: entry.source || "referral_reward",
+        description: entry.description || (entry.type === "paid" ? "Sudah Terbayar" : "Komisi Referral Masuk"),
+        created_at: entry.created_at,
+      };
+    });
+
+    // Cari member yang pernah ada di commission_ledger
+    const membersWithLedger = new Set<string>((rawLedger || []).map((l: any) => l.member_id));
+
+    // Format data affiliators:
+    // Tampilkan siapa saja yang punya saldo komisi > 0, punya kode referral, ada di ledger, atau pernah payout
+    const affiliators = (rawMembers || [])
+      .filter((m: any) => {
+        const bal = Number(m.commission_balance || 0);
+        return bal > 0 || totalPaidByMember[m.id] || m.affiliate_code || membersWithLedger.has(m.id);
+      })
+      .map((m: any) => ({
+        id: m.id,
+        full_name: m.full_name || "Tanpa Nama",
+        stage_name: m.stage_name || null,
+        email: m.email || "-",
+        phone_number: m.whatsapp_number || "-",
+        affiliate_code: m.affiliate_code || "-",
+        commission_balance: Number(m.commission_balance || 0),
+        total_payout_paid: totalPaidByMember[m.id] || 0,
+        joined_at: m.created_at,
+        last_affiliated_at: lastAffiliatedDateMap.get(m.id) || null,
+      }));
+
+    // Format riwayat payouts
+    const formattedPayouts = payouts.map((p: any) => {
+      const targetMember = membersMap.get(p.member_id);
+      const adminMember = p.confirmed_by ? membersMap.get(p.confirmed_by) : null;
+      return {
+        id: p.id,
+        member_id: p.member_id,
+        member_name: targetMember?.stage_name || targetMember?.full_name || "Affiliator",
+        member_email: targetMember?.email || "-",
+        member_code: targetMember?.affiliate_code || "-",
+        amount: Number(p.amount || 0),
+        bank_name: p.bank_name || "-",
+        account_number: p.account_number || "-",
+        account_holder: p.account_holder || "-",
+        proof_url: p.proof_url || null,
+        notes: p.notes || null,
+        status: p.status || "completed",
+        confirmed_by_name: adminMember?.stage_name || adminMember?.full_name || "Admin",
+        created_at: p.created_at,
+      };
+    });
+
+    // 4. Buat list transaksi affiliate murni hanya dari tabel commission_ledger (tanpa fallback legacy)
+    const affiliateLedgerEntries = (rawLedger || []).filter((l: any) => l.type !== "debit");
+
+    const transactionsList: any[] = affiliateLedgerEntries.map((entry: any) => {
+      const targetMember = membersMap.get(entry.member_id);
+      const currentBalance = Number(targetMember?.commission_balance || 0);
+      const latestPayout = (payouts || []).find((p: any) => p.member_id === entry.member_id && p.status === "completed");
+      const isPaid = entry.type === "paid" || (currentBalance <= 0 && !!latestPayout);
+
+      return {
+        id: entry.id,
+        member_id: entry.member_id,
+        member_name: targetMember?.stage_name || targetMember?.full_name || "Affiliator",
+        stage_name: targetMember?.stage_name || null,
+        full_name: targetMember?.full_name || "Affiliator",
+        member_email: targetMember?.email || "-",
+        member_code: targetMember?.affiliate_code || "-",
+        phone_number: targetMember?.whatsapp_number || "-",
+        affiliated_at: entry.created_at,
+        commission_amount: Number(entry.amount || 0),
+        member_balance: currentBalance,
+        description: entry.description || "Komisi Referral Penjualan",
+        is_paid: isPaid,
+        paid_at: isPaid ? (latestPayout?.created_at || (entry.type === "paid" ? entry.created_at : null)) : null,
+        payout_record: latestPayout || null,
+      };
+    });
+
+    // Urutkan transaksi affiliate berdasarkan tanggal terbaru (descending)
+    transactionsList.sort((a, b) => new Date(b.affiliated_at).getTime() - new Date(a.affiliated_at).getTime());
+
+    return {
+      success: true,
+      data: {
+        affiliators,
+        payouts: formattedPayouts,
+        mutations,
+        transactions: transactionsList,
+      },
+    };
+  } catch (err: any) {
+    console.error("getAffiliatePayoutDataAction error:", err);
+    return { success: false, error: err.message || "Gagal mengambil data payout affiliate." };
+  }
+}
+
+/**
+ * Admin Action: Memproses Konfirmasi Pembayaran Affiliate Manual (Payout)
+ * Mendukung upload bukti transfer (proofUrl), pencatatan bank info, pemotongan saldo, dan audit ledger.
+ */
+export async function processAffiliatePayoutAction({
+  memberId,
+  amount,
+  bankName,
+  accountNumber,
+  accountHolder,
+  proofUrl,
+  notes,
+  ledgerId,
+}: {
+  memberId: string;
+  amount: number;
+  bankName?: string;
+  accountNumber?: string;
+  accountHolder?: string;
+  proofUrl?: string | null;
+  notes?: string;
+  ledgerId?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "Tidak diotorisasi. Silakan login kembali." };
+    }
+
+    const { data: currentAdmin } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (!currentAdmin || currentAdmin.role !== "admin") {
+      return { success: false, error: "Hanya admin yang diperbolehkan memproses payout affiliate." };
+    }
+
+    const cleanAmount = Number(amount);
+    if (isNaN(cleanAmount) || cleanAmount <= 0) {
+      return { success: false, error: "Nominal pembayaran tidak valid." };
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
+
+    // 1. Ambil data member target & cek saldo
+    const { data: member, error: memberErr } = await supabaseAdmin
+      .from("members")
+      .select("id, full_name, stage_name, email, commission_balance, affiliate_code")
+      .eq("id", memberId)
+      .single();
+
+    if (memberErr || !member) {
+      return { success: false, error: "Data affiliator tidak ditemukan." };
+    }
+
+    const currentBalance = Number(member.commission_balance || 0);
+    const newBalance = Math.max(0, currentBalance - cleanAmount);
+    const nowStr = new Date().toISOString();
+
+    // 2. Simpan ke tabel affiliate_payouts
+    const { data: payoutRecord, error: payoutInsertErr } = await supabaseAdmin
+      .from("affiliate_payouts")
+      .insert({
+        member_id: member.id,
+        amount: cleanAmount,
+        bank_name: bankName?.trim() || null,
+        account_number: accountNumber?.trim() || null,
+        account_holder: accountHolder?.trim() || null,
+        proof_url: proofUrl?.trim() || null,
+        notes: notes?.trim() || null,
+        status: "completed",
+        confirmed_by: user.id,
+        created_at: nowStr,
+      })
+      .select("id")
+      .single();
+
+    if (payoutInsertErr) {
+      console.error("Gagal mencatat affiliate_payouts:", payoutInsertErr);
+      return { success: false, error: `Gagal mencatat payout: ${payoutInsertErr.message}` };
+    }
+
+    // 3. Update commission_balance member
+    const { error: updateBalanceErr } = await supabaseAdmin
+      .from("members")
+      .update({ commission_balance: newBalance })
+      .eq("id", member.id);
+
+    if (updateBalanceErr) {
+      console.error("Gagal mengupdate commission_balance:", updateBalanceErr);
+      return { success: false, error: `Gagal memperbarui saldo affiliator: ${updateBalanceErr.message}` };
+    }
+
+    // 4. Update status mutasi pending/credit menjadi paid di commission_ledger
+    if (ledgerId && !ledgerId.startsWith("legacy-")) {
+      await supabaseAdmin
+        .from("commission_ledger")
+        .update({ type: "paid" })
+        .eq("id", ledgerId);
+    } else {
+      await supabaseAdmin
+        .from("commission_ledger")
+        .update({ type: "paid" })
+        .eq("member_id", member.id)
+        .in("type", ["pending", "credit"]);
+    }
+
+    // 5. Send automated email notification to the affiliate member
+    if (member.email && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || "smtp.gmail.com",
+          port: parseInt(process.env.SMTP_PORT || "465"),
+          secure: process.env.SMTP_SECURE === "false" ? false : true,
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
+
+        const appUrl =
+          process.env.NEXT_PUBLIC_SITE_URL ||
+          process.env.NEXT_PUBLIC_APP_URL ||
+          "https://panggungkreator.web.id";
+
+        const formatRupiah = (val: number) => `Rp ${val.toLocaleString("id-ID")}`;
+        const recipientName = member.stage_name || member.full_name || "Kreator";
+
+        await transporter.sendMail({
+          from: `"Panggung Kreator" <${process.env.SMTP_USER}>`,
+          to: member.email,
+          subject: "🎉 Pembayaran Komisi Affiliate Berhasil - Panggung Kreator",
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827; line-height: 1.6;">
+              <div style="background-color: #bc151b; color: #ffffff; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h1 style="margin: 0; font-size: 20px; font-weight: bold;">🎉 Pembayaran Komisi Berhasil!</h1>
+                <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.95;">Dana komisi Anda telah dikirimkan oleh Admin</p>
+              </div>
+
+              <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
+                <p style="font-size: 14px; margin-top: 0;">Halo <strong>${recipientName}</strong>,</p>
+                <p style="font-size: 14px; color: #374151;">Kabar baik! Permintaan pencairan komisi (payout) Anda telah berhasil diproses dan dikirimkan oleh Admin ke rekening Anda.</p>
+
+                <div style="background-color: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                  <h3 style="margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; tracking: 1px; color: #6b7280; font-weight: bold;">Detail Pembayaran</h3>
+                  <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                    <tr>
+                      <td style="padding: 4px 0; color: #6b7280;">Nominal Pembayaran:</td>
+                      <td style="padding: 4px 0; font-weight: bold; text-align: right; color: #16a34a; font-size: 15px;">${formatRupiah(cleanAmount)}</td>
+                    </tr>
+                    ${bankName ? `
+                    <tr>
+                      <td style="padding: 4px 0; color: #6b7280;">Bank/E-Wallet:</td>
+                      <td style="padding: 4px 0; font-weight: bold; text-align: right;">${bankName}</td>
+                    </tr>
+                    ` : ""}
+                    ${accountNumber ? `
+                    <tr>
+                      <td style="padding: 4px 0; color: #6b7280;">Nomor Rekening:</td>
+                      <td style="padding: 4px 0; font-weight: bold; text-align: right; font-family: monospace;">${accountNumber}</td>
+                    </tr>
+                    ` : ""}
+                    ${accountHolder ? `
+                    <tr>
+                      <td style="padding: 4px 0; color: #6b7280;">Nama Pemilik:</td>
+                      <td style="padding: 4px 0; font-weight: bold; text-align: right;">${accountHolder}</td>
+                    </tr>
+                    ` : ""}
+                    <tr style="border-top: 1px solid #e5e7eb;">
+                      <td style="padding: 8px 0 4px 0; color: #111827; font-weight: bold;">Sisa Saldo Komisi:</td>
+                      <td style="padding: 8px 0 4px 0; font-weight: bold; text-align: right; color: #111827; font-size: 15px;">${formatRupiah(newBalance)}</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <p style="font-size: 13px; color: #4b5563;">
+                  Silakan cek mutasi rekening Anda secara berkala. Jika dalam 1x24 jam kerja dana belum masuk, Anda dapat menghubungi tim support kami.
+                </p>
+
+                <div style="margin-top: 24px; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 16px;">
+                  <a href="${appUrl}/myprofile" style="background-color: #0f172a; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-block;">Cek Dashboard Profil</a>
+                  <p style="font-size: 12px; color: #9ca3af; margin: 16px 0 0 0;">Terima kasih telah terus berkarya bersama Panggung Kreator! 🙏</p>
+                </div>
+              </div>
+            </div>
+          `,
+        });
+      } catch (emailErr) {
+        console.error("Gagal mengirim email notifikasi payout:", emailErr);
+      }
+    }
+
+    return {
+      success: true,
+      newBalance,
+      payoutId: payoutRecord?.id,
+      memberName: member.stage_name || member.full_name,
+    };
+  } catch (err: any) {
+    console.error("processAffiliatePayoutAction error:", err);
+    return { success: false, error: err.message || "Gagal memproses pembayaran affiliate." };
+  }
+}
+
+/**
+ * Admin Action: Menghapus data riwayat payout atau mereset komisi affiliator
+ */
+export async function deleteAffiliateRecordAction({
+  memberId,
+  ledgerId,
+}: {
+  memberId: string;
+  ledgerId?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "Tidak diotorisasi. Silakan login kembali." };
+    }
+
+    const { data: currentAdmin } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (!currentAdmin || currentAdmin.role !== "admin") {
+      return { success: false, error: "Hanya admin yang diperbolehkan menghapus data affiliate." };
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
+
+    if (ledgerId && !ledgerId.startsWith("legacy-")) {
+      // Ambil data ledger yang mau dihapus untuk mengoreksi saldo jika tipe credit
+      const { data: ledgerItem } = await supabaseAdmin
+        .from("commission_ledger")
+        .select("amount, type")
+        .eq("id", ledgerId)
+        .single();
+
+      if (ledgerItem && (ledgerItem.type === "pending" || ledgerItem.type === "credit")) {
+        const { data: mem } = await supabaseAdmin
+          .from("members")
+          .select("commission_balance")
+          .eq("id", memberId)
+          .single();
+        if (mem) {
+          const updatedBal = Math.max(0, Number(mem.commission_balance || 0) - Number(ledgerItem.amount || 0));
+          await supabaseAdmin
+            .from("members")
+            .update({ commission_balance: updatedBal })
+            .eq("id", memberId);
+        }
+      }
+
+      await supabaseAdmin
+        .from("commission_ledger")
+        .delete()
+        .eq("id", ledgerId);
+    } else {
+      // Reset saldo komisi member ke 0
+      await supabaseAdmin
+        .from("members")
+        .update({ commission_balance: 0 })
+        .eq("id", memberId);
+
+      await supabaseAdmin
+        .from("affiliate_payouts")
+        .delete()
+        .eq("member_id", memberId);
+
+      await supabaseAdmin
+        .from("commission_ledger")
+        .delete()
+        .eq("member_id", memberId);
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("deleteAffiliateRecordAction error:", err);
+    return { success: false, error: err.message || "Gagal menghapus data affiliate." };
+  }
+}
+
 

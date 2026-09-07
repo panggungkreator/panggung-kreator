@@ -168,19 +168,42 @@ export default function PaymentClient({
     setAdminNotes("");
     setIsLoadingRewardDefault(true);
 
-    if (tx.referral_code) {
+    if (tx.referral_code || tx.referred_by_id) {
       try {
         const supabase = createClient();
-        const { data: refCode } = await supabase
-          .from("referral_codes")
-          .select("default_reward")
-          .eq("code", tx.referral_code)
-          .maybeSingle();
+        let customReward = 0;
+        if (tx.referral_code) {
+          const { data: refCode } = await supabase
+            .from("referral_codes")
+            .select("default_reward")
+            .eq("code", tx.referral_code)
+            .maybeSingle();
+          if (refCode?.default_reward && Number(refCode.default_reward) > 0) {
+            customReward = Number(refCode.default_reward);
+          }
+        }
 
-        const defaultRewardVal = refCode?.default_reward ? Number(refCode.default_reward) : 10000;
-        setRewardInput(String(defaultRewardVal));
+        if (customReward > 0) {
+          setRewardInput(String(customReward));
+        } else {
+          const { getReferralCommissionSettingsAction } = await import("@/lib/actions/settings-actions");
+          const settings = await getReferralCommissionSettingsAction();
+          if (settings.mode === "percentage") {
+            const pct = parseFloat(settings.percentage) || 30;
+            let pureProductPrice = Number(tx.gross_amount) || 0;
+            if (pureProductPrice <= 0) {
+              const finalAmt = Number(tx.final_amount) || 0;
+              const uniqueCode = finalAmt > 1000 ? finalAmt % 1000 : 0;
+              pureProductPrice = Math.max(0, finalAmt - uniqueCode);
+            }
+            if (pureProductPrice <= 0) pureProductPrice = 49000;
+            setRewardInput(String(Math.round((pureProductPrice * pct) / 100)));
+          } else {
+            setRewardInput(settings.flatAmount || "10000");
+          }
+        }
       } catch (e) {
-        setRewardInput("10000");
+        setRewardInput("15000");
       }
     } else {
       setRewardInput("0");

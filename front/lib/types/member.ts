@@ -183,14 +183,20 @@ export interface ReferralReward {
 export interface CommissionLedgerEntry {
   id: string
   member_id: string
-  type: 'credit' | 'debit'
+  type: 'pending' | 'paid' | 'credit' | 'debit'
   amount: number
-  balance_after: number
-  source: 'referral_reward' | 'redeem_membership' | 'cash_out' | 'manual_adjustment'
+  balance_after?: number
+  source: 'referral_reward' | 'redeem_membership' | 'cash_out' | 'manual_adjustment' | 'affiliate_payout'
   reference_id: string | null
   description: string | null
   created_by: string | null
   created_at: string
+  paid_at?: string | null
+  proof_url?: string | null
+  bank_name?: string | null
+  account_number?: string | null
+  account_holder?: string | null
+  notes?: string | null
 }
 
 

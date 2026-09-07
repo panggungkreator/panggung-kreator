@@ -16,7 +16,7 @@ import ProfileStatsCards from "./components/ProfileStatsCards";
 import AttendanceTracker from "./components/AttendanceTracker";
 import AffiliatePanel from "./components/AffiliatePanel";
 import { Loader2 } from "lucide-react";
-import { getReferredMembersAction } from "@/lib/actions/referral-actions";
+import { getReferredMembersAction, getMyCommissionLedgerAction } from "@/lib/actions/referral-actions";
 import { getTabVisibilitySettingsAction, TabVisibilitySettings } from "@/lib/actions/settings-actions";
 import UnderConstruction from "./components/UnderConstruction";
 
@@ -75,12 +75,8 @@ export default function MyProfilePage() {
         // 3. Referred members list via Server Action (bypasses RLS restrictions)
         getReferredMembersAction(),
 
-        // 4. Commission ledger history
-        supabase
-          .from("commission_ledger")
-          .select("*")
-          .eq("member_id", user.id)
-          .order("created_at", { ascending: false }),
+        // 4. Commission ledger history with enriched payout details
+        getMyCommissionLedgerAction(),
 
         // 5. System tab visibility settings
         getTabVisibilitySettingsAction(),

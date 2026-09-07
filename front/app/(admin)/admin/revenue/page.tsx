@@ -137,10 +137,16 @@ export default async function RevenuePage() {
     .order("created_at", { ascending: false });
 
   const membershipTransactions = (rawTransactions || []).map((tx: any) => {
-    const gross = tx.final_amount || tx.gross_amount || 49000;
+    let gross = Number(tx.gross_amount) || 0;
+    if (gross <= 0) {
+      const finalAmt = Number(tx.final_amount) || 0;
+      const uniqueCode = finalAmt > 1000 ? finalAmt % 1000 : 0;
+      gross = Math.max(0, finalAmt - uniqueCode) || 49000;
+    }
+
     const comm = tx.commission_earned != null 
       ? Number(tx.commission_earned) 
-      : (tx.referrer || tx.referral_code ? 10000 : 0);
+      : (tx.referrer || tx.referral_code ? Math.round((gross * 30) / 100) : 0);
     const net = Math.max(0, gross - comm);
 
     return {

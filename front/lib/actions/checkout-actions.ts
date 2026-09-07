@@ -644,7 +644,7 @@ export async function verifyMemberPaymentAction(memberId: string) {
     // Fallback jika tidak ada transaksi di tabel transactions
     const { data: memberToVerify, error: fetchError } = await supabaseAdmin
       .from("members")
-      .select("id, email, username, full_name, stage_name, temporary_password, referred_by, referred_by_member_id")
+      .select("id, email, username, full_name, stage_name, temporary_password, final_price, referred_by, referred_by_member_id")
       .eq("id", memberId)
       .single();
 
@@ -678,7 +678,17 @@ export async function verifyMemberPaymentAction(memberId: string) {
 
       if (refUser) {
         const settings = await getReferralCommissionSettingsAction();
-        const rewardAmount = parseInt(settings.flatAmount.replace(/\D/g, ""), 10) || 10000;
+        let rewardAmount = 10000;
+        if (settings.mode === "percentage") {
+          const pct = parseFloat(settings.percentage) || 30;
+          // Ambil harga produk murni tanpa digit nomor unik
+          const finalPrice = Number(memberToVerify.final_price || 49000);
+          const uniqueCode = finalPrice > 1000 ? finalPrice % 1000 : 0;
+          const pureProductPrice = Math.max(0, finalPrice - uniqueCode) || 49000;
+          rewardAmount = Math.round((pureProductPrice * pct) / 100);
+        } else {
+          rewardAmount = parseInt(settings.flatAmount.replace(/\D/g, ""), 10) || 10000;
+        }
         const newBalance = Number(refUser.commission_balance || 0) + rewardAmount;
 
         await supabaseAdmin
@@ -690,7 +700,7 @@ export async function verifyMemberPaymentAction(memberId: string) {
           .from("commission_ledger")
           .insert({
             member_id: refUser.id,
-            type: "credit",
+            type: "pending",
             amount: rewardAmount,
             balance_after: newBalance,
             source: "referral_reward",
