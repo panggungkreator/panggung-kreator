@@ -74,25 +74,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
     const checkSession = async () => {
       const supabase = createClient();
 
-      // Check localStorage for cached checkout state first to load QRIS payment section if exists
-      const cachedStateStr = typeof window !== 'undefined' ? localStorage.getItem("pangkreas_checkout_state") : null;
-      if (cachedStateStr) {
-        try {
-          const cached = JSON.parse(cachedStateStr);
-          if (cached && cached.expiry && Date.now() < cached.expiry) {
-            setDbMember(cached.memberData);
-            setQrisGenerated(true);
-            setLoadingSession(false);
-            return;
-          } else {
-            localStorage.removeItem("pangkreas_checkout_state");
-          }
-        } catch (e) {
-          console.error("Error parsing cached checkout state:", e);
-        }
-      }
-
-      // Check if there is an active session (e.g. existing member browsing)
+      // 1. Check if there is an active session in auth
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setCurrentUser(session.user);
@@ -104,15 +86,18 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
 
         if (member) {
           if (member.role === 'admin' || member.payment_status === 'paid') {
-            // User sudah aktif/admin, biarkan sesi login tetap aman dan jangan kunci form
+            // User sudah aktif/lunas/admin, bersihkan cache QRIS dan tampilkan form
+            localStorage.removeItem("pangkreas_checkout_state");
             setCurrentUser(session.user);
             setDbMember(null);
             setQrisGenerated(false);
+            setLoadingSession(false);
+            return;
           } else if (member.payment_status === 'pending') {
-            // Fetch pending transaction to get unique_code
+            // Member pending
             const { data: transaction } = await supabase
               .from("transactions")
-              .select("unique_code")
+              .select("unique_code, order_id")
               .eq("member_id", session.user.id)
               .eq("status", "pending")
               .order("created_at", { ascending: false })
@@ -122,22 +107,73 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
             const derivedUniqueCode = transaction?.unique_code || (member.final_price ? member.final_price % 1000 : 0);
             const memberData = {
               ...member,
+              orderId: transaction?.order_id || member.payment_order_id,
               unique_code: derivedUniqueCode
             };
             setDbMember(memberData);
             setFormData({
               fullName: member.full_name || '',
               stageName: member.stage_name || '',
-              instagram: member.instagram_username || '',
-              tiktok: member.tiktok_username || '',
+              instagram: member.social_media?.instagram || member.instagram_username || '',
+              tiktok: member.social_media?.tiktok || member.tiktok_username || '',
               whatsapp: member.whatsapp_number || '',
               email: member.email || session.user.email || '',
               profession: member.occupation || ''
             });
             setQrisGenerated(true);
+            setLoadingSession(false);
+            return;
           }
         }
       }
+
+      // 2. Check localStorage for cached checkout state
+      const cachedStateStr = typeof window !== 'undefined' ? localStorage.getItem("pangkreas_checkout_state") : null;
+      if (cachedStateStr) {
+        try {
+          const cached = JSON.parse(cachedStateStr);
+          if (cached && cached.expiry && Date.now() < cached.expiry) {
+            const username = cached.memberData?.username;
+            const orderId = cached.memberData?.orderId;
+            let isAlreadyPaid = false;
+
+            if (username) {
+              const { data: m } = await supabase
+                .from("members")
+                .select("payment_status")
+                .eq("username", username)
+                .maybeSingle();
+              if (m && m.payment_status === 'paid') {
+                isAlreadyPaid = true;
+              }
+            } else if (orderId) {
+              const { data: tx } = await supabase
+                .from("transactions")
+                .select("status")
+                .eq("order_id", orderId)
+                .maybeSingle();
+              if (tx && (tx.status === 'success' || tx.status === 'paid')) {
+                isAlreadyPaid = true;
+              }
+            }
+
+            if (isAlreadyPaid) {
+              // Jika sudah dikonfirmasi lunas di database, bersihkan state & kembali ke form
+              localStorage.removeItem("pangkreas_checkout_state");
+              setDbMember(null);
+              setQrisGenerated(false);
+            } else {
+              setDbMember(cached.memberData);
+              setQrisGenerated(true);
+            }
+          } else {
+            localStorage.removeItem("pangkreas_checkout_state");
+          }
+        } catch (e) {
+          console.error("Error parsing cached checkout state:", e);
+        }
+      }
+
       setLoadingSession(false);
     };
 
@@ -541,8 +577,18 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                     Kirim Bukti Transfer ke WhatsApp
                   </a>
 
-                  {/* Keamanan */}
-
+                  {/* Tombol Kembali ke Form Pendaftaran */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem("pangkreas_checkout_state");
+                      setDbMember(null);
+                      setQrisGenerated(false);
+                    }}
+                    className="w-full mt-2.5 py-2 text-center text-xs font-semibold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                  >
+                    ← Kembali ke Form Pendaftaran / Ganti Data
+                  </button>
                 </div>
               </div>
               <div className="flex mb-2 items-center gap-1.5 justify-center text-[10px] text-zinc-400">
