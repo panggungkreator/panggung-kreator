@@ -60,7 +60,7 @@ export default function ProfileTabs({
       </div>
 
       {/* ═══ MOBILE FLOATING PILL / FLOATING ACTION DOCK (Persis Sesuai Gambar Referensi) ═══ */}
-      <div className="lg:hidden fixed bottom-2.5 left-1/2 -translate-x-1/2 z-50">
+      <div className="lg:hidden fixed bottom-2.5 left-1/2 -translate-x-1/2 z-30">
         <nav
           aria-label="Navigasi Tab Profil"
           className="flex items-center gap-1.5 p-1.5 bg-black/90 dark:bg-neutral-950/95 backdrop-blur-md rounded-full border border-neutral-800/80 shadow-[0_10px_35px_rgba(0,0,0,0.4)]"
