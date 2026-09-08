@@ -143,7 +143,7 @@ export async function ensureVenueExistsAction(locationStr: string) {
 
   const trimmed = locationStr.trim();
   let name = trimmed;
-  let address = trimmed;
+  let address = "";
 
   if (trimmed.includes(" - ")) {
     const parts = trimmed.split(" - ");
@@ -155,10 +155,15 @@ export async function ensureVenueExistsAction(locationStr: string) {
     address = parts.slice(1).join(", ").trim();
   }
 
+  // Prevent address being identical to name
+  if (address.toLowerCase() === name.toLowerCase()) {
+    address = "";
+  }
+
   const todayDate = new Date().toISOString().split("T")[0];
 
   const { devResult, error } = await syncDualOperation(async (client) => {
-    // 1. Cek apakah venue dengan nama atau alamat serupa sudah ada
+    // 1. Cek apakah venue dengan nama serupa sudah ada
     const { data: existingByName } = await client
       .from("venues")
       .select("id, name, address")
@@ -174,19 +179,21 @@ export async function ensureVenueExistsAction(locationStr: string) {
       return existingByName;
     }
 
-    const { data: existingByAddress } = await client
-      .from("venues")
-      .select("id, name, address")
-      .ilike("address", address)
-      .limit(1)
-      .maybeSingle();
-
-    if (existingByAddress) {
-      await client
+    if (address) {
+      const { data: existingByAddress } = await client
         .from("venues")
-        .update({ last_used_at: todayDate })
-        .eq("id", existingByAddress.id);
-      return existingByAddress;
+        .select("id, name, address")
+        .ilike("address", address)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingByAddress) {
+        await client
+          .from("venues")
+          .update({ last_used_at: todayDate })
+          .eq("id", existingByAddress.id);
+        return existingByAddress;
+      }
     }
 
     // 2. Jika belum ada, buat entri venue baru
@@ -195,7 +202,7 @@ export async function ensureVenueExistsAction(locationStr: string) {
       .insert([
         {
           name,
-          address: address || name,
+          address: address || "",
           city: "Bandung",
           description: "Ditambahkan otomatis dari pembuatan acara",
           last_used_at: todayDate,

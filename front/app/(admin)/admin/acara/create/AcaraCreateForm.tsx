@@ -80,29 +80,41 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
   const filteredVenues = useMemo(() => {
     if (!location.trim()) return venueList;
     const query = location.toLowerCase().trim();
-    return venueList.filter(
-      (v) =>
-        v.name.toLowerCase().includes(query) ||
-        (v.address && v.address.toLowerCase().includes(query))
-    );
+    return venueList.filter((v) => {
+      const vName = v.name.toLowerCase();
+      const vAddress = (v.address || "").toLowerCase();
+      return vName.includes(query) || (vAddress && vAddress !== vName && vAddress.includes(query));
+    });
   }, [location, venueList]);
 
   // Check if current location exactly matches a known venue
   const matchedVenue = useMemo(() => {
     if (!location.trim()) return null;
     const query = location.toLowerCase().trim();
-    return venueList.find(
-      (v) =>
-        v.name.toLowerCase() === query ||
-        `${v.name} - ${v.address}`.toLowerCase() === query ||
-        `${v.name}, ${v.address}`.toLowerCase() === query ||
-        (v.address && v.address.toLowerCase() === query)
-    );
+    return venueList.find((v) => {
+      const vName = v.name.toLowerCase().trim();
+      const vAddress = (v.address || "").toLowerCase().trim();
+      const hasDistinctAddress = vAddress && vAddress !== vName;
+
+      return (
+        vName === query ||
+        (hasDistinctAddress && `${vName} - ${vAddress}` === query) ||
+        (hasDistinctAddress && `${vName}, ${vAddress}` === query) ||
+        (hasDistinctAddress && vAddress === query)
+      );
+    });
   }, [location, venueList]);
 
   // Select an existing venue from dropdown
   const handleSelectVenue = (venue: VenueItem) => {
-    const formatted = venue.address ? `${venue.name} - ${venue.address}` : venue.name;
+    const hasDistinctAddress =
+      venue.address &&
+      venue.address.trim().toLowerCase() !== venue.name.trim().toLowerCase();
+
+    const formatted = hasDistinctAddress
+      ? `${venue.name} - ${venue.address.trim()}`
+      : venue.name;
+
     setLocation(formatted);
     setIsVenueDropdownOpen(false);
   };
@@ -362,9 +374,14 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
 
                   <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin">
                     {filteredVenues.map((v) => {
+                      const vName = v.name.trim();
+                      const vAddress = (v.address || "").trim();
+                      const hasDistinctAddress = vAddress && vAddress.toLowerCase() !== vName.toLowerCase();
+                      const locLower = location.trim().toLowerCase();
+
                       const isSelected =
-                        location.trim().toLowerCase() === v.name.toLowerCase() ||
-                        location.trim().toLowerCase() === `${v.name} - ${v.address}`.toLowerCase();
+                        locLower === vName.toLowerCase() ||
+                        (hasDistinctAddress && locLower === `${vName.toLowerCase()} - ${vAddress.toLowerCase()}`);
 
                       return (
                         <button
@@ -387,7 +404,7 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
                                 Terdaftar
                               </span>
                             </div>
-                            {v.address && (
+                            {hasDistinctAddress && (
                               <p className="text-[11px] text-text-muted truncate mt-0.5">
                                 {v.address}
                               </p>
