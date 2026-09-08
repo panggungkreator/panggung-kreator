@@ -702,7 +702,7 @@ export default function AdminLayout({
         {/* Scrollable Content Container */}
         <main
           data-lenis-prevent
-          className="flex-1 overflow-y-auto bg-card transition-colors duration-300"
+          className="flex-1 overflow-y-auto bg-bg-page transition-colors duration-300"
         >
           <div className="p-6 md:p-8 max-w-7xl mx-auto w-full">
             {children}
