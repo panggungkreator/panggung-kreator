@@ -47,7 +47,7 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
   const [eventType, setEventType] = useState("open_mic");
   const [eventDate, setEventDate] = useState("");
   const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  const [endTime, setEndTime] = useState("selesai");
   const [location, setLocation] = useState("");
   const [capacity, setCapacity] = useState(50);
   const [isPublished, setIsPublished] = useState(true);
@@ -356,9 +356,8 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
                     title="Buka daftar pilihan venue"
                   >
                     <ChevronDown
-                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                        isVenueDropdownOpen ? "rotate-180" : ""
-                      }`}
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${isVenueDropdownOpen ? "rotate-180" : ""
+                        }`}
                     />
                   </button>
                 </div>
@@ -388,11 +387,10 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
                           key={v.id}
                           type="button"
                           onClick={() => handleSelectVenue(v)}
-                          className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer group ${
-                            isSelected
+                          className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer group ${isSelected
                               ? "bg-bg-well font-bold text-text-primary"
                               : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
-                          }`}
+                            }`}
                         >
                           <Building2 className="w-4 h-4 shrink-0 mt-0.5 text-text-muted group-hover:text-text-primary transition-colors" />
                           <div className="flex-1 min-w-0">

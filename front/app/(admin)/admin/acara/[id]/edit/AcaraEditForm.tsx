@@ -62,7 +62,7 @@ export default function AcaraEditForm({ event, venues }: AcaraEditFormProps) {
     event.start_time ? event.start_time.slice(0, 5) : ""
   );
   const [endTime, setEndTime] = useState(
-    event.end_time ? event.end_time.slice(0, 5) : ""
+    event.end_time ? event.end_time.slice(0, 5) : "selesai"
   );
   const [location, setLocation] = useState(event.location || "");
   const [capacity, setCapacity] = useState(event.capacity || 50);

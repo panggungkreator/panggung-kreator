@@ -504,13 +504,6 @@ export default function AcaraListClient({
                         >
                           <Eye size={14} />
                         </Link>
-                        <Link
-                          href={`/admin/acara/${evt.id}/edit`}
-                          className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-well border border-border-default/60 rounded-lg transition-colors"
-                          title="Edit Acara"
-                        >
-                          <Pencil size={14} />
-                        </Link>
                         <button
                           type="button"
                           onClick={() => setEventToDelete(evt)}
@@ -954,13 +947,6 @@ function EventCard({
               >
                 <Eye className="w-3.5 h-3.5" />
                 <span>Lihat Detail</span>
-              </Link>
-              <Link
-                href={`/admin/acara/${event.id}/edit`}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-well transition-colors"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                <span>Edit Acara</span>
               </Link>
               <button
                 type="button"
