@@ -11,8 +11,11 @@ interface AttendanceTrackerProps {
   memberId: string;
 }
 
-function calculateAttendanceStats(records: AttendanceRecord[]): IAttendanceStats {
-  const totalEvents = records.length;
+function calculateAttendanceStats(
+  records: AttendanceRecord[],
+  totalEventsCount: number
+): IAttendanceStats {
+  const totalEvents = totalEventsCount > 0 ? totalEventsCount : records.length;
   const attended = records.filter((r) => r.is_present);
   const totalAttended = attended.length;
   const attendanceRate =
@@ -58,6 +61,7 @@ function calculateAttendanceStats(records: AttendanceRecord[]): IAttendanceStats
 
 export default function AttendanceTracker({ memberId }: AttendanceTrackerProps) {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [totalEventsCount, setTotalEventsCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,17 +71,25 @@ export default function AttendanceTracker({ memberId }: AttendanceTrackerProps) 
       setError(null);
       try {
         const supabase = createClient();
-        const { data, error: err } = await supabase
-          .from("attendances")
-          .select(`
-            id, event_id, member_id, is_present, scan_method, scanned_at, created_at,
-            event:events(title, event_type, event_date, start_time, end_time, location)
-          `)
-          .eq("member_id", memberId)
-          .order("created_at", { ascending: false });
+        const [attendanceRes, eventsRes] = await Promise.all([
+          supabase
+            .from("attendances")
+            .select(`
+              id, event_id, member_id, is_present, scan_method, scanned_at, created_at,
+              event:events(title, event_type, event_date, start_time, end_time, location)
+            `)
+            .eq("member_id", memberId)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("events")
+            .select("id", { count: "exact", head: true }),
+        ]);
 
-        if (err) throw err;
-        setRecords((data as any) || []);
+        if (attendanceRes.error) throw attendanceRes.error;
+        setRecords((attendanceRes.data as any) || []);
+        if (eventsRes.count !== null && eventsRes.count !== undefined) {
+          setTotalEventsCount(eventsRes.count);
+        }
       } catch (err: any) {
         console.error("Error loading attendance records:", err);
         setError("Gagal memuat data kehadiran event.");
@@ -110,7 +122,7 @@ export default function AttendanceTracker({ memberId }: AttendanceTrackerProps) 
     );
   }
 
-  const stats = calculateAttendanceStats(records);
+  const stats = calculateAttendanceStats(records, totalEventsCount);
 
   return (
     <div className="bg-transparent border-0 p-0 space-y-6 w-full animate-fade-in rounded-none">
