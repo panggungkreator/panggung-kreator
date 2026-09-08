@@ -26,7 +26,8 @@ import {
   Copy,
   ExternalLink,
   Sparkles,
-  ListOrdered
+  ListOrdered,
+  Pencil
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -416,6 +417,16 @@ export default function AcaraDetailClient({
             </h1>
           </div>
         </div>
+
+        {canEdit && (
+          <Link
+            href={`/admin/acara/${event.id}/edit`}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-border-default hover:border-text-primary bg-bg-card hover:bg-bg-well text-xs font-semibold text-text-primary transition-colors cursor-pointer shrink-0 shadow-xs"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            <span>Edit Acara</span>
+          </Link>
+        )}
       </div>
 
 
