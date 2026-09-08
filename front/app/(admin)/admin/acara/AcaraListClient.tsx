@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -31,9 +31,7 @@ import { ModalConfirmation } from "@/components/ui/Modal-Confirmation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-
-
+import AdminPagination from "@/components/admin/AdminPagination";
 
 interface AttendeeItem {
   name: string;
@@ -59,6 +57,7 @@ interface EventItem {
 
 interface AcaraListClientProps {
   initialEvents: EventItem[];
+  paginationLimit?: number;
 }
 
 const EVENT_TYPE_MAP: Record<string, { label: string; dotColor: string }> = {
@@ -68,11 +67,25 @@ const EVENT_TYPE_MAP: Record<string, { label: string; dotColor: string }> = {
   networking: { label: "Networking", dotColor: "bg-emerald-500" },
   content_class: { label: "Content Class", dotColor: "bg-rose-500" },
   mentoring: { label: "Mentoring", dotColor: "bg-indigo-500" },
+  sharing_session: { label: "Sharing Session", dotColor: "bg-sky-500" },
+  workshop: { label: "Workshop", dotColor: "bg-orange-500" },
+  voice_over: { label: "Voice Over", dotColor: "bg-teal-500" },
+  level_up: { label: "Level Up", dotColor: "bg-violet-500" },
+  branding_class: { label: "Branding Class", dotColor: "bg-pink-500" },
   lainnya: { label: "Acara Komunitas", dotColor: "bg-cyan-500" },
+};
+
+const getEventTypeInfo = (typeKey: string) => {
+  if (EVENT_TYPE_MAP[typeKey]) return EVENT_TYPE_MAP[typeKey];
+  const label = typeKey
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return { label, dotColor: "bg-cyan-500" };
 };
 
 export default function AcaraListClient({
   initialEvents,
+  paginationLimit = 10,
 }: AcaraListClientProps) {
   const [events, setEvents] = useState<EventItem[]>(initialEvents);
   const [eventToDelete, setEventToDelete] = useState<EventItem | null>(null);
@@ -288,16 +301,32 @@ export default function AcaraListClient({
       });
   }, [events, search, typeFilter, statusFilter, sortBy]);
 
-  // Group events into Upcoming and Past
+  // Filters & Pagination
+  const limit = paginationLimit && paginationLimit > 0 ? paginationLimit : 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, typeFilter, statusFilter, sortBy]);
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / limit));
+  const startIndex = (currentPage - 1) * limit;
+  const endIndex = Math.min(filteredEvents.length, startIndex + limit);
+  const paginatedEvents = useMemo(() => {
+    return filteredEvents.slice(startIndex, endIndex);
+  }, [filteredEvents, startIndex, endIndex]);
+
+  // Group events into Upcoming and Past (from paginated set for current page view)
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
-  const upcomingEvents = useMemo(() => {
-    return filteredEvents.filter((e) => e.event_date >= todayStr);
-  }, [filteredEvents, todayStr]);
+  const paginatedUpcomingEvents = useMemo(() => {
+    return paginatedEvents.filter((e) => e.event_date >= todayStr);
+  }, [paginatedEvents, todayStr]);
 
-  const pastEvents = useMemo(() => {
-    return filteredEvents.filter((e) => e.event_date < todayStr);
-  }, [filteredEvents, todayStr]);
+  const paginatedPastEvents = useMemo(() => {
+    return paginatedEvents.filter((e) => e.event_date < todayStr);
+  }, [paginatedEvents, todayStr]);
 
   return (
     <div className="space-y-6 pb-28">
@@ -449,82 +478,102 @@ export default function AcaraListClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-default/40">
-              {filteredEvents.length === 0 ? (
+              {paginatedEvents.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="p-8 text-center text-text-muted font-medium">
                     Tidak ada data jadwal acara ditemukan.
                   </td>
                 </tr>
               ) : (
-                filteredEvents.map((evt) => (
-                  <tr key={evt.id} className="hover:bg-bg-well/40 transition-colors">
-                    <td className="py-3.5 px-5 font-bold text-text-primary border-r border-border-default/40">
-                      <Link href={`/admin/acara/${evt.id}`} className="hover:underline">
-                        {evt.title}
-                      </Link>
-                    </td>
-                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-medium">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${EVENT_TYPE_MAP[evt.event_type]?.dotColor || "bg-zinc-400"}`}></span>
-                        {EVENT_TYPE_MAP[evt.event_type]?.label || evt.event_type}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-mono">
-                      {formatDate(evt.event_date)}
-                    </td>
-                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-mono">
-                      {formatTime(evt.start_time)}{evt.end_time ? ` - ${formatTime(evt.end_time)}` : " - Selesai"} WIB
-                    </td>
-                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 max-w-[180px] truncate" title={evt.location}>
-                      {evt.location}
-                    </td>
-                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40">
-                      <div className="flex items-center justify-center gap-1.5 font-mono">
-                        <span className="font-bold text-text-primary">{evt.present_count}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40">
-                      <button
-                        type="button"
-                        onClick={() => handleTogglePublish(evt.id, evt.is_published, evt.title)}
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${evt.is_published
-                          ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25"
-                          : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-300"
-                          }`}
-                      >
-                        {evt.is_published ? "Published" : "Draft"}
-                      </button>
-                    </td>
-                    <td className="py-3.5 px-5">
-                      <div className="flex items-center justify-center gap-2">
-                        <Link
-                          href={`/admin/acara/${evt.id}`}
-                          className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-well border border-border-default/60 rounded-lg transition-colors"
-                          title="Lihat Detail Acara"
-                        >
-                          <Eye size={14} />
+                paginatedEvents.map((evt) => {
+                  const typeInfo = getEventTypeInfo(evt.event_type);
+                  return (
+                    <tr key={evt.id} className="hover:bg-bg-well/40 transition-colors">
+                      <td className="py-3.5 px-5 font-bold text-text-primary border-r border-border-default/40">
+                        <Link href={`/admin/acara/${evt.id}`} className="hover:underline">
+                          {evt.title}
                         </Link>
+                      </td>
+                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-medium">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${typeInfo.dotColor}`}></span>
+                          {typeInfo.label}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-mono">
+                        {formatDate(evt.event_date)}
+                      </td>
+                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 font-mono">
+                        {formatTime(evt.start_time)}{evt.end_time ? ` - ${formatTime(evt.end_time)}` : " - Selesai"} WIB
+                      </td>
+                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40 max-w-[180px] truncate" title={evt.location}>
+                        {evt.location}
+                      </td>
+                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40">
+                        <div className="flex items-center justify-center gap-1.5 font-mono">
+                          <span className="font-bold text-text-primary">{evt.present_count}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-5 text-text-secondary border-r border-border-default/40">
                         <button
                           type="button"
-                          onClick={() => setEventToDelete(evt)}
-                          className="p-1.5 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer transition-colors"
-                          title="Hapus Acara"
+                          onClick={() => handleTogglePublish(evt.id, evt.is_published, evt.title)}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${evt.is_published
+                            ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25"
+                            : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-300"
+                            }`}
                         >
-                          <Trash2 size={14} />
+                          {evt.is_published ? "Published" : "Draft"}
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="py-3.5 px-5">
+                        <div className="flex items-center justify-center gap-2">
+                          <Link
+                            href={`/admin/acara/${evt.id}`}
+                            className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-well border border-border-default/60 rounded-lg transition-colors"
+                            title="Lihat Detail Acara"
+                          >
+                            <Eye size={14} />
+                          </Link>
+                          <Link
+                            href={`/admin/acara/${evt.id}/edit`}
+                            className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-well border border-border-default/60 rounded-lg transition-colors"
+                            title="Edit Acara"
+                          >
+                            <Pencil size={14} />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setEventToDelete(evt)}
+                            className="p-1.5 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer transition-colors"
+                            title="Hapus Acara"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
+        <AdminPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredEvents.length}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          limit={limit}
+          itemLabel="acara"
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* ═══ 2. MOBILE VIEW: MODERN CARDS (visible on mobile, hidden on md/lg) ═══ */}
       <div className="block md:hidden space-y-6">
-        {filteredEvents.length === 0 ? (
+        {paginatedEvents.length === 0 ? (
           <div className="p-12 text-center bg-bg-card border border-border-default/70 rounded-3xl space-y-3">
             <Calendar className="w-10 h-10 text-text-muted mx-auto stroke-1" />
             <p className="text-sm font-semibold text-text-primary">Tidak ada acara ditemukan</p>
@@ -535,7 +584,7 @@ export default function AcaraListClient({
         ) : (
           <div className="space-y-8">
             {/* Section 1: Acara Mendatang / Top Priority */}
-            {upcomingEvents.length > 0 && (
+            {paginatedUpcomingEvents.length > 0 && (
               <div className="space-y-3">
                 {/* Section Header */}
                 <button
@@ -548,7 +597,7 @@ export default function AcaraListClient({
                       Acara Mendatang
                     </h2>
                     <span className="text-[11px] font-mono text-text-muted px-2 py-0.5 rounded-full bg-bg-well border border-border-default/50 font-medium">
-                      {upcomingEvents.length} Acara
+                      {paginatedUpcomingEvents.length} Acara
                     </span>
                   </div>
                   <div className="p-1 rounded-full text-text-muted group-hover:text-text-primary transition-colors">
@@ -559,7 +608,7 @@ export default function AcaraListClient({
                 {/* Cards Grid */}
                 {isUpcomingOpen && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-                    {upcomingEvents.map((evt) => (
+                    {paginatedUpcomingEvents.map((evt) => (
                       <EventCard
                         key={evt.id}
                         event={evt}
@@ -575,7 +624,7 @@ export default function AcaraListClient({
             )}
 
             {/* Section 2: Riwayat Acara / Due Today or Past */}
-            {pastEvents.length > 0 && (
+            {paginatedPastEvents.length > 0 && (
               <div className="space-y-3">
                 {/* Section Header */}
                 <button
@@ -588,15 +637,14 @@ export default function AcaraListClient({
                       Riwayat Acara Selesai
                     </h2>
                     <span className="text-[11px] font-mono text-text-muted px-2 py-0.5 rounded-full bg-bg-well border border-border-default/50 font-medium">
-                      {pastEvents.length} Acara
+                      {paginatedPastEvents.length} Acara
                     </span>
                   </div>
                 </button>
 
-
                 {/* Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-                  {pastEvents.map((evt) => (
+                  {paginatedPastEvents.map((evt) => (
                     <EventCard
                       key={evt.id}
                       event={evt}
@@ -609,10 +657,19 @@ export default function AcaraListClient({
                 </div>
               </div>
             )}
+            <AdminPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredEvents.length}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              limit={limit}
+              itemLabel="acara"
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>
-
 
       {/* ═══ FLOATING BOTTOM CONTROLS (Compact Proportional Dock) ═══ */}
       <div className="md:hidden fixed bottom-6 inset-x-0 z-30 pointer-events-none flex justify-center px-4">
@@ -841,7 +898,7 @@ function EventCard({
   onDelete: (evt: EventItem) => void;
 }) {
   const router = useRouter();
-  const typeInfo = EVENT_TYPE_MAP[event.event_type] || EVENT_TYPE_MAP.lainnya;
+  const typeInfo = getEventTypeInfo(event.event_type);
 
   return (
     <div

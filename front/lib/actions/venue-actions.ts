@@ -166,7 +166,7 @@ export async function ensureVenueExistsAction(locationStr: string) {
     // 1. Cek apakah venue dengan nama serupa sudah ada
     const { data: existingByName } = await client
       .from("venues")
-      .select("id, name, address")
+      .select("id, name, address, use_count")
       .ilike("name", name)
       .limit(1)
       .maybeSingle();
@@ -174,7 +174,10 @@ export async function ensureVenueExistsAction(locationStr: string) {
     if (existingByName) {
       await client
         .from("venues")
-        .update({ last_used_at: todayDate })
+        .update({
+          last_used_at: todayDate,
+          use_count: (existingByName.use_count || 0) + 1,
+        })
         .eq("id", existingByName.id);
       return existingByName;
     }
@@ -182,7 +185,7 @@ export async function ensureVenueExistsAction(locationStr: string) {
     if (address) {
       const { data: existingByAddress } = await client
         .from("venues")
-        .select("id, name, address")
+        .select("id, name, address, use_count")
         .ilike("address", address)
         .limit(1)
         .maybeSingle();
@@ -190,7 +193,10 @@ export async function ensureVenueExistsAction(locationStr: string) {
       if (existingByAddress) {
         await client
           .from("venues")
-          .update({ last_used_at: todayDate })
+          .update({
+            last_used_at: todayDate,
+            use_count: (existingByAddress.use_count || 0) + 1,
+          })
           .eq("id", existingByAddress.id);
         return existingByAddress;
       }
@@ -206,9 +212,10 @@ export async function ensureVenueExistsAction(locationStr: string) {
           city: "Bandung",
           description: "Ditambahkan otomatis dari pembuatan acara",
           last_used_at: todayDate,
+          use_count: 1,
         },
       ])
-      .select("id, name, address")
+      .select("id, name, address, use_count")
       .single();
 
     if (insertErr) throw insertErr;

@@ -27,11 +27,22 @@ export default async function AcaraCreatePage() {
     redirect("/myprofile");
   }
 
-  // Fetch list of recommended venues to populate location selector
-  const { data: venues } = await supabase
-    .from("venues")
-    .select("id, name, address")
-    .order("name", { ascending: true });
+  // Fetch venues ordered by highest usage frequency and last used date
+  const [venuesResponse, eventTypesResponse] = await Promise.all([
+    supabase
+      .from("venues")
+      .select("id, name, address, use_count, last_used_at")
+      .order("use_count", { ascending: false })
+      .order("last_used_at", { ascending: false, nullsFirst: false })
+      .order("name", { ascending: true }),
+    supabase
+      .from("event_types")
+      .select("id, name, value, color")
+      .order("name", { ascending: true })
+  ]);
 
-  return <AcaraCreateForm venues={venues || []} />;
+  const venues = venuesResponse.data || [];
+  const eventTypes = eventTypesResponse.data || [];
+
+  return <AcaraCreateForm venues={venues} initialEventTypes={eventTypes} />;
 }

@@ -88,5 +88,9 @@ export default async function AcaraPage() {
   });
 
 
-  return <AcaraListClient initialEvents={formattedEvents} />;
+  // Fetch pagination limit setting
+  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
+  const paginationLimit = await getPaginationLimitSettingAction();
+
+  return <AcaraListClient initialEvents={formattedEvents} paginationLimit={paginationLimit} />;
 }

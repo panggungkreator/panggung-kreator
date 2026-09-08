@@ -16,20 +16,21 @@ import {
   X,
   Building2,
   Sparkles,
-  Pencil
+  Pencil,
+  Tag
 } from "lucide-react";
 import { toast } from "sonner";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { TimePicker } from "@/components/ui/TimePicker";
-import { Button } from "@/components/ui/Button";
-import { updateEventAction } from "@/lib/actions/event-actions";
+import { updateEventAction, EventTypeItem } from "@/lib/actions/event-actions";
 
 interface VenueItem {
   id: string;
   name: string;
   address: string;
   city?: string;
+  use_count?: number;
+  last_used_at?: string;
 }
 
 interface EventData {
@@ -48,15 +49,31 @@ interface EventData {
 interface AcaraEditFormProps {
   event: EventData;
   venues: VenueItem[];
+  initialEventTypes?: EventTypeItem[];
 }
 
-export default function AcaraEditForm({ event, venues }: AcaraEditFormProps) {
+export default function AcaraEditForm({
+  event,
+  venues,
+  initialEventTypes = [],
+}: AcaraEditFormProps) {
   const router = useRouter();
+
+  // Helper to format default event type name
+  const defaultTypeName = useMemo(() => {
+    const found = initialEventTypes.find(
+      (t) => t.value === event.event_type || t.name.toLowerCase() === event.event_type.toLowerCase()
+    );
+    if (found) return found.name;
+    return event.event_type
+      ? event.event_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      : "Open Mic";
+  }, [event.event_type, initialEventTypes]);
 
   // Form states initialized with existing event data
   const [title, setTitle] = useState(event.title || "");
   const [description, setDescription] = useState(event.description || "");
-  const [eventType, setEventType] = useState(event.event_type || "open_mic");
+  const [eventType, setEventType] = useState(defaultTypeName);
   const [eventDate, setEventDate] = useState(event.event_date || "");
   const [startTime, setStartTime] = useState(
     event.start_time ? event.start_time.slice(0, 5) : ""
@@ -73,10 +90,15 @@ export default function AcaraEditForm({ event, venues }: AcaraEditFormProps) {
   const [venueList, setVenueList] = useState<VenueItem[]>(venues || []);
   const venueContainerRef = useRef<HTMLDivElement>(null);
 
+  // Dynamic Event Type Combobox states
+  const [typeList, setTypeList] = useState<EventTypeItem[]>(initialEventTypes);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const typeContainerRef = useRef<HTMLDivElement>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Handle clicking outside the venue dropdown
+  // Handle clicking outside both dropdowns
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
@@ -85,12 +107,45 @@ export default function AcaraEditForm({ event, venues }: AcaraEditFormProps) {
       ) {
         setIsVenueDropdownOpen(false);
       }
+      if (
+        typeContainerRef.current &&
+        !typeContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsTypeDropdownOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Filtered event types matching query
+  const filteredEventTypes = useMemo(() => {
+    if (!eventType.trim()) return typeList;
+    const q = eventType.toLowerCase().trim();
+    return typeList.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.value.toLowerCase().includes(q)
+    );
+  }, [eventType, typeList]);
+
+  // Check if current eventType matches a known tag
+  const matchedType = useMemo(() => {
+    if (!eventType.trim()) return null;
+    const q = eventType.toLowerCase().trim();
+    return typeList.find(
+      (t) =>
+        t.value.toLowerCase() === q ||
+        t.name.toLowerCase() === q
+    );
+  }, [eventType, typeList]);
+
+  const handleSelectType = (item: EventTypeItem) => {
+    setEventType(item.name);
+    setIsTypeDropdownOpen(false);
+  };
 
   // Filtered venues matching typed query
   const filteredVenues = useMemo(() => {
@@ -139,7 +194,7 @@ export default function AcaraEditForm({ event, venues }: AcaraEditFormProps) {
     e.preventDefault();
     setError("");
 
-    if (!title.trim() || !eventType || !eventDate || !startTime || !location.trim()) {
+    if (!title.trim() || !eventType.trim() || !eventDate || !startTime || !location.trim()) {
       setError("Mohon lengkapi semua kolom yang ditandai bintang (*).");
       return;
     }
@@ -150,7 +205,7 @@ export default function AcaraEditForm({ event, venues }: AcaraEditFormProps) {
       const res = await updateEventAction(event.id, {
         title: title.trim(),
         description: description.trim(),
-        event_type: eventType,
+        event_type: eventType.trim(),
         event_date: eventDate,
         start_time: startTime,
         end_time: endTime === "selesai" || !endTime ? null : endTime,
@@ -245,25 +300,153 @@ export default function AcaraEditForm({ event, venues }: AcaraEditFormProps) {
 
           {/* Event Type & Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            {/* Event Type */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-text-secondary block">
-                Tipe Acara *
-              </label>
-              <Select value={eventType} onValueChange={setEventType}>
-                <SelectTrigger className="w-full h-10 rounded-xl px-3.5 text-xs font-medium bg-bg-well/50 border-border-default">
-                  <SelectValue placeholder="Pilih Tipe Acara" />
-                </SelectTrigger>
-                <SelectContent className="bg-bg-card border-border-default">
-                  <SelectItem value="open_mic">Open Mic</SelectItem>
-                  <SelectItem value="speech_practice">Speech Practice</SelectItem>
-                  <SelectItem value="mc_practice">MC Practice</SelectItem>
-                  <SelectItem value="networking">Networking</SelectItem>
-                  <SelectItem value="content_class">Content Class</SelectItem>
-                  <SelectItem value="mentoring">Mentoring</SelectItem>
-                  <SelectItem value="lainnya">Lainnya</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Dynamic Event Type Combobox */}
+            <div className="space-y-1.5" ref={typeContainerRef}>
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-[11px] font-semibold text-text-secondary block">
+                  Tipe Acara *
+                </label>
+                {matchedType ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-semibold select-none animate-fade-in">
+                    <Tag className="w-3 h-3 shrink-0" />
+                    <span>Tag Terdaftar: {matchedType.name}</span>
+                  </span>
+                ) : eventType.trim() ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 font-semibold select-none animate-fade-in">
+                    <Sparkles className="w-3 h-3 shrink-0" />
+                    <span>Tag Baru (Auto-Save)</span>
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="relative">
+                <div className="relative flex items-center">
+                  <Tag className="absolute left-3.5 w-3.5 h-3.5 text-text-muted pointer-events-none" />
+                  <input
+                    type="text"
+                    value={eventType}
+                    onFocus={() => setIsTypeDropdownOpen(true)}
+                    onChange={(e) => {
+                      setEventType(e.target.value);
+                      setIsTypeDropdownOpen(true);
+                    }}
+                    placeholder="Pilih atau ketik tag baru..."
+                    className="flex h-10 w-full rounded-xl border border-border-default bg-bg-well/50 pl-9 pr-16 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors font-medium"
+                    required
+                  />
+                  <div className="absolute right-2.5 flex items-center gap-1">
+                    {eventType && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEventType("");
+                          setIsTypeDropdownOpen(true);
+                        }}
+                        className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-well transition-colors cursor-pointer"
+                        title="Bersihkan input"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                      className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-well transition-colors cursor-pointer"
+                      title="Buka daftar tipe acara"
+                    >
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                          isTypeDropdownOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Suggestions / Options Dropdown */}
+                {isTypeDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-12 z-50 bg-bg-card border border-border-default/85 rounded-2xl shadow-xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+                    <div className="px-3.5 py-2 border-b border-border-default/50 bg-bg-well/40 flex items-center justify-between text-[10px] font-mono text-text-muted uppercase tracking-wider">
+                      <span>Pilihan Tag Tipe Acara</span>
+                      <span>{filteredEventTypes.length} Tag</span>
+                    </div>
+
+                    <div className="max-h-52 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin">
+                      {filteredEventTypes.map((t) => {
+                        const isSelected =
+                          eventType.trim().toLowerCase() === t.name.toLowerCase() ||
+                          eventType.trim().toLowerCase() === t.value.toLowerCase();
+
+                        return (
+                          <button
+                            key={t.id || t.value}
+                            type="button"
+                            onClick={() => handleSelectType(t)}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${
+                              isSelected
+                                ? "bg-bg-well font-bold text-text-primary"
+                                : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  t.color || "bg-cyan-500"
+                                } shrink-0`}
+                              />
+                              <span>{t.name}</span>
+                            </span>
+                            {isSelected && (
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      {/* Prompt to save new tag */}
+                      {eventType.trim() && !matchedType && (
+                        <button
+                          type="button"
+                          onClick={() => setIsTypeDropdownOpen(false)}
+                          className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left text-xs bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 text-text-primary transition-colors cursor-pointer mt-1"
+                        >
+                          <Plus className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-amber-700 dark:text-amber-300">
+                              Gunakan & Simpan sebagai Tag Baru
+                            </p>
+                            <p className="text-[11px] text-text-secondary mt-0.5 break-words">
+                              &quot;{eventType}&quot;
+                            </p>
+                            <p className="text-[10px] text-text-muted font-mono mt-1">
+                              ✓ Otomatis tersimpan ke daftar tag saat acara disimpan
+                            </p>
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Tag Pills */}
+              {typeList.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-semibold text-text-muted mr-1">
+                    Pilihan cepat:
+                  </span>
+                  {typeList.slice(0, 5).map((t) => (
+                    <button
+                      key={t.id || t.value}
+                      type="button"
+                      onClick={() => handleSelectType(t)}
+                      className="text-[11px] font-medium px-2.5 py-0.5 bg-bg-well/70 hover:bg-bg-well border border-border-default/70 hover:border-text-primary rounded-full text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Event Date */}
@@ -380,7 +563,7 @@ export default function AcaraEditForm({ event, venues }: AcaraEditFormProps) {
               {isVenueDropdownOpen && (
                 <div className="absolute left-0 right-0 top-12 z-50 bg-bg-card border border-border-default/85 rounded-2xl shadow-xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
                   <div className="px-3.5 py-2 border-b border-border-default/50 bg-bg-well/40 flex items-center justify-between text-[10px] font-mono text-text-muted uppercase tracking-wider">
-                    <span>Opsi Pilihan Venue</span>
+                    <span>Opsi Pilihan Venue (Urutan Terbanyak Dipakai)</span>
                     <span>{filteredVenues.length} Terdaftar</span>
                   </div>
 
@@ -415,6 +598,11 @@ export default function AcaraEditForm({ event, venues }: AcaraEditFormProps) {
                               <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                                 Terdaftar
                               </span>
+                              {v.use_count && v.use_count > 0 ? (
+                                <span className="text-[9px] font-mono text-text-muted">
+                                  ({v.use_count}x dipakai)
+                                </span>
+                              ) : null}
                             </div>
                             {hasDistinctAddress && (
                               <p className="text-[11px] text-text-muted truncate mt-0.5">
@@ -461,13 +649,13 @@ export default function AcaraEditForm({ event, venues }: AcaraEditFormProps) {
               )}
             </div>
 
-            {/* Quick Venue Pill Chips */}
+            {/* Quick Venue Pill Chips - Limited to Maximum 6 Items */}
             {venueList.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
                 <span className="text-[10px] font-semibold text-text-muted mr-1">
                   Pilihan cepat:
                 </span>
-                {venueList.slice(0, 5).map((v) => (
+                {venueList.slice(0, 6).map((v) => (
                   <button
                     key={v.id}
                     type="button"

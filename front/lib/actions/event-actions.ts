@@ -19,6 +19,177 @@ export interface EventFormData {
   is_published?: boolean;
 }
 
+export interface EventTypeItem {
+  id: string;
+  name: string;
+  value: string;
+  color?: string;
+}
+
+/**
+ * Memastikan tipe acara / tag tersimpan di tabel `event_types`.
+ * Jika belum ada, otomatis menyimpannya ke kedua database (Dev & Prod).
+ */
+export async function ensureEventTypeExistsAction(nameOrValue: string) {
+  if (!nameOrValue || !nameOrValue.trim()) {
+    return { success: false, error: "Tipe acara tidak boleh kosong." };
+  }
+
+  const raw = nameOrValue.trim();
+
+  // Buat slug value yang aman
+  const value =
+    raw
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "lainnya";
+
+  // Format display name
+  const name = raw.includes("_")
+    ? raw
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ")
+    : raw.charAt(0).toUpperCase() + raw.slice(1);
+
+  const colors = [
+    "bg-amber-500",
+    "bg-blue-500",
+    "bg-purple-500",
+    "bg-emerald-500",
+    "bg-rose-500",
+    "bg-indigo-500",
+    "bg-sky-500",
+    "bg-orange-500",
+    "bg-teal-500",
+    "bg-violet-500",
+    "bg-pink-500",
+    "bg-cyan-500",
+  ];
+  const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+  const { devResult, error } = await syncDualOperation(async (client) => {
+    // Cek apakah tag dengan value atau nama serupa sudah ada
+    const { data: existing } = await client
+      .from("event_types")
+      .select("id, name, value, color")
+      .or(`value.eq.${value},name.ilike.${name}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      return existing;
+    }
+
+    // Insert tag baru
+    const { data: inserted, error: insErr } = await client
+      .from("event_types")
+      .insert([{ name, value, color: randomColor }])
+      .select("id, name, value, color")
+      .single();
+
+    if (insErr) throw insErr;
+    return inserted;
+  });
+
+  if (error) {
+    console.warn("Notice: ensureEventTypeExistsAction warning:", error);
+  }
+
+  revalidatePath("/admin/acara/create");
+  revalidatePath("/admin/acara");
+  return { success: true, eventType: devResult };
+}
+
+export async function createEventAction(data: EventFormData) {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return { success: false, error: "Sesi tidak ditemukan atau kedaluwarsa." };
+
+  const hasAccess = await checkPermission("acara", "create");
+  if (!hasAccess) {
+    return {
+      success: false,
+      error: "Akses ditolak: Anda tidak memiliki izin untuk membuat acara.",
+    };
+  }
+
+  const trimmedTitle = data.title?.trim();
+  const trimmedLocation = data.location?.trim();
+  const trimmedType = data.event_type?.trim();
+
+  if (!trimmedTitle || !trimmedType || !data.event_date || !data.start_time || !trimmedLocation) {
+    return { success: false, error: "Mohon lengkapi semua kolom wajib." };
+  }
+
+  // 1. Auto-save tag tipe acara jika baru
+  try {
+    await ensureEventTypeExistsAction(trimmedType);
+  } catch (typeErr) {
+    console.warn("Notice: Gagal auto-save tipe acara:", typeErr);
+  }
+
+  // 2. Auto-save venue jika baru atau update frekuensi penggunaan
+  try {
+    await ensureVenueExistsAction(trimmedLocation);
+  } catch (venueErr) {
+    console.warn("Notice: Gagal auto-save venue:", venueErr);
+  }
+
+  // Format tipe acara slug
+  const cleanEventType =
+    trimmedType
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "lainnya";
+
+  const payload = {
+    title: trimmedTitle,
+    description: data.description?.trim() || "",
+    event_type: cleanEventType,
+    event_date: data.event_date,
+    start_time: data.start_time,
+    end_time: data.end_time === "selesai" || !data.end_time ? null : data.end_time,
+    location: trimmedLocation,
+    capacity: data.capacity || 50,
+    is_published: data.is_published ?? true,
+    created_by: session.user.id,
+  };
+
+  const { devResult, error } = await syncDualOperation(async (client) => {
+    const { data: inserted, error: err } = await client
+      .from("events")
+      .insert([payload])
+      .select("id")
+      .single();
+    if (err) throw err;
+    return inserted;
+  });
+
+  if (error) {
+    return { success: false, error: error.message || "Gagal membuat acara di database." };
+  }
+
+  revalidatePath("/admin/acara");
+  revalidatePath("/myprofile");
+
+  return { success: true, eventId: devResult?.id };
+}
+
 export async function updateEventAction(id: string, data: EventFormData) {
   if (!id) {
     return { success: false, error: "ID acara tidak valid." };
@@ -52,22 +223,37 @@ export async function updateEventAction(id: string, data: EventFormData) {
 
   const trimmedTitle = data.title?.trim();
   const trimmedLocation = data.location?.trim();
+  const trimmedType = data.event_type?.trim();
 
-  if (!trimmedTitle || !data.event_type || !data.event_date || !data.start_time || !trimmedLocation) {
+  if (!trimmedTitle || !trimmedType || !data.event_date || !data.start_time || !trimmedLocation) {
     return { success: false, error: "Mohon lengkapi semua kolom wajib." };
   }
 
-  // 1. Pastikan venue tersimpan di database jika ada perubahan / penambahan venue baru
+  // 1. Auto-save tag tipe acara jika baru
+  try {
+    await ensureEventTypeExistsAction(trimmedType);
+  } catch (typeErr) {
+    console.warn("Notice: Gagal auto-save tipe acara:", typeErr);
+  }
+
+  // 2. Pastikan venue tersimpan di database jika ada perubahan / penambahan venue baru
   try {
     await ensureVenueExistsAction(trimmedLocation);
   } catch (venueErr) {
     console.warn("Notice: Gagal auto-save venue:", venueErr);
   }
 
+  // Format tipe acara slug
+  const cleanEventType =
+    trimmedType
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "lainnya";
+
   const payload = {
     title: trimmedTitle,
     description: data.description?.trim() || "",
-    event_type: data.event_type,
+    event_type: cleanEventType,
     event_date: data.event_date,
     start_time: data.start_time,
     end_time: data.end_time === "selesai" || !data.end_time ? null : data.end_time,

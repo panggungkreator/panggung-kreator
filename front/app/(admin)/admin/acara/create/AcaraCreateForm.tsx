@@ -9,42 +9,41 @@ import {
   MapPin,
   ArrowLeft,
   CheckCircle,
-  Loader,
-  AlertCircle,
-  ChevronDown,
   Loader2,
+  ChevronDown,
   Check,
   Plus,
   X,
   Building2,
-  Sparkles
+  Sparkles,
+  Tag
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { TimePicker } from "@/components/ui/TimePicker";
-import { Button } from "@/components/ui/Button";
-import { ensureVenueExistsAction } from "@/lib/actions/venue-actions";
+import { createEventAction, EventTypeItem } from "@/lib/actions/event-actions";
 
 interface VenueItem {
   id: string;
   name: string;
   address: string;
   city?: string;
+  use_count?: number;
+  last_used_at?: string;
 }
 
 interface AcaraCreateFormProps {
   venues: VenueItem[];
+  initialEventTypes?: EventTypeItem[];
 }
 
-export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
+export default function AcaraCreateForm({ venues, initialEventTypes = [] }: AcaraCreateFormProps) {
   const router = useRouter();
 
   // Form states
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [eventType, setEventType] = useState("open_mic");
+  const [eventType, setEventType] = useState("Open Mic");
   const [eventDate, setEventDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("selesai");
@@ -57,10 +56,15 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
   const [venueList, setVenueList] = useState<VenueItem[]>(venues || []);
   const venueContainerRef = useRef<HTMLDivElement>(null);
 
+  // Dynamic Event Type Combobox states
+  const [typeList, setTypeList] = useState<EventTypeItem[]>(initialEventTypes);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const typeContainerRef = useRef<HTMLDivElement>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Handle clicking outside the venue dropdown
+  // Handle clicking outside both dropdowns
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -69,12 +73,45 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
       ) {
         setIsVenueDropdownOpen(false);
       }
+      if (
+        typeContainerRef.current &&
+        !typeContainerRef.current.contains(event.target as Node)
+      ) {
+        setIsTypeDropdownOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Filtered event types matching query
+  const filteredEventTypes = useMemo(() => {
+    if (!eventType.trim()) return typeList;
+    const q = eventType.toLowerCase().trim();
+    return typeList.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.value.toLowerCase().includes(q)
+    );
+  }, [eventType, typeList]);
+
+  // Check if current eventType exactly matches an existing tag
+  const matchedType = useMemo(() => {
+    if (!eventType.trim()) return null;
+    const q = eventType.toLowerCase().trim();
+    return typeList.find(
+      (t) =>
+        t.value.toLowerCase() === q ||
+        t.name.toLowerCase() === q
+    );
+  }, [eventType, typeList]);
+
+  const handleSelectType = (item: EventTypeItem) => {
+    setEventType(item.name);
+    setIsTypeDropdownOpen(false);
+  };
 
   // Filtered venues matching the typed location
   const filteredVenues = useMemo(() => {
@@ -123,7 +160,7 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
     e.preventDefault();
     setError("");
 
-    if (!title || !eventType || !eventDate || !startTime || !location.trim()) {
+    if (!title.trim() || !eventType.trim() || !eventDate || !startTime || !location.trim()) {
       setError("Mohon lengkapi semua kolom yang ditandai bintang (*).");
       return;
     }
@@ -131,32 +168,21 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
     setIsSubmitting(true);
 
     try {
-      // 1. Auto-save venue to `venues` table if new or update last_used_at
-      const venueResult = await ensureVenueExistsAction(location.trim());
-      if (!venueResult.success) {
-        console.warn("Auto save venue notice:", venueResult.error);
+      const res = await createEventAction({
+        title: title.trim(),
+        description: description.trim(),
+        event_type: eventType.trim(),
+        event_date: eventDate,
+        start_time: startTime,
+        end_time: endTime === "selesai" || !endTime ? null : endTime,
+        location: location.trim(),
+        capacity,
+        is_published: isPublished,
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || "Gagal membuat acara.");
       }
-
-      // 2. Insert event into `events` table
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Sesi pengguna tidak ditemukan.");
-
-      const { error: insertError } = await supabase
-        .from("events")
-        .insert({
-          title,
-          description,
-          event_type: eventType,
-          event_date: eventDate,
-          start_time: startTime,
-          end_time: endTime === "selesai" || !endTime ? null : endTime,
-          location: location.trim(),
-          is_published: isPublished,
-          created_by: user.id
-        });
-
-      if (insertError) throw new Error(insertError.message);
 
       toast.success("Acara baru berhasil dibuat!");
       router.push("/admin/acara");
@@ -201,6 +227,11 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="space-y-5">
+          {error && (
+            <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium">
+              {error}
+            </div>
+          )}
 
           {/* Title */}
           <div className="space-y-1.5">
@@ -233,25 +264,153 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
 
           {/* Event Type & Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            {/* Event Type */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-text-secondary block">
-                Tipe Acara *
-              </label>
-              <Select value={eventType} onValueChange={setEventType}>
-                <SelectTrigger className="w-full h-10 rounded-xl px-3.5 text-xs font-medium bg-bg-well/50 border-border-default">
-                  <SelectValue placeholder="Pilih Tipe Acara" />
-                </SelectTrigger>
-                <SelectContent className="bg-bg-card border-border-default">
-                  <SelectItem value="open_mic">Open Mic</SelectItem>
-                  <SelectItem value="speech_practice">Speech Practice</SelectItem>
-                  <SelectItem value="mc_practice">MC Practice</SelectItem>
-                  <SelectItem value="networking">Networking</SelectItem>
-                  <SelectItem value="content_class">Content Class</SelectItem>
-                  <SelectItem value="mentoring">Mentoring</SelectItem>
-                  <SelectItem value="lainnya">Lainnya</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Dynamic Event Type Combobox */}
+            <div className="space-y-1.5" ref={typeContainerRef}>
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-[11px] font-semibold text-text-secondary block">
+                  Tipe Acara *
+                </label>
+                {matchedType ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-semibold select-none animate-fade-in">
+                    <Tag className="w-3 h-3 shrink-0" />
+                    <span>Tag Terdaftar: {matchedType.name}</span>
+                  </span>
+                ) : eventType.trim() ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 font-semibold select-none animate-fade-in">
+                    <Sparkles className="w-3 h-3 shrink-0" />
+                    <span>Tag Baru (Auto-Save)</span>
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="relative">
+                <div className="relative flex items-center">
+                  <Tag className="absolute left-3.5 w-3.5 h-3.5 text-text-muted pointer-events-none" />
+                  <input
+                    type="text"
+                    value={eventType}
+                    onFocus={() => setIsTypeDropdownOpen(true)}
+                    onChange={(e) => {
+                      setEventType(e.target.value);
+                      setIsTypeDropdownOpen(true);
+                    }}
+                    placeholder="Pilih atau ketik tag baru..."
+                    className="flex h-10 w-full rounded-xl border border-border-default bg-bg-well/50 pl-9 pr-16 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-colors font-medium"
+                    required
+                  />
+                  <div className="absolute right-2.5 flex items-center gap-1">
+                    {eventType && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEventType("");
+                          setIsTypeDropdownOpen(true);
+                        }}
+                        className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-well transition-colors cursor-pointer"
+                        title="Bersihkan input"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                      className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-well transition-colors cursor-pointer"
+                      title="Buka daftar tipe acara"
+                    >
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                          isTypeDropdownOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Suggestions / Options Dropdown */}
+                {isTypeDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-12 z-50 bg-bg-card border border-border-default/85 rounded-2xl shadow-xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+                    <div className="px-3.5 py-2 border-b border-border-default/50 bg-bg-well/40 flex items-center justify-between text-[10px] font-mono text-text-muted uppercase tracking-wider">
+                      <span>Pilihan Tag Tipe Acara</span>
+                      <span>{filteredEventTypes.length} Tag</span>
+                    </div>
+
+                    <div className="max-h-52 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin">
+                      {filteredEventTypes.map((t) => {
+                        const isSelected =
+                          eventType.trim().toLowerCase() === t.name.toLowerCase() ||
+                          eventType.trim().toLowerCase() === t.value.toLowerCase();
+
+                        return (
+                          <button
+                            key={t.id || t.value}
+                            type="button"
+                            onClick={() => handleSelectType(t)}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${
+                              isSelected
+                                ? "bg-bg-well font-bold text-text-primary"
+                                : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  t.color || "bg-cyan-500"
+                                } shrink-0`}
+                              />
+                              <span>{t.name}</span>
+                            </span>
+                            {isSelected && (
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      {/* Prompt to save new tag */}
+                      {eventType.trim() && !matchedType && (
+                        <button
+                          type="button"
+                          onClick={() => setIsTypeDropdownOpen(false)}
+                          className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left text-xs bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 text-text-primary transition-colors cursor-pointer mt-1"
+                        >
+                          <Plus className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-amber-700 dark:text-amber-300">
+                              Gunakan & Simpan sebagai Tag Baru
+                            </p>
+                            <p className="text-[11px] text-text-secondary mt-0.5 break-words">
+                              &quot;{eventType}&quot;
+                            </p>
+                            <p className="text-[10px] text-text-muted font-mono mt-1">
+                              ✓ Otomatis tersimpan ke daftar tag saat acara disimpan
+                            </p>
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Tag Pills */}
+              {typeList.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-semibold text-text-muted mr-1">
+                    Pilihan cepat:
+                  </span>
+                  {typeList.slice(0, 5).map((t) => (
+                    <button
+                      key={t.id || t.value}
+                      type="button"
+                      onClick={() => handleSelectType(t)}
+                      className="text-[11px] font-medium px-2.5 py-0.5 bg-bg-well/70 hover:bg-bg-well border border-border-default/70 hover:border-text-primary rounded-full text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Event Date */}
@@ -356,8 +515,9 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
                     title="Buka daftar pilihan venue"
                   >
                     <ChevronDown
-                      className={`w-3.5 h-3.5 transition-transform duration-200 ${isVenueDropdownOpen ? "rotate-180" : ""
-                        }`}
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                        isVenueDropdownOpen ? "rotate-180" : ""
+                      }`}
                     />
                   </button>
                 </div>
@@ -367,7 +527,7 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
               {isVenueDropdownOpen && (
                 <div className="absolute left-0 right-0 top-12 z-50 bg-bg-card border border-border-default/85 rounded-2xl shadow-xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
                   <div className="px-3.5 py-2 border-b border-border-default/50 bg-bg-well/40 flex items-center justify-between text-[10px] font-mono text-text-muted uppercase tracking-wider">
-                    <span>Opsi Pilihan Venue</span>
+                    <span>Opsi Pilihan Venue (Urutan Terbanyak Dipakai)</span>
                     <span>{filteredVenues.length} Terdaftar</span>
                   </div>
 
@@ -387,10 +547,11 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
                           key={v.id}
                           type="button"
                           onClick={() => handleSelectVenue(v)}
-                          className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer group ${isSelected
+                          className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer group ${
+                            isSelected
                               ? "bg-bg-well font-bold text-text-primary"
                               : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
-                            }`}
+                          }`}
                         >
                           <Building2 className="w-4 h-4 shrink-0 mt-0.5 text-text-muted group-hover:text-text-primary transition-colors" />
                           <div className="flex-1 min-w-0">
@@ -401,6 +562,11 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
                               <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                                 Terdaftar
                               </span>
+                              {v.use_count && v.use_count > 0 ? (
+                                <span className="text-[9px] font-mono text-text-muted">
+                                  ({v.use_count}x dipakai)
+                                </span>
+                              ) : null}
                             </div>
                             {hasDistinctAddress && (
                               <p className="text-[11px] text-text-muted truncate mt-0.5">
@@ -447,13 +613,13 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
               )}
             </div>
 
-            {/* Quick Venue Pill Chips */}
+            {/* Quick Venue Pill Chips - Limited to Maximum 6 Items */}
             {venueList.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
                 <span className="text-[10px] font-semibold text-text-muted mr-1">
                   Pilihan cepat:
                 </span>
-                {venueList.slice(0, 5).map((v) => (
+                {venueList.slice(0, 6).map((v) => (
                   <button
                     key={v.id}
                     type="button"
@@ -468,60 +634,38 @@ export default function AcaraCreateForm({ venues }: AcaraCreateFormProps) {
           </div>
 
           {/* Publish Checkbox */}
-          <div className="flex items-center gap-2.5 py-1 select-none">
-            <input
-              type="checkbox"
-              id="is_published"
-              checked={isPublished}
-              onChange={(e) => setIsPublished(e.target.checked)}
-              className="w-4 h-4 text-zinc-900 rounded border-border-default cursor-pointer accent-zinc-900 dark:accent-yellow-400"
-            />
-            <label
-              htmlFor="is_published"
-              className="text-xs font-medium text-text-primary cursor-pointer"
-            >
-              Publish acara langsung (Terlihat di web publik)
+          <div className="pt-2">
+            <label className="flex items-center gap-2.5 text-xs text-text-secondary font-medium cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isPublished}
+                onChange={(e) => setIsPublished(e.target.checked)}
+                className="w-4 h-4 rounded border-border-default bg-bg-well text-zinc-900 focus:ring-0 focus:ring-offset-0 transition-colors cursor-pointer"
+              />
+              <span>Publish acara langsung (Terlihat di web publik)</span>
             </label>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="p-3.5 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs font-semibold flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Submit & Cancel Buttons */}
-          <div className="flex items-center gap-3 pt-4 border-t border-border-default/60">
-            <Link href="/admin/acara" className="flex-1">
-              <button
-                type="button"
-                disabled={isSubmitting}
-                className="w-full h-10 text-xs font-semibold rounded-xl border border-border-default bg-bg-well/50 hover:bg-bg-well text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:opacity-50"
-              >
-                Batal
-              </button>
+          {/* Buttons */}
+          <div className="pt-4 flex items-center justify-end gap-3 border-t border-border-default/60">
+            <Link
+              href="/admin/acara"
+              className="px-5 py-2.5 rounded-full border border-border-default text-xs font-semibold text-text-secondary hover:text-text-primary hover:bg-bg-well transition-colors cursor-pointer"
+            >
+              Batal
             </Link>
+
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 h-10 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-6 py-2.5 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm flex items-center gap-2"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Menyimpan...</span>
-                </>
-              ) : (
-                <span>Simpan</span>
-              )}
+              {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              <span>{isSubmitting ? "Menyimpan..." : "Simpan Acara"}</span>
             </button>
           </div>
-
         </form>
       </div>
     </div>
-
   );
 }

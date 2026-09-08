@@ -38,8 +38,8 @@ export default async function AcaraEditPage({
     redirect("/myprofile");
   }
 
-  // Fetch event details and list of venues in parallel
-  const [eventResponse, venuesResponse] = await Promise.all([
+  // Fetch event details, venues sorted by usage frequency, and event types in parallel
+  const [eventResponse, venuesResponse, eventTypesResponse] = await Promise.all([
     supabase
       .from("events")
       .select("*")
@@ -47,16 +47,23 @@ export default async function AcaraEditPage({
       .single(),
     supabase
       .from("venues")
-      .select("id, name, address")
+      .select("id, name, address, use_count, last_used_at")
+      .order("use_count", { ascending: false })
+      .order("last_used_at", { ascending: false, nullsFirst: false })
+      .order("name", { ascending: true }),
+    supabase
+      .from("event_types")
+      .select("id, name, value, color")
       .order("name", { ascending: true })
   ]);
 
   const event = eventResponse.data;
   const venues = venuesResponse.data || [];
+  const eventTypes = eventTypesResponse.data || [];
 
   if (!event) {
     return notFound();
   }
 
-  return <AcaraEditForm event={event} venues={venues} />;
+  return <AcaraEditForm event={event} venues={venues} initialEventTypes={eventTypes} />;
 }
