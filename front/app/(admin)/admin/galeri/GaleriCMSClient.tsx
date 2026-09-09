@@ -698,7 +698,7 @@ export default function GaleriCMSClient({
           {detailAlbum && (
             <div className="space-y-4 pt-2 text-xs">
               {detailAlbum.hero_image_url && (
-                <div className="rounded-2xl overflow-hidden border border-border-default aspect-video max-h-56">
+                <div className="rounded-2xl overflow-hidden border border-border-default aspect-video max-h-56 mx-auto">
                   <img
                     src={detailAlbum.hero_image_url}
                     alt={detailAlbum.title}
