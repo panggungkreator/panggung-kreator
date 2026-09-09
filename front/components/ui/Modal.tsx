@@ -50,7 +50,7 @@ export function Modal({
           <DialogHeader className="flex flex-row items-center justify-between gap-3 mb-4 pb-3 border-b border-zinc-150 dark:border-zinc-800/80 shrink-0 space-y-0 text-left">
             <div className="flex items-center gap-3">
               {icon && (
-                <div className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 flex items-center justify-center font-bold text-base shrink-0 border border-zinc-200/60 dark:border-zinc-700/60">
+                <div className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 flex items-center justify-center font-bold text-base shrink-0 border border-zinc-200/60 dark:border-zinc-700/60 overflow-hidden">
                   {icon}
                 </div>
               )}

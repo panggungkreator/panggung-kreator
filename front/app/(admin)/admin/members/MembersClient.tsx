@@ -21,6 +21,7 @@ import {
   SlidersHorizontal,
   Check,
   FileText,
+  User,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -34,6 +35,7 @@ type Member = {
   id: string;
   full_name: string;
   stage_name: string;
+  avatar_url?: string | null;
   whatsapp_number: string;
   email: string;
   birth_date?: string | null;
@@ -890,15 +892,32 @@ export default function MembersClient({
                       className={`group hover:bg-bg-well/30 transition-colors ${m.membership_tier === "priority" ? "bg-red-500/[0.02]" : ""}`}
                     >
                       <td className="py-3.5 px-5">
-                        <div className="flex items-center gap-2">
-                          <div className="font-bold text-text-primary">{m.full_name || "-"}</div>
-                          {m.membership_tier === "priority" && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] bg-red-500 text-white font-black uppercase tracking-wider">
-                              PRIORITY
-                            </span>
-                          )}
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full overflow-hidden bg-bg-well border border-border-default/80 flex items-center justify-center shrink-0">
+                            {m.avatar_url ? (
+                              <img
+                                src={m.avatar_url}
+                                alt={m.stage_name || m.full_name || "Member"}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs font-bold text-text-muted font-mono">
+                                {(m.stage_name || m.full_name || "M").charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className="font-bold text-text-primary truncate">{m.full_name || "-"}</div>
+                              {m.membership_tier === "priority" && (
+                                <span className="px-1.5 py-0.5 rounded text-[8px] bg-red-500 text-white font-black uppercase tracking-wider shrink-0">
+                                  PRIORITY
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-text-secondary mt-0.5 font-mono truncate">@{m.username}</div>
+                          </div>
                         </div>
-                        <div className="text-[10px] text-text-secondary mt-0.5 font-mono">@{m.username}</div>
                       </td>
                       <td className="py-3.5 px-5 text-text-secondary font-normal">{m.email || "-"}</td>
                       <td className="py-3.5 px-5 text-text-secondary font-normal font-mono">{m.whatsapp_number || "-"}</td>
@@ -972,18 +991,33 @@ export default function MembersClient({
                 </div>
 
                 {/* Middle: Member info */}
-                <div className="my-3">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h3 className="text-base font-black tracking-tight text-text-primary dark:group-hover:text-yellow-400 transition-colors leading-tight">
-                      {m.full_name || "-"}
-                    </h3>
-                    {m.stage_name && (
-                      <span className="text-[11px] font-semibold text-text-muted">
-                        ({m.stage_name})
+                <div className="my-3 flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full overflow-hidden bg-bg-well border border-border-default/80 flex items-center justify-center shrink-0">
+                    {m.avatar_url ? (
+                      <img
+                        src={m.avatar_url}
+                        alt={m.stage_name || m.full_name || "Member"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-text-muted font-mono">
+                        {(m.stage_name || m.full_name || "M").charAt(0).toUpperCase()}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-text-secondary font-mono mt-0.5">@{m.username}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="text-base font-black tracking-tight text-text-primary dark:group-hover:text-yellow-400 transition-colors leading-tight">
+                        {m.full_name || "-"}
+                      </h3>
+                      {m.stage_name && (
+                        <span className="text-[11px] font-semibold text-text-muted">
+                          ({m.stage_name})
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-secondary font-mono mt-0.5">@{m.username}</p>
+                  </div>
                 </div>
 
                 {/* Bottom: Contact info & Action buttons */}
@@ -1318,7 +1352,17 @@ export default function MembersClient({
         isOpen={!!detailMember}
         onClose={() => setDetailMember(null)}
         maxWidth="max-w-lg"
-        icon={(detailMember?.full_name || "M")[0].toUpperCase()}
+        icon={
+          detailMember?.avatar_url ? (
+            <img
+              src={detailMember.avatar_url}
+              alt={detailMember.full_name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            (detailMember?.full_name || "M")[0].toUpperCase()
+          )
+        }
         title={detailMember?.full_name}
         subtitle={`@${detailMember?.username || "username"}`}
         footer={
