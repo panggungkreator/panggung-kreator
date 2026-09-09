@@ -35,29 +35,29 @@ export function DemographicsModal({ open, onOpenChange, data }: DemographicsModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] p-6 overflow-y-auto rounded-2xl border border-[#E5E7EB] dark:border-[#2A2E42] bg-[#FFFFFF] dark:bg-[#1A1D27]">
-        <DialogHeader className="border-b border-[#E5E7EB] dark:border-[#2A2E42] pb-4">
+      <DialogContent className="max-w-4xl max-h-[92vh] sm:max-h-[85vh] p-4 sm:p-6 overflow-y-auto rounded-none sm:rounded-3xl border-0 sm:border border-border-default/80 bg-bg-card text-text-primary">
+        <DialogHeader className="border-b border-border-default/60 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-[#F2F4F7] dark:bg-zinc-800 text-[#111111] dark:text-white">
+            <div className="p-2 rounded-2xl bg-bg-well border border-border-default text-text-primary shrink-0">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold text-[#111111] dark:text-white">
+              <DialogTitle className="text-lg sm:text-xl font-bold text-text-primary">
                 Data Demografi Peserta & Member
               </DialogTitle>
-              <DialogDescription className="text-xs text-[#6B7280] dark:text-[#8B8FA8] mt-0.5">
+              <DialogDescription className="text-xs text-text-secondary mt-0.5">
                 {data.summary || "Rincian sebaran usia, visi karier, profesi, dan domisili member dari database."}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 pt-2">
           {/* 1. Rentang Usia */}
-          <div className="p-4 rounded-xl border border-[#E5E7EB] dark:border-[#2A2E42] bg-[#FFFFFF] dark:bg-[#1A1D27] flex flex-col justify-between">
+          <div className="p-4 rounded-2xl border border-border-default/70 bg-bg-well/20 flex flex-col justify-between">
             <div className="flex items-center gap-2 mb-3">
-              <PieIcon className="w-4 h-4 text-[#111111] dark:text-white" />
-              <h3 className="text-sm font-bold text-[#111111] dark:text-white">
+              <PieIcon className="w-4 h-4 text-text-primary" />
+              <h3 className="text-sm font-bold text-text-primary">
                 Distribusi Rentang Usia
               </h3>
             </div>
@@ -84,16 +84,16 @@ export function DemographicsModal({ open, onOpenChange, data }: DemographicsModa
             </div>
           </div>
 
-          {/* 2. Visi & Orientasi Karier Member (Relevan dari database expert_desire) */}
-          <div className="p-4 rounded-xl border border-[#E5E7EB] dark:border-[#2A2E42] bg-[#FFFFFF] dark:bg-[#1A1D27] flex flex-col justify-between">
+          {/* 2. Visi & Orientasi Karier Member */}
+          <div className="p-4 rounded-2xl border border-border-default/70 bg-bg-well/20 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Target className="w-4 h-4 text-[#111111] dark:text-white" />
-                <h3 className="text-sm font-bold text-[#111111] dark:text-white">
+                <Target className="w-4 h-4 text-text-primary" />
+                <h3 className="text-sm font-bold text-text-primary">
                   Tujuan & Ambisi Ahli (Expertise Goal)
                 </h3>
               </div>
-              <p className="text-[11px] text-[#6B7280] dark:text-[#8B8FA8] mb-3">
+              <p className="text-[11px] text-text-muted mb-3">
                 Orientasi member dalam membangun karier & personal branding
               </p>
             </div>
@@ -142,7 +142,7 @@ export function DemographicsModal({ open, onOpenChange, data }: DemographicsModa
                         item.color || careerColors[idx % careerColors.length],
                     }}
                   />
-                  <span className="text-[#6B7280] dark:text-[#8B8FA8] text-[11px] font-medium">
+                  <span className="text-text-secondary text-[11px] font-medium">
                     {item.name} ({item.percentage}%)
                   </span>
                 </div>
@@ -151,10 +151,10 @@ export function DemographicsModal({ open, onOpenChange, data }: DemographicsModa
           </div>
 
           {/* 3. Pekerjaan / Status */}
-          <div className="p-4 rounded-xl border border-[#E5E7EB] dark:border-[#2A2E42] bg-[#FFFFFF] dark:bg-[#1A1D27]">
+          <div className="p-4 rounded-2xl border border-border-default/70 bg-bg-well/20">
             <div className="flex items-center gap-2 mb-3">
-              <Briefcase className="w-4 h-4 text-[#111111] dark:text-white" />
-              <h3 className="text-sm font-bold text-[#111111] dark:text-white">
+              <Briefcase className="w-4 h-4 text-text-primary" />
+              <h3 className="text-sm font-bold text-text-primary">
                 Pekerjaan / Latar Belakang
               </h3>
             </div>
@@ -193,17 +193,17 @@ export function DemographicsModal({ open, onOpenChange, data }: DemographicsModa
           </div>
 
           {/* 4. Asal Kota / Domisili */}
-          <div className="p-4 rounded-xl border border-[#E5E7EB] dark:border-[#2A2E42] bg-[#FFFFFF] dark:bg-[#1A1D27] flex flex-col">
+          <div className="p-4 rounded-2xl border border-border-default/70 bg-bg-well/20 flex flex-col">
             <div className="flex items-center gap-2 mb-3">
-              <MapPin className="w-4 h-4 text-[#111111] dark:text-white" />
-              <h3 className="text-sm font-bold text-[#111111] dark:text-white">
+              <MapPin className="w-4 h-4 text-text-primary" />
+              <h3 className="text-sm font-bold text-text-primary">
                 Sebaran Domisili Teratas
               </h3>
             </div>
             <ScrollArea className="h-48 w-full pr-2">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-b border-[#E5E7EB] dark:border-[#2A2E42] text-[11px] text-[#374151] dark:text-[#8B8FA8]">
+                  <TableRow className="border-b border-border-default text-[11px] text-text-muted">
                     <TableHead className="py-1.5 px-2 font-semibold">Kota</TableHead>
                     <TableHead className="py-1.5 px-2 text-right font-semibold">Peserta</TableHead>
                     <TableHead className="py-1.5 px-2 text-right font-semibold">Porsi</TableHead>
@@ -211,10 +211,10 @@ export function DemographicsModal({ open, onOpenChange, data }: DemographicsModa
                 </TableHeader>
                 <TableBody>
                   {data.topCities.map((item, idx) => (
-                    <TableRow key={idx} className="border-b border-[#E5E7EB]/50 dark:border-[#2A2E42]/50 hover:bg-[#F8F9FA] dark:hover:bg-zinc-900/20 text-xs transition-colors">
-                      <TableCell className="py-1.5 px-2 font-medium text-[#111111] dark:text-white">{item.city}</TableCell>
+                    <TableRow key={idx} className="border-b border-border-default/40 hover:bg-bg-well/50 text-xs transition-colors">
+                      <TableCell className="py-1.5 px-2 font-medium text-text-primary">{item.city}</TableCell>
                       <TableCell className="py-1.5 px-2 text-right font-mono tabular-nums">{item.count}</TableCell>
-                      <TableCell className="py-1.5 px-2 text-right text-[#6B7280] dark:text-[#8B8FA8] font-mono tabular-nums">
+                      <TableCell className="py-1.5 px-2 text-right text-text-secondary font-mono tabular-nums">
                         {item.percentage}%
                       </TableCell>
                     </TableRow>

@@ -23,27 +23,27 @@ export function EventAttendanceChart({ attendances }: EventAttendanceChartProps)
   const avgAttendance = attendances.length > 0 ? Math.round(totalAttendeeSum / attendances.length) : 0;
 
   return (
-    <Card className="flex flex-col h-[380px]">
-      <CardHeader className="p-5 pb-2 flex flex-row items-center justify-between space-y-0">
+    <Card className="rounded-3xl border border-border-default/70 bg-bg-card shadow-xs flex flex-col h-[340px] sm:h-[380px]">
+      <CardHeader className="p-4 sm:p-5 pb-2 flex flex-row items-center justify-between space-y-0">
         <div>
-          <CardTitle className="text-base font-bold text-[#111111] dark:text-white flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-zinc-500" />
+          <CardTitle className="text-sm sm:text-base font-bold text-text-primary flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-text-muted" />
             Statistik Kehadiran per Event
           </CardTitle>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Rata-rata: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{avgAttendance} peserta</span> per event
+          <p className="text-xs text-text-muted mt-0.5">
+            Rata-rata: <span className="font-semibold text-text-primary">{avgAttendance} peserta</span> per event
           </p>
         </div>
 
         <div className="flex items-center gap-2 text-xs font-semibold">
-          <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+          <span className="flex items-center gap-1.5 text-text-secondary">
             <span className="w-2.5 h-2.5 rounded-full bg-[#BAFF6A]" />
-            Hadir Terverifikasi
+            <span className="hidden sm:inline">Hadir </span>Terverifikasi
           </span>
         </div>
       </CardHeader>
 
-      <CardContent className="p-5 pt-2 flex-1 w-full min-h-0">
+      <CardContent className="p-4 sm:p-5 pt-2 flex-1 w-full min-h-0">
         <div className="w-full h-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart

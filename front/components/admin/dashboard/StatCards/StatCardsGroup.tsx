@@ -8,14 +8,23 @@ import { DashboardPayload } from "../types";
 interface StatCardsGroupProps {
   stats: DashboardPayload["stats"];
   demographics: DashboardPayload["demographics"];
+  isDemographicsModalOpen?: boolean;
+  onOpenDemographicsModal?: () => void;
+  onCloseDemographicsModal?: () => void;
 }
 
-export function StatCardsGroup({ stats, demographics }: StatCardsGroupProps) {
+export function StatCardsGroup({
+  stats,
+  demographics,
+  isDemographicsModalOpen,
+  onOpenDemographicsModal,
+  onCloseDemographicsModal,
+}: StatCardsGroupProps) {
   const memberGrowthPositive = stats.memberGrowthPercentage >= 0;
   const eventGrowthPositive = stats.eventGrowthPercentage >= 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
       {/* Card 1: Total Member */}
       <StatCard
         label="Total Member Terdaftar"
@@ -43,7 +52,12 @@ export function StatCardsGroup({ stats, demographics }: StatCardsGroupProps) {
       />
 
       {/* Card 3: Action Card Demografi Peserta */}
-      <DemographicsActionCard demographics={demographics} />
+      <DemographicsActionCard
+        demographics={demographics}
+        modalOpen={isDemographicsModalOpen}
+        onOpenModal={onOpenDemographicsModal}
+        onCloseModal={onCloseDemographicsModal}
+      />
     </div>
   );
 }

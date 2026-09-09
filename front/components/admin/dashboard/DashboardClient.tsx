@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { RefreshCw, Users2 } from "lucide-react";
+import { toast } from "sonner";
 import { DashboardPayload } from "./types";
 import { DashboardHeader } from "./DashboardHeader";
 import { StatCardsGroup } from "./StatCards/StatCardsGroup";
@@ -15,7 +18,18 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ initialData }: DashboardClientProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+  const [isDemographicsModalOpen, setIsDemographicsModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    router.refresh();
+    setTimeout(() => {
+      setIsRefreshing(false);
+      toast.success("Data dashboard telah diperbarui");
+    }, 600);
+  };
 
   // Default fallback data adhering strictly to Xenith layout and Panggung Kreator context
   const data: DashboardPayload = {
@@ -93,30 +107,26 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     ],
   };
 
-  // Filter leaderboard based on header search if query present
-  const filteredLeaderboard = searchQuery
-    ? data.streakLeaderboard.filter((m) =>
-        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.email && m.email.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    : data.streakLeaderboard;
-
   return (
-    <div className="space-y-6 font-sans text-[#111111] dark:text-[#F0F0F0]">
+    <div className="space-y-6 pb-28 md:pb-12 font-sans text-text-primary">
       {/* 2.1 Header Row */}
       <DashboardHeader
         adminName={data.adminName}
-        onSearch={(q) => setSearchQuery(q)}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
       />
 
       {/* 2.2 Row of 3 Stat Cards (Mini Sparklines + Demographic Modal) */}
       <StatCardsGroup
         stats={data.stats}
         demographics={data.demographics}
+        isDemographicsModalOpen={isDemographicsModalOpen}
+        onOpenDemographicsModal={() => setIsDemographicsModalOpen(true)}
+        onCloseDemographicsModal={() => setIsDemographicsModalOpen(false)}
       />
 
       {/* 2.3 Row 1: Chart Kehadiran (Kiri) & Streak Leaderboard (Kanan) - Sejajar Bersebelahan */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
         {/* Kolom Kiri: Chart Kehadiran per Event */}
         <div className="xl:col-span-7">
           <EventAttendanceChart attendances={data.eventAttendances} />
@@ -124,12 +134,12 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
         {/* Kolom Kanan: Leaderboard Member dengan Streak Terbanyak */}
         <div className="xl:col-span-5">
-          <StreakLeaderboardTable members={filteredLeaderboard} />
+          <StreakLeaderboardTable members={data.streakLeaderboard} />
         </div>
       </div>
 
       {/* 2.4 Row 2: Wawasan Form Pendataan (Diletakkan di Bawah Secara Rapih 3 Kolom) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         {/* Topik & Minat Belajar Terpopuler */}
         <TopSkillsBarChart skills={data.topSkills} />
 
@@ -138,6 +148,32 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
         {/* Minat Monetisasi */}
         <MonetizationInterestsChart interests={data.monetizationInterests} />
+      </div>
+
+      {/* ═══ FLOATING BOTTOM CONTROLS (Compact Proportional Dock Persis admin-mobile.md) ═══ */}
+      <div className="md:hidden fixed bottom-6 inset-x-0 z-30 pointer-events-none flex justify-center px-4">
+        <div className="pointer-events-auto bg-zinc-900/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-2 text-white">
+          {/* Refresh Button (Mobile FAB) */}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            title="Segarkan data dashboard"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-white" : ""}`} />
+          </button>
+
+          {/* Primary Action Button: Demografi */}
+          <button
+            type="button"
+            onClick={() => setIsDemographicsModalOpen(true)}
+            className="h-9 px-4 rounded-full bg-white text-zinc-900 dark:bg-white dark:text-zinc-900 hover:bg-zinc-100 flex items-center gap-1.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
+          >
+            <Users2 className="w-4 h-4 stroke-[2.2]" />
+            <span>Demografi</span>
+          </button>
+        </div>
       </div>
     </div>
   );
