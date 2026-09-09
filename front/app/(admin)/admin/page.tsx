@@ -38,8 +38,10 @@ export default async function AdminDashboardPage() {
 
   // Data state variables initialized
   let totalMembers = 0;
+  let newMembersCount = 0;
   let memberGrowthPercentage = 0;
   let totalEvents = 0;
+  let newEventsCount = 0;
   let eventGrowthPercentage = 0;
   let eventAttendances: EventAttendance[] = [];
   let streakLeaderboard: MemberStreak[] = [];
@@ -69,8 +71,9 @@ export default async function AdminDashboardPage() {
     ] = await Promise.all([
       supabase
         .from("members")
-        .select("id, full_name, stage_name, email, membership_tier, avatar_url, birth_date, city, address, occupation, role, created_at")
-        .neq("role", "admin"),
+        .select("id, full_name, stage_name, email, membership_tier, avatar_url, birth_date, city, address, occupation, role, created_at, username")
+        .neq("username", "adminpangkreas")
+        .or("role.eq.admin,payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership"),
       supabase
         .from("events")
         .select("id, title, event_date, created_at")
@@ -88,9 +91,9 @@ export default async function AdminDashboardPage() {
     const attendancesList = attendancesRes.data || [];
     const interestsList = interestsRes.data || [];
 
-    // 1. Total Members & Dynamic Growth
+    // 1. Total Members & Dynamic Counts
     totalMembers = membersList.length;
-    const membersCurrentMonth = membersList.filter(
+    newMembersCount = membersList.filter(
       (m) => m.created_at && new Date(m.created_at) >= thirtyDaysAgo
     ).length;
     const membersPrevMonth = membersList.filter(
@@ -102,14 +105,14 @@ export default async function AdminDashboardPage() {
 
     memberGrowthPercentage =
       membersPrevMonth > 0
-        ? Math.round(((membersCurrentMonth - membersPrevMonth) / membersPrevMonth) * 100)
-        : membersCurrentMonth > 0
+        ? Math.round(((newMembersCount - membersPrevMonth) / membersPrevMonth) * 100)
+        : newMembersCount > 0
         ? 100
         : 0;
 
-    // 2. Total Events & Dynamic Growth
+    // 2. Total Events & Dynamic Counts
     totalEvents = eventsList.length;
-    const eventsCurrentMonth = eventsList.filter(
+    newEventsCount = eventsList.filter(
       (e) => e.created_at && new Date(e.created_at) >= thirtyDaysAgo
     ).length;
     const eventsPrevMonth = eventsList.filter(
@@ -121,8 +124,8 @@ export default async function AdminDashboardPage() {
 
     eventGrowthPercentage =
       eventsPrevMonth > 0
-        ? Math.round(((eventsCurrentMonth - eventsPrevMonth) / eventsPrevMonth) * 100)
-        : eventsCurrentMonth > 0
+        ? Math.round(((newEventsCount - eventsPrevMonth) / eventsPrevMonth) * 100)
+        : newEventsCount > 0
         ? 100
         : 0;
 
@@ -442,8 +445,10 @@ export default async function AdminDashboardPage() {
     adminName,
     stats: {
       totalMembers,
+      newMembersCount,
       memberGrowthPercentage,
       totalEvents,
+      newEventsCount,
       eventGrowthPercentage,
     },
     demographics: demographics.ageDistribution.length > 0 ? demographics : undefined,

@@ -35,10 +35,12 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const data: DashboardPayload = {
     adminName: initialData?.adminName || "Admin",
     stats: {
-      totalMembers: initialData?.stats?.totalMembers ?? 348,
-      memberGrowthPercentage: initialData?.stats?.memberGrowthPercentage ?? 24,
-      totalEvents: initialData?.stats?.totalEvents ?? 18,
-      eventGrowthPercentage: initialData?.stats?.eventGrowthPercentage ?? 12,
+      totalMembers: initialData?.stats?.totalMembers ?? 0,
+      newMembersCount: initialData?.stats?.newMembersCount ?? 0,
+      memberGrowthPercentage: initialData?.stats?.memberGrowthPercentage ?? 0,
+      totalEvents: initialData?.stats?.totalEvents ?? 0,
+      newEventsCount: initialData?.stats?.newEventsCount ?? 0,
+      eventGrowthPercentage: initialData?.stats?.eventGrowthPercentage ?? 0,
     },
     demographics: initialData?.demographics || {
       summary: "Didominasi kelompok usia 18–24 tahun (62%) dan kreator konten mandiri.",

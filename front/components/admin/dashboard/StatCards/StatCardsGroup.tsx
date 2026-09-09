@@ -20,8 +20,8 @@ export function StatCardsGroup({
   onOpenDemographicsModal,
   onCloseDemographicsModal,
 }: StatCardsGroupProps) {
-  const memberGrowthPositive = stats.memberGrowthPercentage >= 0;
-  const eventGrowthPositive = stats.eventGrowthPercentage >= 0;
+  const newMembers = stats.newMembersCount ?? 0;
+  const newEvents = stats.newEventsCount ?? 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -30,8 +30,8 @@ export function StatCardsGroup({
         label="Total Member Terdaftar"
         value={stats.totalMembers.toLocaleString()}
         growth={{
-          value: `${memberGrowthPositive ? "+" : ""}${stats.memberGrowthPercentage}%`,
-          isPositive: memberGrowthPositive,
+          value: newMembers > 0 ? `+${newMembers} baru` : "0 baru",
+          isPositive: newMembers > 0 ? true : null,
           period: "Bulan ini",
         }}
         sparklineColor="#BAFF6A"
@@ -43,8 +43,8 @@ export function StatCardsGroup({
         label="Total Event Terlaksana"
         value={stats.totalEvents.toLocaleString()}
         growth={{
-          value: `${eventGrowthPositive ? "+" : ""}${stats.eventGrowthPercentage}%`,
-          isPositive: eventGrowthPositive,
+          value: newEvents > 0 ? `+${newEvents} baru` : "0 baru",
+          isPositive: newEvents > 0 ? true : null,
           period: "Bulan ini",
         }}
         sparklineColor="#111111"

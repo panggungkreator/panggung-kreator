@@ -1,6 +1,6 @@
 export interface GrowthBadge {
   value: string;
-  isPositive: boolean;
+  isPositive?: boolean | null;
   period: string;
 }
 
@@ -51,9 +51,11 @@ export interface DashboardPayload {
   adminName?: string;
   stats: {
     totalMembers: number;
-    memberGrowthPercentage: number;
+    newMembersCount?: number;
+    memberGrowthPercentage?: number;
     totalEvents: number;
-    eventGrowthPercentage: number;
+    newEventsCount?: number;
+    eventGrowthPercentage?: number;
   };
   eventAttendances: EventAttendance[];
   streakLeaderboard: MemberStreak[];

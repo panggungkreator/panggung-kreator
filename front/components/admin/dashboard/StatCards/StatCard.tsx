@@ -32,9 +32,11 @@ export function StatCard({
           <div className="flex items-center gap-1.5 pt-1.5">
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                growth.isPositive
+                growth.isPositive === true
                   ? "bg-[#BAFF6A] text-[#2D5A00]"
-                  : "bg-[#FF6B6B]/15 text-[#CC0000] dark:bg-red-950/40 dark:text-red-400"
+                  : growth.isPositive === false
+                  ? "bg-[#FF6B6B]/15 text-[#CC0000] dark:bg-red-950/40 dark:text-red-400"
+                  : "bg-zinc-200 dark:bg-zinc-800 text-text-secondary"
               }`}
             >
               {growth.value}
