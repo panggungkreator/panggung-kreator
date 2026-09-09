@@ -86,27 +86,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       { rank: 5, id: "m5", name: "Dinda Kirana", email: "dinda@kreator.net", tier: "Free", streak: 6, totalAttendance: 7 },
       { rank: 6, id: "m6", name: "Farhan Maulana", email: "farhan@tech.id", tier: "Starter", streak: 5, totalAttendance: 6 },
     ],
-    topSkills: initialData?.topSkills || [
-      { name: "Speaking Skill", count: 245, percentage: 70 },
-      { name: "Storytelling", count: 189, percentage: 54 },
-      { name: "Content Creation", count: 172, percentage: 49 },
-      { name: "Personal Branding", count: 140, percentage: 40 },
-      { name: "Pitching & Presentation", count: 98, percentage: 28 },
-    ],
-    topChallenges: initialData?.topChallenges || [
-      { name: "Gugup Berlebihan", count: 231, percentage: 66 },
-      { name: "Takut Dihakimi", count: 184, percentage: 53 },
-      { name: "Bingung Struktur", count: 162, percentage: 47 },
-      { name: "Suara Gemetar", count: 128, percentage: 37 },
-      { name: "Bahasa Tubuh Kaku", count: 110, percentage: 32 },
-    ],
-    monetizationInterests: initialData?.monetizationInterests || [
-      { name: "Endorsement / Sponsorship", count: 210, percentage: 60 },
-      { name: "Talent / Speaker / MC", count: 165, percentage: 47 },
-      { name: "Produk Digital (e-Course)", count: 132, percentage: 38 },
-      { name: "Jasa Freelance Kreatif", count: 105, percentage: 30 },
-      { name: "Adsense / Platform Views", count: 88, percentage: 25 },
-    ],
+    topSkills: initialData?.topSkills ?? [],
+    topChallenges: initialData?.topChallenges ?? [],
+    monetizationInterests: initialData?.monetizationInterests ?? [],
   };
 
   return (

@@ -30,25 +30,31 @@ export function TopChallengesBarChart({ challenges }: TopChallengesBarChartProps
       </CardHeader>
 
       <CardContent className="p-4 sm:p-5 pt-0 flex-1 flex flex-col justify-center space-y-3.5">
-        {displayItems.map((item, idx) => (
-          <div key={idx} className="space-y-1.5 group">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-text-primary truncate max-w-[180px]">
-                {item.name}
-              </span>
-              <span className="font-mono text-[11px] font-medium text-text-secondary tabular-nums">
-                {item.percentage}% <span className="text-[10px] text-text-muted">({item.count})</span>
-              </span>
-            </div>
-            {/* Minimalist Horizontal Bar Track & Fill */}
-            <div className="h-1.5 w-full bg-bg-well rounded-full overflow-hidden">
-              <div
-                className="h-full bg-zinc-900 dark:bg-white rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(item.percentage, 100)}%` }}
-              />
-            </div>
+        {displayItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <p className="text-xs text-text-muted">Belum ada data kendala member</p>
           </div>
-        ))}
+        ) : (
+          displayItems.map((item, idx) => (
+            <div key={idx} className="space-y-1.5 group">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-text-primary truncate max-w-[180px]">
+                  {item.name}
+                </span>
+                <span className="font-mono text-[11px] font-medium text-text-secondary tabular-nums">
+                  {item.percentage}% <span className="text-[10px] text-text-muted">({item.count})</span>
+                </span>
+              </div>
+              {/* Minimalist Horizontal Bar Track & Fill */}
+              <div className="h-1.5 w-full bg-bg-well rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-zinc-900 dark:bg-white rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                />
+              </div>
+            </div>
+          ))
+        )}
       </CardContent>
     </Card>
   );

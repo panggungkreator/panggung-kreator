@@ -83,13 +83,18 @@ export default async function AdminDashboardPage() {
         .select("id, event_id, member_id, is_present, created_at"),
       supabase
         .from("member_interests")
-        .select("skills_to_master, content_topics, ps_challenges, monetization_interest, expert_desire"),
+        .select("member_id, skills_to_master, content_topics, ps_challenges, monetization_interest, expert_desire"),
     ]);
 
     const membersList = allMembersRes.data || [];
     const eventsList = eventsRes.data || [];
     const attendancesList = attendancesRes.data || [];
-    const interestsList = interestsRes.data || [];
+    const rawInterestsList = interestsRes.data || [];
+
+    const validMemberIds = new Set(membersList.map((m) => m.id));
+    const interestsList = rawInterestsList.filter((item) =>
+      item.member_id ? validMemberIds.has(item.member_id) : true
+    );
 
     // 1. Total Members & Dynamic Counts
     totalMembers = membersList.length;
@@ -290,24 +295,8 @@ export default async function AdminDashboardPage() {
           : "Komposisi demografi member dan peserta terdaftar.",
       ageDistribution,
       careerGoalDistribution,
-      occupationDistribution:
-        occupationDistribution.length > 0
-          ? occupationDistribution
-          : [
-              { name: "Content Creator", count: 24, percentage: 35 },
-              { name: "Mahasiswa", count: 20, percentage: 29 },
-              { name: "Karyawan", count: 15, percentage: 22 },
-              { name: "Freelance", count: 10, percentage: 14 },
-            ],
-      topCities:
-        topCities.length > 0
-          ? topCities
-          : [
-              { city: "Bandung", count: 28, percentage: 41 },
-              { city: "Jakarta", count: 22, percentage: 32 },
-              { city: "Surabaya", count: 11, percentage: 16 },
-              { city: "Lainnya", count: 8, percentage: 11 },
-            ],
+      occupationDistribution,
+      topCities,
     };
 
     // 4. Event Attendances (Last 6 events chronologically)
@@ -363,14 +352,21 @@ export default async function AdminDashboardPage() {
     // 6. Dynamic Wawasan Insights from member_interests
     // 6A. Top Skills (from skills_to_master)
     const skillCounts: Record<string, number> = {};
-    let totalSkillsCount = 0;
+    let skillsRespondentsCount = 0;
 
     for (const item of interestsList) {
-      if (item.skills_to_master) {
-        const skill = item.skills_to_master.trim();
-        if (skill) {
-          skillCounts[skill] = (skillCounts[skill] || 0) + 1;
-          totalSkillsCount++;
+      if (item.skills_to_master && typeof item.skills_to_master === "string") {
+        const rawSkills = item.skills_to_master
+          .split(/,|;|\n/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        if (rawSkills.length > 0) {
+          skillsRespondentsCount++;
+          const uniqueSkills = new Set(rawSkills);
+          for (const skill of uniqueSkills) {
+            skillCounts[skill] = (skillCounts[skill] || 0) + 1;
+          }
         }
       }
     }
@@ -381,21 +377,44 @@ export default async function AdminDashboardPage() {
       .map(([name, count]) => ({
         name,
         count,
-        percentage: totalSkillsCount > 0 ? Math.round((count / totalSkillsCount) * 100) : 0,
+        percentage:
+          skillsRespondentsCount > 0
+            ? Math.min(100, Math.round((count / skillsRespondentsCount) * 100))
+            : 0,
       }));
 
     // 6B. Top Challenges (from ps_challenges array)
     const challengeCounts: Record<string, number> = {};
-    let totalChallengesCount = 0;
+    let challengesRespondentsCount = 0;
 
     for (const item of interestsList) {
+      let challenges: string[] = [];
       if (Array.isArray(item.ps_challenges)) {
-        for (const ch of item.ps_challenges) {
-          if (ch && typeof ch === "string") {
-            const clean = ch.replace(/\s*\([^)]*\)/g, "").trim();
-            challengeCounts[clean] = (challengeCounts[clean] || 0) + 1;
-            totalChallengesCount++;
+        challenges = item.ps_challenges;
+      } else if (typeof item.ps_challenges === "string") {
+        try {
+          const parsed = JSON.parse(item.ps_challenges);
+          if (Array.isArray(parsed)) challenges = parsed;
+          else challenges = [item.ps_challenges];
+        } catch {
+          challenges = item.ps_challenges.split(/,|;/).map((s) => s.trim());
+        }
+      }
+
+      const cleanSet = new Set<string>();
+      for (const ch of challenges) {
+        if (ch && typeof ch === "string") {
+          const clean = ch.replace(/\s*\([^)]*\)/g, "").trim();
+          if (clean) {
+            cleanSet.add(clean);
           }
+        }
+      }
+
+      if (cleanSet.size > 0) {
+        challengesRespondentsCount++;
+        for (const clean of cleanSet) {
+          challengeCounts[clean] = (challengeCounts[clean] || 0) + 1;
         }
       }
     }
@@ -406,21 +425,35 @@ export default async function AdminDashboardPage() {
       .map(([name, count]) => ({
         name,
         count,
-        percentage: totalChallengesCount > 0 ? Math.round((count / totalChallengesCount) * 100) : 0,
+        percentage:
+          challengesRespondentsCount > 0
+            ? Math.min(100, Math.round((count / challengesRespondentsCount) * 100))
+            : 0,
       }));
 
     // 6C. Monetization Interests (from monetization_interest)
     const monetizationCounts: Record<string, number> = {};
-    let totalMonetizationCount = 0;
+    let monetizationRespondentsCount = 0;
 
     for (const item of interestsList) {
-      if (item.monetization_interest) {
-        const parts = item.monetization_interest.split(/,|&/).map((s: string) => s.trim());
+      if (item.monetization_interest && typeof item.monetization_interest === "string") {
+        const parts = item.monetization_interest
+          .split(/,|&|;|\//)
+          .map((s: string) => s.trim())
+          .filter(Boolean);
+
+        const cleanSet = new Set<string>();
         for (const p of parts) {
-          if (p) {
-            const clean = p.replace(/\s*\([^)]*\)/g, "").trim();
+          const clean = p.replace(/\s*\([^)]*\)/g, "").trim();
+          if (clean) {
+            cleanSet.add(clean);
+          }
+        }
+
+        if (cleanSet.size > 0) {
+          monetizationRespondentsCount++;
+          for (const clean of cleanSet) {
             monetizationCounts[clean] = (monetizationCounts[clean] || 0) + 1;
-            totalMonetizationCount++;
           }
         }
       }
@@ -433,8 +466,8 @@ export default async function AdminDashboardPage() {
         name,
         count,
         percentage:
-          totalMonetizationCount > 0
-            ? Math.round((count / totalMonetizationCount) * 100)
+          monetizationRespondentsCount > 0
+            ? Math.min(100, Math.round((count / monetizationRespondentsCount) * 100))
             : 0,
       }));
   } catch (err) {
@@ -454,9 +487,9 @@ export default async function AdminDashboardPage() {
     demographics: demographics.ageDistribution.length > 0 ? demographics : undefined,
     eventAttendances: eventAttendances.length > 0 ? eventAttendances : undefined,
     streakLeaderboard: streakLeaderboard.length > 0 ? streakLeaderboard : undefined,
-    topSkills: topSkills.length > 0 ? topSkills : undefined,
-    topChallenges: topChallenges.length > 0 ? topChallenges : undefined,
-    monetizationInterests: monetizationInterests.length > 0 ? monetizationInterests : undefined,
+    topSkills,
+    topChallenges,
+    monetizationInterests,
   };
 
   return (
