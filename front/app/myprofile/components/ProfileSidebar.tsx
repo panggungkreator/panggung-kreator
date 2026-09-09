@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { MemberProfile } from "@/lib/types/member";
-import { Globe, Copy, Check, Lock, Link2 } from "lucide-react";
+import { Globe, Copy, Check, Lock, Link2, Shield } from "lucide-react";
 import { toast } from "sonner";
 import ChangePasswordModal from "@/components/member/ChangePasswordModal";
 
@@ -53,6 +53,30 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+  const getAdminUrl = () => {
+    if (typeof window === "undefined") return "/admin";
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    const port = window.location.port ? `:${window.location.port}` : "";
+    const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(":") || hostname === "[::1]";
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost") || hostname.endsWith(".local") || isIpAddress;
+
+    if (isLocalhost) {
+      return "/admin";
+    }
+
+    let rootDomain = "panggungkreator.web.id";
+    const parts = hostname.split(".");
+    if (parts.length >= 2) {
+      if (hostname.endsWith(".web.id") && parts.length >= 3) {
+        rootDomain = parts.slice(-3).join(".");
+      } else {
+        rootDomain = parts.slice(-2).join(".");
+      }
+    }
+    return process.env.NEXT_PUBLIC_ADMIN_URL || `${protocol}//admin.${rootDomain}${port}/`;
+  };
 
   const handleCopyCode = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -305,13 +329,14 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
       {/* ACTION BUTTONS (EDIT PROFIL, GANTI PASSWORD & LOGOUT) */}
       <div className="w-full space-y-2.5 pt-4">
         {member.role === "admin" && (
-          <Link
-            href="/admin"
+          <a
+            href={getAdminUrl()}
             onClick={onLinkClick}
-            className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs uppercase tracking-widest transition-colors block text-center font-bold border border-amber-500 shadow-sm"
+            className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2 font-bold border border-amber-500 shadow-sm"
           >
-            Dashboard Admin &rarr;
-          </Link>
+            <Shield className="w-3.5 h-3.5" />
+            <span>Dashboard Admin &rarr;</span>
+          </a>
         )}
 
         <Link

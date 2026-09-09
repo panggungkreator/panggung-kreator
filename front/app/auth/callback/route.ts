@@ -82,7 +82,7 @@ export async function GET(request: Request) {
             // 1. Cek di tabel members via Supabase client (berdasarkan auth id)
             const { data: mById } = await supabase
                 .from("members")
-                .select("id, role, email")
+                .select("id, role, email, username")
                 .eq("id", authUser.id)
                 .maybeSingle();
             if (mById) member = mById;
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
             if (!member && authUser.email) {
                 const { data: memberByEmail } = await supabase
                     .from("members")
-                    .select("id, role, email")
+                    .select("id, role, email, username")
                     .ilike("email", authUser.email)
                     .maybeSingle();
                 if (memberByEmail) {
@@ -106,7 +106,7 @@ export async function GET(request: Request) {
                     const serviceClient = createServiceRoleClient();
                     const { data: sMember } = await serviceClient
                         .from("members")
-                        .select("id, role, email")
+                        .select("id, role, email, username")
                         .eq("id", authUser.id)
                         .maybeSingle();
 
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
                     } else if (authUser.email) {
                         const { data: sMemberEmail } = await serviceClient
                             .from("members")
-                            .select("id, role, email")
+                            .select("id, role, email, username")
                             .ilike("email", authUser.email)
                             .maybeSingle();
 
@@ -163,8 +163,11 @@ export async function GET(request: Request) {
 
     let targetUrl: string;
 
-    if (isAdmin && !isExplicitCustomPath) {
-        // User adalah ADMIN dan tidak sedang scan QR absensi khusus -> arahkan ke Admin Dashboard!
+    const isDedicatedAdmin =
+        member?.username?.toLowerCase() === "adminpangkreas" ||
+        authUser?.email?.toLowerCase().includes("adminpangkreas");
+
+    if (isDedicatedAdmin) {
         if (isLocalhost) {
             targetUrl = `${redirectTo}/admin`;
         } else {
@@ -183,7 +186,11 @@ export async function GET(request: Request) {
                 ? `${process.env.NEXT_PUBLIC_ADMIN_URL}/`
                 : `${defaultAdminUrl}/`;
         }
-        console.log(`[AUTH CALLBACK] Admin user detected (${authUser?.email}), redirecting to ${targetUrl}`);
+        console.log(`[AUTH CALLBACK] Dedicated admin user detected (${authUser?.email}), redirecting to ${targetUrl}`);
+    } else if (isAdmin && !isExplicitCustomPath) {
+        // User adalah ADMIN -> arahkan ke halaman login dengan modal pilih role (Admin vs Member)
+        targetUrl = `${redirectTo}/login?roleSelect=1`;
+        console.log(`[AUTH CALLBACK] Admin user detected (${authUser?.email}), redirecting to role selection modal: ${targetUrl}`);
     } else {
         const destination = isExplicitCustomPath ? nextParam : "/myprofile";
         targetUrl = destination.startsWith("http") ? destination : `${redirectTo}${destination}`;

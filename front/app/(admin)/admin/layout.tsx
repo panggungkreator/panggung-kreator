@@ -35,6 +35,7 @@ import {
   X,
   Loader2,
   Gift,
+  User,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isSuperAdmin as checkIsSuperAdmin } from "@/lib/security";
@@ -153,6 +154,7 @@ export default function AdminLayout({
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [adminName, setAdminName] = useState("Admin");
+  const [adminUsername, setAdminUsername] = useState("");
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [permissions, setPermissions] = useState<Record<string, Permission>>({});
   const [navGroups, setNavGroups] = useState<NavGroup[]>(staticNavGroups);
@@ -255,14 +257,14 @@ export default function AdminLayout({
 
         let { data: member } = await supabase
           .from("members")
-          .select("full_name, role")
+          .select("full_name, role, username")
           .eq("id", user.id)
           .maybeSingle();
 
         if (!member && user.email) {
           const { data: memberByEmail } = await supabase
             .from("members")
-            .select("full_name, role")
+            .select("full_name, role, username")
             .ilike("email", user.email)
             .maybeSingle();
           if (memberByEmail) member = memberByEmail;
@@ -271,6 +273,9 @@ export default function AdminLayout({
         if (member) {
           setAdminName(member.full_name || "Admin");
           setIsAdmin(member.role === "admin");
+          setAdminUsername(member.username || "");
+        } else if (user.email && user.email.toLowerCase().includes("adminpangkreas")) {
+          setAdminUsername("adminpangkreas");
         }
 
 
@@ -412,6 +417,31 @@ export default function AdminLayout({
     return href.replace(/^\/admin/, "") || "/";
   };
 
+  // Helper to dynamically get Member Area (/myprofile) URL
+  const getMemberAreaHref = () => {
+    if (!mounted) return "/myprofile";
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    const port = window.location.port ? `:${window.location.port}` : "";
+    const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(":") || hostname === "[::1]";
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost") || hostname.endsWith(".local") || isIpAddress;
+
+    if (isLocalhost) {
+      return "/myprofile";
+    }
+
+    let rootDomain = "panggungkreator.web.id";
+    const parts = hostname.split(".");
+    if (parts.length >= 2) {
+      if (hostname.endsWith(".web.id") && parts.length >= 3) {
+        rootDomain = parts.slice(-3).join(".");
+      } else {
+        rootDomain = parts.slice(-2).join(".");
+      }
+    }
+    return `${protocol}//${rootDomain}${port}/myprofile`;
+  };
+
 
 
   // Helper to build functional breadcrumb items in header
@@ -551,6 +581,22 @@ export default function AdminLayout({
                     {isSuperAdmin ? "SUPER ADMIN" : "OPERATOR"}
                   </p>
                 </div>
+                {/* Switch to Member Area (Kecuali adminpangkreas yang tidak memiliki profil member) */}
+                {adminUsername.toLowerCase() !== "adminpangkreas" && (
+                  <a
+                    href={getMemberAreaHref()}
+                    onClick={() => setIsProfileOpen(false)}
+                    className="w-full flex items-center justify-between px-2.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-page rounded-md transition-all duration-150 cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <User size={13} className="text-text-secondary group-hover:text-text-primary" />
+                      <span>Area Member</span>
+                    </div>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-well border border-border-default/70 font-mono text-text-muted group-hover:text-text-primary">
+                      Member &rarr;
+                    </span>
+                  </a>
+                )}
                 <Link
                   href={getCleanHref("/admin/sidebar-layout")}
                   onClick={() => setIsProfileOpen(false)}

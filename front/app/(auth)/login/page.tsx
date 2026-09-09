@@ -11,7 +11,7 @@ import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 
 import Logo from "@/components/ui/Logo";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Shield, User } from "lucide-react";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -26,13 +26,96 @@ function LoginPageContent() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [roleRedirectUrls, setRoleRedirectUrls] = useState<{
+    adminUrl: string;
+    memberUrl: string;
+  } | null>(null);
 
+  const computeRedirectUrls = (needsOnboarding = false) => {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port ? `:${window.location.port}` : "";
+
+    const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(":") || hostname === "[::1]";
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost") || hostname.endsWith(".local") || isIpAddress;
+
+    let rootDomain = "panggungkreator.web.id";
+    if (!isLocalhost) {
+      const parts = hostname.split(".");
+      if (parts.length >= 2) {
+        if (hostname.endsWith(".web.id") && parts.length >= 3) {
+          rootDomain = parts.slice(-3).join(".");
+        } else {
+          rootDomain = parts.slice(-2).join(".");
+        }
+      }
+    } else {
+      rootDomain = hostname;
+    }
+
+    const rootHost = isLocalhost ? `${hostname}${port}` : `${rootDomain}${port}`;
+
+    let adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
+
+    if (!adminRedirectUrl) {
+      adminRedirectUrl = isLocalhost
+        ? "/admin"
+        : `${protocol}//admin.${rootHost}/`;
+    }
+
+    let userRedirectUrl = "/myprofile";
+    if (needsOnboarding) {
+      userRedirectUrl = "/myprofile/onboarding";
+    }
+
+    const memberUrl = redirectToParam ? redirectToParam : userRedirectUrl;
+
+    return { adminUrl: adminRedirectUrl, memberUrl };
+  };
 
   useEffect(() => {
     // Bersihkan token basi di localStorage/sessionStorage agar tidak ada konflik multi-akun
     clearStaleAuthStorage();
-  }, []);
 
+    // Jika dialihkan dari callback Google dengan query roleSelect=1
+    const checkRoleSelect = async () => {
+      if (searchParams.get("roleSelect") === "1") {
+        try {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: member } = await supabase
+              .from("members")
+              .select("role, username")
+              .eq("id", user.id)
+              .maybeSingle();
+
+            const urls = computeRedirectUrls(false);
+
+            const isDedicatedAdmin =
+              member?.username?.toLowerCase() === "adminpangkreas" ||
+              user.email?.toLowerCase().includes("adminpangkreas");
+
+            // adminpangkreas langsung masuk ke admin dashboard
+            if (isDedicatedAdmin) {
+              window.location.href = urls.adminUrl;
+              return;
+            }
+
+            if (member && member.role === "admin") {
+              setRoleRedirectUrls(urls);
+              setShowRoleModal(true);
+            }
+          }
+        } catch (err) {
+          console.error("Error checking role select:", err);
+        }
+      }
+    };
+
+    checkRoleSelect();
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,48 +125,29 @@ function LoginPageContent() {
     try {
       const result = await signInWithPasswordAction(emailOrUsername, password);
       if (result.success) {
-        // Redirect menggunakan location.href agar middleware/proxy mengevaluasi session baru
-        const protocol = window.location.protocol;
-        const hostname = window.location.hostname;
-        const port = window.location.port ? `:${window.location.port}` : "";
+        const urls = computeRedirectUrls(result.needsOnboarding);
 
-        const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(":") || hostname === "[::1]";
-        const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost") || hostname.endsWith(".local") || isIpAddress;
+        const isDedicatedAdmin =
+          result.isDedicatedAdmin ||
+          emailOrUsername.trim().toLowerCase() === "adminpangkreas" ||
+          result.username?.toLowerCase() === "adminpangkreas";
 
-        let rootDomain = "panggungkreator.web.id";
-        if (!isLocalhost) {
-          const parts = hostname.split(".");
-          if (parts.length >= 2) {
-            if (hostname.endsWith(".web.id") && parts.length >= 3) {
-              rootDomain = parts.slice(-3).join(".");
-            } else {
-              rootDomain = parts.slice(-2).join(".");
-            }
-          }
-        } else {
-          rootDomain = hostname;
+        // Khusus adminpangkreas langsung ke dashboard admin tanpa modal role
+        if (isDedicatedAdmin) {
+          window.location.href = urls.adminUrl;
+          return;
         }
 
-        const rootHost = isLocalhost ? `${hostname}${port}` : `${rootDomain}${port}`;
-
-        let adminRedirectUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
-
-        if (!adminRedirectUrl) {
-          adminRedirectUrl = isLocalhost
-            ? "/admin"
-            : `${protocol}//admin.${rootHost}/`;
+        // Jika user adalah admin lainnya, tampilkan modal pilihan role
+        if (result.isAdmin) {
+          setRoleRedirectUrls(urls);
+          setShowRoleModal(true);
+          setIsLoading(false);
+          return;
         }
 
-        // Gunakan relative path /myprofile atau /myprofile/onboarding agar tidak terjadi cross-host/cross-port mismatch
-        let userRedirectUrl = "/myprofile";
-        if (result.needsOnboarding) {
-          userRedirectUrl = "/myprofile/onboarding";
-        }
-
-        const targetUrl = redirectToParam ? redirectToParam : userRedirectUrl;
-
-        window.location.href = result.isAdmin ? adminRedirectUrl : targetUrl;
-
+        // Jika member biasa, langsung redirect ke member URL
+        window.location.href = urls.memberUrl;
       } else {
         setError(result.error || "Terjadi kesalahan saat masuk.");
         setIsLoading(false);
@@ -311,6 +375,85 @@ function LoginPageContent() {
           </div>
         </div>
       </div>
+
+      {/* MODAL PILIH ROLE: ADMIN ATAU MEMBER */}
+      {showRoleModal && roleRedirectUrls && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 text-left relative animate-scale-up">
+            <div className="space-y-2 text-center sm:text-left">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
+                [ KONFIRMASI AKSES MASUK ]
+              </span>
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0A0A0A] dark:text-white">
+                Masuk Sebagai Apa?
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Akun Anda terdaftar memiliki wewenang <strong>Admin</strong> serta profil <strong>Member</strong>. Silakan pilih ruang kerja yang ingin Anda tuju:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 pt-2">
+              {/* Option 1: Admin */}
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = roleRedirectUrls.adminUrl;
+                }}
+                className="w-full p-4 rounded-2xl border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500 text-left transition-all group cursor-pointer flex items-center justify-between shadow-2xs active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500 text-black flex items-center justify-center font-bold shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                      <span>Dashboard Admin</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono font-black">
+                        OPERATOR
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
+                      Kelola member, transaksi, konten, & sistem
+                    </p>
+                  </div>
+                </div>
+                <span className="text-zinc-400 group-hover:text-amber-500 group-hover:translate-x-1 transition-all text-sm shrink-0 ml-2 font-mono">
+                  &rarr;
+                </span>
+              </button>
+
+              {/* Option 2: Member */}
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = roleRedirectUrls.memberUrl;
+                }}
+                className="w-full p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-700 text-left transition-all group cursor-pointer flex items-center justify-between shadow-2xs active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center font-bold shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                      <span>Area Member</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-mono font-black">
+                        KREATOR
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
+                      Buka profil saya, portofolio, dan daftar event
+                    </p>
+                  </div>
+                </div>
+                <span className="text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:translate-x-1 transition-all text-sm shrink-0 ml-2 font-mono">
+                  &rarr;
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

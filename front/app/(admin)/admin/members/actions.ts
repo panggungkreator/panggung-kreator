@@ -336,23 +336,11 @@ export async function fetchLatestMembersAction(): Promise<{ success: boolean; da
       return { success: false, error: "Akses ditolak. Hanya admin yang diizinkan." };
     }
 
-    // Ambil daftar member_id yang berstatus admin untuk diexclude
-    const { data: adminRoles } = await supabase
-      .from("admin_roles")
-      .select("member_id")
-      .neq("status", "revoked");
-
-    const adminMemberIds = (adminRoles || []).map((r) => r.member_id).filter(Boolean);
-
     let membersQuery = supabase
       .from("members")
       .select("*, interests:member_interests(*), package:packages(id, name)")
-      .neq("role", "admin")
-      .or("payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership");
-
-    if (adminMemberIds.length > 0) {
-      membersQuery = membersQuery.not("id", "in", `(${adminMemberIds.join(",")})`);
-    }
+      .neq("username", "adminpangkreas")
+      .or("role.eq.admin,payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership");
 
     let { data: members, error } = await membersQuery.order("created_at", { ascending: false });
 
@@ -361,12 +349,8 @@ export async function fetchLatestMembersAction(): Promise<{ success: boolean; da
       let fallbackQuery = supabase
         .from("members")
         .select("*")
-        .neq("role", "admin")
-        .or("payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership");
-
-      if (adminMemberIds.length > 0) {
-        fallbackQuery = fallbackQuery.not("id", "in", `(${adminMemberIds.join(",")})`);
-      }
+        .neq("username", "adminpangkreas")
+        .or("role.eq.admin,payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership");
 
       const { data: rawMembers, error: rawError } = await fallbackQuery.order("created_at", { ascending: false });
 

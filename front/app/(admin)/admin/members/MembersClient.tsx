@@ -456,8 +456,8 @@ export default function MembersClient({
   // Filtered and sorted members list
   const filteredMembers = useMemo(() => {
     const list = members.filter((m) => {
-      // Exclude admin members from this list
-      if (m.role === "admin") return false;
+      // Kecualikan akun root sistem 'adminpangkreas' karena tidak memiliki data profil/portofolio member
+      if (m.username?.toLowerCase() === "adminpangkreas") return false;
 
       const matchSearch =
         (m.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -500,7 +500,7 @@ export default function MembersClient({
 
   // Statistics calculation
   const stats = useMemo(() => {
-    const activeMembers = members.filter(m => m.role !== "admin");
+    const activeMembers = members.filter(m => m.username?.toLowerCase() !== "adminpangkreas");
     const total = activeMembers.length;
     const pkCount = activeMembers.filter(m => m.community === "panggung_kreator").length;
     const btbCount = activeMembers.filter(m => m.community === "berani_tampil_bicara").length;
@@ -909,6 +909,11 @@ export default function MembersClient({
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <div className="font-bold text-text-primary truncate">{m.full_name || "-"}</div>
+                              {m.role === "admin" && (
+                                <span className="px-1.5 py-0.5 rounded text-[8px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-black uppercase tracking-wider shrink-0">
+                                  ADMIN
+                                </span>
+                              )}
                               {m.membership_tier === "priority" && (
                                 <span className="px-1.5 py-0.5 rounded text-[8px] bg-red-500 text-white font-black uppercase tracking-wider shrink-0">
                                   PRIORITY
@@ -1010,6 +1015,11 @@ export default function MembersClient({
                       <h3 className="text-base font-black tracking-tight text-text-primary dark:group-hover:text-yellow-400 transition-colors leading-tight">
                         {m.full_name || "-"}
                       </h3>
+                      {m.role === "admin" && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-black uppercase tracking-wider shrink-0">
+                          ADMIN
+                        </span>
+                      )}
                       {m.stage_name && (
                         <span className="text-[11px] font-semibold text-text-muted">
                           ({m.stage_name})

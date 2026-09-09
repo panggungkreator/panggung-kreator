@@ -201,25 +201,37 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
     } catch (_) { }
 
     let needsOnboarding = false;
+    let username = "";
     const { data: member } = await supabase
       .from("members")
-      .select("role, interests:member_interests(id)")
+      .select("role, username, interests:member_interests(id)")
       .eq("id", authData.user.id)
       .maybeSingle();
 
-    if (member && member.role === "admin") {
-      isAdmin = true;
-    } else if (member && member.role === "member") {
-      const interests = member.interests;
-      const hasInterests = interests && (Array.isArray(interests) ? interests.length > 0 : !!(interests as any).id);
-      if (!hasInterests) {
-        needsOnboarding = true;
+    if (member) {
+      username = member.username || "";
+      if (member.role === "admin") {
+        isAdmin = true;
+      } else if (member.role === "member") {
+        const interests = member.interests;
+        const hasInterests = interests && (Array.isArray(interests) ? interests.length > 0 : !!(interests as any).id);
+        if (!hasInterests) {
+          needsOnboarding = true;
+        }
       }
+    } else {
+      isAdmin = true;
     }
-    return { success: true, isAdmin, needsOnboarding };
+
+    const isDedicatedAdmin =
+      loginEmail.toLowerCase().includes("adminpangkreas") ||
+      emailOrUsername.trim().toLowerCase() === "adminpangkreas" ||
+      username.toLowerCase() === "adminpangkreas";
+
+    return { success: true, isAdmin, needsOnboarding, username, isDedicatedAdmin };
   }
 
-  return { success: true, isAdmin: false, needsOnboarding: false };
+  return { success: true, isAdmin: false, needsOnboarding: false, isDedicatedAdmin: false };
 }
 
 export async function signUpWithPasswordAction(email: string, password: string, username: string) {
