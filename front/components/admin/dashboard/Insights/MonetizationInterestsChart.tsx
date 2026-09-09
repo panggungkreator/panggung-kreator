@@ -38,7 +38,7 @@ export function MonetizationInterestsChart({ interests }: MonetizationInterestsC
           displayItems.map((item, idx) => (
             <div key={idx} className="space-y-1.5 group">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-text-primary truncate max-w-[180px]">
+                <span className="font-semibold text-text-primary truncate max-w-[190px] sm:max-w-[220px]" title={item.name}>
                   {item.name}
                 </span>
                 <span className="font-mono text-[11px] font-medium text-text-secondary tabular-nums">

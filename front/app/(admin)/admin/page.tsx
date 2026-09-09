@@ -435,25 +435,57 @@ export default async function AdminDashboardPage() {
     const monetizationCounts: Record<string, number> = {};
     let monetizationRespondentsCount = 0;
 
+    const normalizeMonetization = (rawInput: string): string[] => {
+      const lower = rawInput.toLowerCase();
+      const detected = new Set<string>();
+
+      if (
+        lower.includes("talent") ||
+        lower.includes("speaker") ||
+        lower.includes("trainer") ||
+        lower.includes("mentor") ||
+        lower.includes("mc")
+      ) {
+        detected.add("Talent / Speaker / MC");
+      }
+      if (lower.includes("endorse") || lower.includes("sponsor")) {
+        detected.add("Endorsement / Sponsorship");
+      }
+      if (lower.includes("affiliate")) {
+        detected.add("Affiliate");
+      }
+      if (lower.includes("adsense") || lower.includes("views")) {
+        detected.add("Adsense / Views");
+      }
+      if (lower.includes("freelance")) {
+        detected.add("Jasa Freelance");
+      }
+      if (
+        lower.includes("produk digital") ||
+        lower.includes("ebook") ||
+        lower.includes("ecourse")
+      ) {
+        detected.add("Produk Digital");
+      }
+
+      if (detected.size > 0) {
+        return Array.from(detected);
+      }
+
+      const clean = rawInput.replace(/\s*\([^)]*\)/g, "").trim();
+      return clean ? [clean] : [];
+    };
+
     for (const item of interestsList) {
       if (item.monetization_interest && typeof item.monetization_interest === "string") {
-        const parts = item.monetization_interest
-          .split(/,|&|;|\//)
-          .map((s: string) => s.trim())
-          .filter(Boolean);
-
-        const cleanSet = new Set<string>();
-        for (const p of parts) {
-          const clean = p.replace(/\s*\([^)]*\)/g, "").trim();
-          if (clean) {
-            cleanSet.add(clean);
-          }
-        }
-
-        if (cleanSet.size > 0) {
-          monetizationRespondentsCount++;
-          for (const clean of cleanSet) {
-            monetizationCounts[clean] = (monetizationCounts[clean] || 0) + 1;
+        const text = item.monetization_interest.trim();
+        if (text) {
+          const categories = normalizeMonetization(text);
+          if (categories.length > 0) {
+            monetizationRespondentsCount++;
+            for (const cat of categories) {
+              monetizationCounts[cat] = (monetizationCounts[cat] || 0) + 1;
+            }
           }
         }
       }
