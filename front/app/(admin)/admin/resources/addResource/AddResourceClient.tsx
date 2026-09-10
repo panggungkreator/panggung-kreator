@@ -250,11 +250,11 @@ export default function AddResourceClient({ initialResource }: AddResourceClient
       </div>
 
       {/* ═══ FORM CONTAINER ═══ */}
-      <div className="bg-white dark:bg-[#121212] border-0 sm:border border-border-default/70 rounded-none sm:rounded-3xl p-4 sm:p-8 shadow-xs">
+      <div className="bg-transparent sm:bg-card border-0 sm:border border-border-default/70 rounded-none sm:rounded-3xl p-1 sm:p-8 shadow-none sm:shadow-xs">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Judul */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+          <div>
+            <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
               Judul Materi <span className="text-red-500">*</span>
             </label>
             <input
@@ -263,13 +263,13 @@ export default function AddResourceClient({ initialResource }: AddResourceClient
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Contoh: E-Book Panduan Personal Branding Kreator"
-              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary"
+              className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
             />
           </div>
 
           {/* Deskripsi */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+          <div>
+            <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
               Deskripsi Singkat
             </label>
             <textarea
@@ -277,14 +277,14 @@ export default function AddResourceClient({ initialResource }: AddResourceClient
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Jelaskan ringkasan materi, modul yang dibahas, atau manfaat membaca..."
               rows={3}
-              className="w-full p-3.5 text-xs rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary leading-relaxed"
+              className="w-full p-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary leading-relaxed transition-all"
             />
           </div>
 
           {/* Kategori & Hak Akses Tier */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Kategori Materi
               </label>
               <Select value={category} onValueChange={setCategory}>
@@ -301,8 +301,8 @@ export default function AddResourceClient({ initialResource }: AddResourceClient
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Hak Akses Paket (Minimal Tier)
               </label>
               <Select value={tier} onValueChange={setTier}>
@@ -321,8 +321,8 @@ export default function AddResourceClient({ initialResource }: AddResourceClient
           </div>
 
           {/* File Upload Dropzone */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+          <div>
+            <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
               Berkas / File Materi {!initialResource && <span className="text-red-500">*</span>}
             </label>
             <div

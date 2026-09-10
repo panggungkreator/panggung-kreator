@@ -176,7 +176,7 @@ export function AddAdminFromMemberDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-white dark:bg-zinc-950 border border-border-default/80 p-6 sm:p-7 rounded-3xl shadow-2xl overflow-y-auto max-h-[92vh]">
+      <DialogContent className="max-w-xl bg-white dark:bg-zinc-950 border-0 sm:border border-border-default/80 p-5 sm:p-7 rounded-none sm:rounded-3xl shadow-2xl overflow-y-auto max-h-[92vh]">
         <DialogHeader className="pb-3 border-b border-border-default/60">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 flex items-center justify-center shrink-0">

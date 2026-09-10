@@ -712,11 +712,10 @@ export default function AdminLayout({
                 <div className="px-2">
                   <Link
                     href={getCleanHref("/admin")}
-                    className={`flex items-center gap-3 rounded-md px-2 py-2 text-xs font-semibold tracking-wider transition-all duration-150 ${
-                      pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/")
-                        ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
-                        : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
-                    }`}
+                    className={`flex items-center gap-3 rounded-md px-2 py-2 text-xs font-semibold tracking-wider transition-all duration-150 ${pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/")
+                      ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
+                      : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
+                      }`}
                   >
                     <LayoutDashboard size={14} />
                     <span className={pathname === getCleanHref("/admin") || pathname === getCleanHref("/admin/") ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}>
@@ -745,11 +744,10 @@ export default function AdminLayout({
                             <Link
                               key={item.href}
                               href={cleanHref}
-                              className={`flex items-center gap-2.5 px-4 py-3 text-xs font-semibold tracking-wider transition-all duration-150 ${
-                                isActive
-                                  ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
-                                  : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
-                              }`}
+                              className={`flex items-center gap-2.5 px-4 py-3 text-xs font-semibold tracking-wider transition-all duration-150 ${isActive
+                                ? "text-text-primary border-l-[3px] border-text-primary pl-[13px] rounded-l-none font-bold"
+                                : "text-text-secondary hover:text-text-primary hover:bg-bg-page"
+                                }`}
                             >
                               {item.icon}
                               <span className={`truncate ${isActive ? "highlight-stabilo highlight-stabilo-nav font-bold" : ""}`}>

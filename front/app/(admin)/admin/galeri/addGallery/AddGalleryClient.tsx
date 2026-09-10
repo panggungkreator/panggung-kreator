@@ -237,11 +237,11 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
       </div>
 
       {/* ═══ FORM CONTAINER ═══ */}
-      <div className="bg-white dark:bg-[#121212] border-0 sm:border border-border-default/70 rounded-none sm:rounded-3xl p-4 sm:p-8 shadow-xs">
+      <div className="bg-transparent sm:bg-card border-0 sm:border border-border-default/70 rounded-none sm:rounded-3xl p-1 sm:p-8 shadow-none sm:shadow-xs">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Hero Image Upload */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
               Foto Sampul / Banner Kegiatan
             </label>
 
@@ -277,8 +277,8 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
           {/* Form Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border-default/40">
             {/* Judul */}
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div className="md:col-span-2">
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Judul Dokumentasi Kegiatan <span className="text-red-500">*</span>
               </label>
               <input
@@ -287,13 +287,13 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Contoh: Open Mic Session #12 - Personal Branding Workshop"
-                className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
             </div>
 
             {/* Kategori */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Kategori Kegiatan <span className="text-red-500">*</span>
               </label>
               <Select value={category} onValueChange={setCategory}>
@@ -311,8 +311,8 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
             </div>
 
             {/* Tanggal Acara */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Tanggal Kegiatan <span className="text-red-500">*</span>
               </label>
               <input
@@ -320,13 +320,13 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
                 required
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
-                className="w-full h-10 px-3.5 text-xs font-bold font-mono rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium font-mono rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
             </div>
 
             {/* Link Google Drive */}
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div className="md:col-span-2">
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Tautan Google Drive (Folder Dokumentasi Lengkap)
               </label>
               <input
@@ -334,13 +334,13 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
                 value={albumLink}
                 onChange={(e) => setAlbumLink(e.target.value)}
                 placeholder="https://drive.google.com/drive/folders/..."
-                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
             </div>
 
             {/* Deskripsi */}
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div className="md:col-span-2">
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Deskripsi Singkat Acara
               </label>
               <textarea
@@ -348,7 +348,7 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Ringkasan jalannya acara, keseruan peserta, atau poin penting..."
                 rows={3}
-                className="w-full p-3.5 text-xs rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary leading-relaxed"
+                className="w-full p-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary leading-relaxed transition-all"
               />
             </div>
           </div>

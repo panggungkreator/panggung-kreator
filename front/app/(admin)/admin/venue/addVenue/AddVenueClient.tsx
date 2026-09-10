@@ -277,7 +277,7 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
       </div>
 
       {/* ═══ FORM CONTAINER ═══ */}
-      <div className="bg-white dark:bg-[#121212] border-0 sm:border border-border-default/70 rounded-none sm:rounded-3xl p-4 sm:p-8 shadow-xs">
+      <div className="bg-transparent sm:bg-card border-0 sm:border border-border-default/70 rounded-none sm:rounded-3xl p-1 sm:p-8 shadow-none sm:shadow-xs">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Photos Upload & Management */}
           <div className="space-y-2.5">
@@ -363,8 +363,8 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
           {/* Section: Detail Utama */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border-default/40">
             {/* Nama Venue */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Nama Venue <span className="text-red-500">*</span>
               </label>
               <input
@@ -376,10 +376,10 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
                   if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
                 }}
                 placeholder="Contoh: Coworking Space Panggung Kreatif"
-                className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
               {errors.name && (
-                <p className="text-[11px] text-red-500 font-semibold flex items-center gap-1">
+                <p className="text-[11px] text-red-500 font-semibold flex items-center gap-1 mt-1">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{errors.name}</span>
                 </p>
@@ -387,8 +387,8 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
             </div>
 
             {/* Kota */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Kota <span className="text-red-500">*</span>
               </label>
               <input
@@ -400,10 +400,10 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
                   if (errors.city) setErrors((prev) => ({ ...prev, city: undefined }));
                 }}
                 placeholder="Contoh: Jakarta, Bandung, Surabaya"
-                className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
               {errors.city && (
-                <p className="text-[11px] text-red-500 font-semibold flex items-center gap-1">
+                <p className="text-[11px] text-red-500 font-semibold flex items-center gap-1 mt-1">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{errors.city}</span>
                 </p>
@@ -411,8 +411,8 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
             </div>
 
             {/* Alamat Lengkap */}
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div className="md:col-span-2">
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Alamat Lengkap <span className="text-red-500">*</span>
               </label>
               <input
@@ -424,10 +424,10 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
                   if (errors.address) setErrors((prev) => ({ ...prev, address: undefined }));
                 }}
                 placeholder="Jl. Sudirman No. 12, Senayan, Jakarta Selatan"
-                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
               {errors.address && (
-                <p className="text-[11px] text-red-500 font-semibold flex items-center gap-1">
+                <p className="text-[11px] text-red-500 font-semibold flex items-center gap-1 mt-1">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{errors.address}</span>
                 </p>
@@ -435,8 +435,8 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
             </div>
 
             {/* Deskripsi */}
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div className="md:col-span-2">
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Deskripsi & Fasilitas
               </label>
               <textarea
@@ -444,7 +444,7 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Fasilitas utama: proyektor, AC, sound system, kapasitas parkir..."
                 rows={3}
-                className="w-full p-3.5 text-xs rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary leading-relaxed"
+                className="w-full p-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary leading-relaxed transition-all"
               />
             </div>
           </div>
@@ -452,8 +452,8 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
           {/* Section: Kapasitas & Kontak */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border-default/40">
             {/* Kapasitas */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Kapasitas (Kursi)
               </label>
               <input
@@ -473,13 +473,13 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
                 onBlur={() => {
                   if (!capacity.trim()) setCapacity("0");
                 }}
-                className="w-full h-10 px-3.5 text-xs font-bold font-mono rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium font-mono rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
             </div>
 
             {/* Nama Kontak */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Contact Person (CP)
               </label>
               <input
@@ -487,13 +487,13 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
                 placeholder="Budi Setiawan"
-                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
             </div>
 
             {/* WA Kontak */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Nomor WhatsApp CP
               </label>
               <input
@@ -501,7 +501,7 @@ export default function AddVenueClient({ initialVenue }: AddVenueClientProps) {
                 value={contactWa}
                 onChange={(e) => setContactWa(formatPhone(e.target.value))}
                 placeholder="0812-3456-7890"
-                className="w-full h-10 px-3.5 text-xs font-bold font-mono rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium font-mono rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
             </div>
           </div>

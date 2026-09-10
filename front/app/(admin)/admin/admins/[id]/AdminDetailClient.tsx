@@ -241,7 +241,7 @@ export default function AdminDetailClient({
       {/* Main Grid: Info Profile & Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile Card */}
-        <div className="lg:col-span-2 bg-bg-card border border-border-default rounded-2xl p-6 space-y-6 shadow-sm">
+        <div className="lg:col-span-2 bg-bg-card border-0 sm:border border-border-default rounded-none sm:rounded-3xl p-4 sm:p-6 space-y-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-default pb-4">
             <div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded border uppercase" style={styleColor}>
@@ -318,7 +318,7 @@ export default function AdminDetailClient({
         </div>
 
         {/* Action Panel */}
-        <div className="bg-bg-card border border-border-default rounded-2xl p-6 space-y-4 shadow-sm flex flex-col justify-between">
+        <div className="bg-bg-card border-0 sm:border border-border-default rounded-none sm:rounded-3xl p-4 sm:p-6 space-y-4 shadow-sm flex flex-col justify-between">
           <div className="space-y-3">
             <h3 className="text-xs uppercase tracking-wider font-bold text-text-muted">Approval & Jabatan</h3>
 
@@ -387,7 +387,7 @@ export default function AdminDetailClient({
       </div>
 
       {/* Permission Matrix Table */}
-      <div className="bg-bg-card border border-border-default rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-bg-card border-0 sm:border border-border-default rounded-none sm:rounded-3xl shadow-sm overflow-hidden">
         <div className="p-5 border-b border-border-default flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">

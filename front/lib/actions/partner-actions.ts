@@ -65,6 +65,16 @@ export async function savePartnerAction(
     order_index: data.order_index ?? 0,
   };
 
+  // Jika tipe partner adalah kafe/venue, auto-save atau update venue ke tabel venues
+  if (payload.type === "kafe" && payload.name) {
+    try {
+      const { ensureVenueExistsAction } = await import("@/lib/actions/venue-actions");
+      await ensureVenueExistsAction(payload.name);
+    } catch (venueErr) {
+      console.warn("Notice: Gagal auto-save venue dari partner:", venueErr);
+    }
+  }
+
   const { error } = await syncDualOperation(async (client) => {
     if (id) {
       const { error: err } = await client

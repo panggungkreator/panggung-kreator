@@ -174,13 +174,13 @@ export default function AddMentoringClient({
       </div>
 
       {/* ═══ FORM CONTAINER ═══ */}
-      <div className="bg-white dark:bg-[#121212] border-0 sm:border border-border-default/70 rounded-none sm:rounded-3xl p-4 sm:p-8 shadow-xs">
+      <div className="bg-transparent sm:bg-card border-0 sm:border border-border-default/70 rounded-none sm:rounded-3xl p-1 sm:p-8 shadow-none sm:shadow-xs">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Form Fields Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Member Selection */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Pilih Member <span className="text-red-500">*</span>
               </label>
               <Select value={memberId} onValueChange={setMemberId}>
@@ -198,8 +198,8 @@ export default function AddMentoringClient({
             </div>
 
             {/* Mentor Selection */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Pilih Mentor <span className="text-red-500">*</span>
               </label>
               <Select value={mentorId} onValueChange={setMentorId}>
@@ -217,8 +217,8 @@ export default function AddMentoringClient({
             </div>
 
             {/* Package Selection */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Paket Akademi Terkait <span className="text-red-500">*</span>
               </label>
               <Select value={packageId} onValueChange={setPackageId}>
@@ -237,8 +237,8 @@ export default function AddMentoringClient({
 
             {/* Status Selection (only visible when editing) */}
             {initialSession ? (
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+              <div>
+                <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                   Status Sesi <span className="text-red-500">*</span>
                 </label>
                 <Select value={status} onValueChange={setStatus}>
@@ -254,8 +254,8 @@ export default function AddMentoringClient({
                 </Select>
               </div>
             ) : (
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+              <div>
+                <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                   Sesi Ke-
                 </label>
                 <input
@@ -263,14 +263,14 @@ export default function AddMentoringClient({
                   min={1}
                   value={sessionNumber}
                   onChange={(e) => setSessionNumber(parseInt(e.target.value, 10) || 1)}
-                  className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                  className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary transition-all"
                 />
               </div>
             )}
 
             {/* Session Date */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Tanggal Sesi <span className="text-red-500">*</span>
               </label>
               <input
@@ -278,14 +278,14 @@ export default function AddMentoringClient({
                 required
                 value={sessionDate}
                 onChange={(e) => setSessionDate(e.target.value)}
-                className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium font-mono rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
             </div>
 
             {/* Time range */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+              <div>
+                <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                   Jam Mulai <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -293,12 +293,12 @@ export default function AddMentoringClient({
                   required
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                  className="w-full h-10 px-3.5 text-xs font-medium font-mono rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+              <div>
+                <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                   Jam Selesai <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -306,7 +306,7 @@ export default function AddMentoringClient({
                   required
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-border-default bg-bg-well/50 text-text-primary focus:outline-none focus:border-text-primary"
+                  className="w-full h-10 px-3.5 text-xs font-medium font-mono rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
                 />
               </div>
             </div>
@@ -314,11 +314,11 @@ export default function AddMentoringClient({
 
           {/* Platform Choice */}
           <div className="space-y-2 pt-2 border-t border-border-default/40">
-            <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
               Media / Platform Pertemuan
             </label>
             <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-xs font-semibold text-text-primary cursor-pointer">
+              <label className="flex items-center gap-2 text-xs font-medium text-text-primary cursor-pointer">
                 <input
                   type="radio"
                   name="platform"
@@ -328,7 +328,7 @@ export default function AddMentoringClient({
                 />
                 Zoom
               </label>
-              <label className="flex items-center gap-2 text-xs font-semibold text-text-primary cursor-pointer">
+              <label className="flex items-center gap-2 text-xs font-medium text-text-primary cursor-pointer">
                 <input
                   type="radio"
                   name="platform"
@@ -338,7 +338,7 @@ export default function AddMentoringClient({
                 />
                 Google Meet
               </label>
-              <label className="flex items-center gap-2 text-xs font-semibold text-text-primary cursor-pointer">
+              <label className="flex items-center gap-2 text-xs font-medium text-text-primary cursor-pointer">
                 <input
                   type="radio"
                   name="platform"
@@ -353,8 +353,8 @@ export default function AddMentoringClient({
 
           {/* Dynamic Link / Location Area */}
           {platform === "offline" ? (
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Lokasi Pertemuan Offline
               </label>
               <input
@@ -362,12 +362,12 @@ export default function AddMentoringClient({
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Contoh: Kafe Panggung, Jakarta Selatan"
-                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
             </div>
           ) : (
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
                 Meeting Link / URL Video Conference
               </label>
               <input
@@ -375,14 +375,14 @@ export default function AddMentoringClient({
                 value={meetingLink}
                 onChange={(e) => setMeetingLink(e.target.value)}
                 placeholder="https://zoom.us/j/..."
-                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary"
+                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
               />
             </div>
           )}
 
           {/* Catatan Admin */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+          <div>
+            <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
               Catatan Mentor / Agenda Sesi
             </label>
             <textarea
@@ -390,7 +390,7 @@ export default function AddMentoringClient({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Tuliskan agenda pembahasan, topik review portofolio, atau persiapan..."
               rows={3}
-              className="w-full p-3.5 text-xs rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary leading-relaxed"
+              className="w-full p-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary leading-relaxed transition-all"
             />
           </div>
 

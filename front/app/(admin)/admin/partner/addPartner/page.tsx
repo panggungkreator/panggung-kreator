@@ -46,5 +46,23 @@ export default async function AddPartnerPage({ searchParams }: PageProps) {
     }
   }
 
-  return <AddPartnerClient initialPartner={initialPartner} />;
+  // Fetch daftar venue dari tabel venues (menggunakan select('*') agar kompatibel jika kolom use_count belum termigrasi)
+  const { data: venuesData, error: venuesError } = await supabase
+    .from("venues")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (venuesError) {
+    console.error("Gagal mengambil data venues di addPartner:", venuesError);
+  }
+
+  const venues = (venuesData || []).map((v: any) => ({
+    id: v.id,
+    name: v.name,
+    address: v.address || "",
+    city: v.city || "",
+    use_count: v.use_count || 0,
+  }));
+
+  return <AddPartnerClient initialPartner={initialPartner} venues={venues} />;
 }

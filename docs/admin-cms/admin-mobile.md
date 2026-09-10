@@ -69,10 +69,30 @@ Tersedia 2 pola ringkasan statistik yang dapat dipilih sesuai kebutuhan konteks 
 
 ### D. Form Tambah / Edit Data
 
-1. **Form Wrapper Minimalis:**
-   - Pada mobile, hilangkan bingkai kartu besar: `border-0 sm:border rounded-none sm:rounded-3xl p-1 sm:p-8 bg-transparent sm:bg-card`.
-2. **Grid Kolom:**
-   - 1 kolom vertikal di mobile, 2 kolom pada tablet/desktop: `grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5`.
+1. **Form Wrapper Minimalis & Background Transparan:**
+   - Pada layar mobile, kartu pembungkus form wajib memiliki latar belakang transparan dan tanpa bingkai: `border-0 sm:border rounded-none sm:rounded-3xl p-1 sm:p-8 bg-transparent sm:bg-card shadow-none sm:shadow-xs`.
+   - Hal ini bertujuan agar tampilan form di mobile menyatu langsung dengan latar halaman (*page background*), tidak bertumpuk kotak putih tebal, dan memberikan pengalaman pengisian yang bersih serta lega.
+
+2. **Tipografi & Standar Field Input (Referensi Langsung: `PackageForm.tsx`):**
+   - **Label Form:** `block text-[11px] font-semibold text-text-secondary mb-1.5`.
+     - Ditandai bintang merah `text-red-500` untuk kolom wajib: `<span className="text-red-500">*</span>`.
+     - Menghindari huruf kapital tebal (*uppercase tracking-wider*) yang terlalu dominan pada mobile demi kenyamanan membaca.
+   - **Field Input / Select / DatePicker:**
+     - Tinggi: `h-10 w-full`.
+     - Sudut: `rounded-xl`.
+     - Padding & Tipografi: `px-3.5 text-xs font-medium text-text-primary placeholder:text-text-muted`.
+     - Latar & Border: `bg-bg-well/50 border border-border-default focus:outline-none focus:border-text-primary transition-all`.
+   - **Textarea:**
+     - Radius `rounded-xl`, padding `p-3.5 text-xs font-medium text-text-primary leading-relaxed bg-bg-well/50 border border-border-default focus:outline-none focus:border-text-primary`.
+
+3. **Grid Kolom & Alur Formulir:**
+   - 1 kolom vertikal di mobile, 2 kolom pada tablet/desktop: `grid grid-cols-1 sm:grid-cols-2 gap-4`.
+   - **Formulir Langsung & Ringkas (Data-First):** Hindari pemisahan artifisial bertingkat jika tidak diperlukan. Susun form secara teratur, langsung berfokus pada field input, label proporsional, dan tombol aksi tanpa header partisi berlebih.
+   - **Spacing Kontainer Bawah:** Kontainer utama form wajib menggunakan `space-y-6 pb-28 md:pb-12 text-zinc-800 dark:text-zinc-200` agar input atau tombol bawah tidak tertutup oleh *floating action dock*.
+
+4. **Action Button Footer:**
+   - Bentuk tombol: `h-10 rounded-xl text-xs font-bold`.
+   - Mobile responsive: `flex items-center gap-3 pt-4 border-t border-border-default/60`, tombol `flex-1 sm:flex-initial sm:w-32` (Batal) dan `flex-1 sm:flex-initial sm:w-44` (Simpan).
 
 ---
 

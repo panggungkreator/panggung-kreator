@@ -13,7 +13,6 @@ import {
   Search,
   AlertCircle,
   X,
-  Star,
   Eye,
   SlidersHorizontal,
   ExternalLink,
@@ -46,7 +45,6 @@ import { DeleteConfirmDialog } from "@/components/ui/DeleteConfirmDialog";
 import AdminPagination from "@/components/admin/AdminPagination";
 import {
   deletePartnerAction,
-  togglePartnerFeaturedAction,
   togglePartnerActiveAction,
   updatePartnersOrderAction,
 } from "@/lib/actions/partner-actions";
@@ -116,21 +114,6 @@ export default function PartnerClient({
   const getTypeLabel = (type: string) => {
     const found = PARTNER_TYPES.find((t) => t.value === type);
     return found ? found.label : type;
-  };
-
-  // Toggle Featured Inline
-  const handleToggleFeatured = (partnerId: string, currentStatus: boolean, name: string) => {
-    startTransition(async () => {
-      const res = await togglePartnerFeaturedAction(partnerId, currentStatus);
-      if (res.success) {
-        setPartners((prev) =>
-          prev.map((p) => (p.id === partnerId ? { ...p, is_featured: !currentStatus } : p))
-        );
-        toast.success(`Status rekomendasi "${name}" berhasil diperbarui!`);
-      } else {
-        toast.error("Gagal mengubah rekomendasi: " + res.error);
-      }
-    });
   };
 
   // Toggle Active Inline
@@ -208,8 +191,7 @@ export default function PartnerClient({
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "active" && p.is_active) ||
-        (statusFilter === "inactive" && !p.is_active) ||
-        (statusFilter === "featured" && p.is_featured);
+        (statusFilter === "inactive" && !p.is_active);
 
       return matchesSearch && matchesType && matchesStatus;
     });
@@ -281,11 +263,10 @@ export default function PartnerClient({
             setStatusFilter("all");
             setTypeFilter("all");
           }}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
-            statusFilter === "all" && typeFilter === "all"
-              ? "bg-white dark:bg-zinc-800 text-text-primary shadow-xs border border-border-default/60"
-              : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
-          }`}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${statusFilter === "all" && typeFilter === "all"
+            ? "bg-white dark:bg-zinc-800 text-text-primary shadow-xs border border-border-default/60"
+            : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+            }`}
         >
           <span>Semua Partner</span>
           <span className="px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
@@ -300,36 +281,15 @@ export default function PartnerClient({
             setStatusFilter("active");
             setTypeFilter("all");
           }}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
-            statusFilter === "active"
-              ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
-              : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
-          }`}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${statusFilter === "active"
+            ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+            : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+            }`}
         >
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span>Aktif</span>
           <span className="px-2 py-0.5 rounded-full bg-white/20 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
             {partners.filter((p) => p.is_active).length}
-          </span>
-        </button>
-
-        {/* Featured */}
-        <button
-          type="button"
-          onClick={() => {
-            setStatusFilter("featured");
-            setTypeFilter("all");
-          }}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
-            statusFilter === "featured"
-              ? "bg-amber-500 text-white shadow-xs"
-              : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
-          }`}
-        >
-          <Star size={12} className="fill-current" />
-          <span>Featured</span>
-          <span className="px-2 py-0.5 rounded-full bg-white/20 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
-            {partners.filter((p) => p.is_featured).length}
           </span>
         </button>
 
@@ -346,11 +306,10 @@ export default function PartnerClient({
                 setTypeFilter(t.value);
                 setStatusFilter("all");
               }}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${
-                isSelected
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
-                  : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
-              }`}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 inline-flex items-center gap-2 transition-all cursor-pointer select-none ${isSelected
+                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                : "text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-zinc-800/50"
+                }`}
             >
               <span>{t.label}</span>
               <span className="px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-950 text-[10px] font-extrabold font-mono">
@@ -371,7 +330,6 @@ export default function PartnerClient({
                 <th className="py-3.5 px-5 border-b border-border-default/70">Partner</th>
                 <th className="py-3.5 px-4 border-b border-border-default/70">Tipe</th>
                 <th className="py-3.5 px-4 border-b border-border-default/70">Kontak CP</th>
-                <th className="py-3.5 px-4 border-b border-border-default/70 text-center">Featured</th>
                 <th className="py-3.5 px-4 border-b border-border-default/70 text-center">Status</th>
                 <th className="py-3.5 px-4 border-b border-border-default/70 text-center w-28">Aksi</th>
               </tr>
@@ -464,32 +422,15 @@ export default function PartnerClient({
                         </div>
                       </td>
 
-                      {/* Featured */}
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleFeatured(p.id, p.is_featured, p.name)}
-                          className={`p-1.5 rounded-full transition-all cursor-pointer ${
-                            p.is_featured
-                              ? "text-amber-500 hover:text-amber-600 bg-amber-500/10"
-                              : "text-zinc-300 hover:text-zinc-400 dark:text-zinc-700"
-                          }`}
-                          title={p.is_featured ? "Hapus dari rekomendasi" : "Jadikan rekomendasi"}
-                        >
-                          <Star size={15} className={p.is_featured ? "fill-amber-500" : ""} />
-                        </button>
-                      </td>
-
                       {/* Status Aktif */}
                       <td className="py-3 px-4 text-center">
                         <button
                           type="button"
                           onClick={() => handleToggleActive(p.id, p.is_active, p.name)}
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                            p.is_active
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                              : "bg-zinc-500/10 text-zinc-500 border border-zinc-500/20"
-                          }`}
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${p.is_active
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                            : "bg-zinc-500/10 text-zinc-500 border border-zinc-500/20"
+                            }`}
                         >
                           {p.is_active ? "Aktif" : "Nonaktif"}
                         </button>
@@ -545,32 +486,21 @@ export default function PartnerClient({
               key={p.id}
               className="bg-white dark:bg-[#121212] border border-border-default/70 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-3xl p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between active:scale-[0.99] space-y-3"
             >
-              {/* Top Row: Type Pill + Featured + Status */}
+              {/* Top Row: Type Pill + Status */}
               <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border-default/40">
                 <span className="px-2.5 py-0.5 rounded-full bg-bg-well text-[10px] font-bold uppercase tracking-wider text-text-secondary border border-border-default/50">
                   {getTypeLabel(p.type)}
                 </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleToggleFeatured(p.id, p.is_featured, p.name)}
-                    className="p-1 text-amber-500 cursor-pointer"
-                    title="Featured"
-                  >
-                    <Star size={14} className={p.is_featured ? "fill-amber-500" : "text-zinc-300"} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleActive(p.id, p.is_active, p.name)}
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer ${
-                      p.is_active
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                        : "bg-zinc-500/10 text-zinc-500 border border-zinc-500/20"
+                <button
+                  type="button"
+                  onClick={() => handleToggleActive(p.id, p.is_active, p.name)}
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer ${p.is_active
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                    : "bg-zinc-500/10 text-zinc-500 border border-zinc-500/20"
                     }`}
-                  >
-                    {p.is_active ? "Aktif" : "Nonaktif"}
-                  </button>
-                </div>
+                >
+                  {p.is_active ? "Aktif" : "Nonaktif"}
+                </button>
               </div>
 
               {/* Middle Row: Logo + Info */}
@@ -683,9 +613,8 @@ export default function PartnerClient({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer relative ${
-                  typeFilter !== "all" || statusFilter !== "all" ? "text-white bg-zinc-800" : ""
-                }`}
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer relative ${typeFilter !== "all" || statusFilter !== "all" ? "text-white bg-zinc-800" : ""
+                  }`}
                 title="Filter Partner"
               >
                 <SlidersHorizontal className="w-4 h-4" />
@@ -725,11 +654,10 @@ export default function PartnerClient({
                   <button
                     type="button"
                     onClick={() => setTypeFilter("all")}
-                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
-                      typeFilter === "all"
-                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
-                        : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
-                    }`}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${typeFilter === "all"
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                      : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
+                      }`}
                   >
                     Semua
                   </button>
@@ -738,11 +666,10 @@ export default function PartnerClient({
                       key={t.value}
                       type="button"
                       onClick={() => setTypeFilter(t.value)}
-                      className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
-                        typeFilter === t.value
-                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
-                          : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
-                      }`}
+                      className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${typeFilter === t.value
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
+                        : "bg-bg-well text-text-secondary hover:text-text-primary border border-border-default/60"
+                        }`}
                     >
                       {t.label}
                     </button>
@@ -766,7 +693,7 @@ export default function PartnerClient({
 
       {/* ═══ DETAIL MODAL (Mobile Responsive rounded-none sm:rounded-3xl border-0 sm:border) ═══ */}
       <Dialog open={Boolean(partnerDetail)} onOpenChange={(open) => !open && setPartnerDetail(null)}>
-        <DialogContent className="max-w-lg bg-white dark:bg-zinc-950 border-0 sm:border border-border-default p-6 rounded-none sm:rounded-3xl">
+        <DialogContent className="max-w-xl bg-white dark:bg-zinc-950 border-0 sm:border border-border-default p-6 rounded-none sm:rounded-3xl">
           <DialogHeader className="pb-3 border-b border-border-default/60">
             <DialogTitle className="text-base font-black text-text-primary">
               Detail Partner & Kolaborator
@@ -775,33 +702,41 @@ export default function PartnerClient({
 
           {partnerDetail && (
             <div className="space-y-4 pt-2 text-xs">
-              <div className="flex items-center gap-3">
+              <div className="rounded-2xl overflow-hidden border border-border-default aspect-video max-h-56 mx-auto bg-bg-well/20 flex items-center justify-center p-6">
                 {partnerDetail.logo_url ? (
                   <img
                     src={partnerDetail.logo_url}
                     alt={partnerDetail.name}
-                    className="w-14 h-14 rounded-2xl object-cover border border-border-default/50"
+                    className="max-h-full max-w-full object-contain"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-2xl bg-bg-well border border-border-default/50 flex items-center justify-center text-text-muted font-bold text-lg">
+                  <div className="w-16 h-16 rounded-2xl bg-bg-well border border-border-default/50 flex items-center justify-center text-text-muted font-bold text-2xl">
                     {partnerDetail.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div>
-                  <h3 className="font-extrabold text-sm text-text-primary">
-                    {partnerDetail.name}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="px-2 py-0.5 rounded-full bg-bg-well text-[10px] font-bold text-text-secondary border border-border-default/50 uppercase">
-                      {getTypeLabel(partnerDetail.type)}
-                    </span>
-                    {partnerDetail.is_featured && (
-                      <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-bold flex items-center gap-1">
-                        <Star size={10} className="fill-current" /> Featured
-                      </span>
-                    )}
-                  </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="px-2.5 py-0.5 rounded-full bg-bg-well text-[10px] font-bold text-text-secondary border border-border-default/50 uppercase">
+                    {getTypeLabel(partnerDetail.type)}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      partnerDetail.is_active
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                        : "bg-zinc-500/10 text-zinc-500 border border-zinc-500/20"
+                    }`}
+                  >
+                    {partnerDetail.is_active ? "Aktif" : "Nonaktif"}
+                  </span>
                 </div>
+                <h3 className="text-base font-extrabold text-text-primary">
+                  {partnerDetail.name}
+                </h3>
+                <p className="text-text-muted font-mono text-[11px] mt-0.5">
+                  Kemitraan Sejak: {formatDate(partnerDetail.partnership_since)}
+                </p>
               </div>
 
               {partnerDetail.description && (
@@ -815,7 +750,7 @@ export default function PartnerClient({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 bg-bg-well/50 rounded-xl border border-border-default/40">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block mb-1">
                     Contact Person
@@ -823,45 +758,54 @@ export default function PartnerClient({
                   <p className="font-semibold text-text-primary">
                     {partnerDetail.contact_person || "-"}
                   </p>
-                  <p className="text-text-muted font-mono text-[11px]">
-                    {partnerDetail.contact_wa || "-"}
+                  <p className="text-text-muted font-mono text-[11px] mt-0.5">
+                    {partnerDetail.contact_wa || "Tidak ada nomor"}
                   </p>
                 </div>
 
                 <div className="p-3 bg-bg-well/50 rounded-xl border border-border-default/40">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block mb-1">
-                    Kemitraan Sejak
+                    Kategori & Status
                   </span>
                   <p className="font-semibold text-text-primary">
-                    {formatDate(partnerDetail.partnership_since)}
+                    {getTypeLabel(partnerDetail.type)}
+                  </p>
+                  <p className="text-text-muted font-mono text-[11px] mt-0.5">
+                    {partnerDetail.is_active ? "Status Kemitraan Aktif" : "Status Nonaktif"}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                {partnerDetail.website_url && (
-                  <a
-                    href={partnerDetail.website_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 h-9 rounded-xl border border-border-default hover:bg-bg-well text-text-secondary hover:text-text-primary flex items-center justify-center gap-1.5 font-bold text-[11px]"
-                  >
-                    <Globe size={13} />
-                    <span>Website</span>
-                  </a>
-                )}
-                {partnerDetail.instagram_url && (
-                  <a
-                    href={partnerDetail.instagram_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 h-9 rounded-xl border border-border-default hover:bg-bg-well text-text-secondary hover:text-text-primary flex items-center justify-center gap-1.5 font-bold text-[11px]"
-                  >
-                    <InstagramIcon size={13} />
-                    <span>Instagram</span>
-                  </a>
-                )}
-              </div>
+              {(partnerDetail.website_url || partnerDetail.instagram_url) && (
+                <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+                  {partnerDetail.website_url && (
+                    <a
+                      href={partnerDetail.website_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full sm:flex-1 h-10 rounded-xl bg-text-primary text-bg-card hover:opacity-90 flex items-center justify-center gap-2 font-bold text-xs shadow-xs transition-opacity"
+                    >
+                      <Globe size={14} />
+                      <span>Kunjungi Website</span>
+                    </a>
+                  )}
+                  {partnerDetail.instagram_url && (
+                    <a
+                      href={partnerDetail.instagram_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`w-full sm:flex-1 h-10 rounded-xl flex items-center justify-center gap-2 font-bold text-xs shadow-xs transition-colors ${
+                        partnerDetail.website_url
+                          ? "border border-border-default bg-bg-card hover:bg-bg-well text-text-primary"
+                          : "bg-text-primary text-bg-card hover:opacity-90"
+                      }`}
+                    >
+                      <InstagramIcon size={14} />
+                      <span>Lihat Instagram</span>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
