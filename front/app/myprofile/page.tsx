@@ -19,6 +19,7 @@ import { Loader2 } from "lucide-react";
 import { getReferredMembersAction, getMyCommissionLedgerAction } from "@/lib/actions/referral-actions";
 import { getTabVisibilitySettingsAction, TabVisibilitySettings } from "@/lib/actions/settings-actions";
 import UnderConstruction from "./components/UnderConstruction";
+import { isDedicatedAdmin } from "@/lib/constants";
 
 const TAB_ORDER: ProfileTab[] = ["overview", "attendance", "portfolio", "affiliate"];
 
@@ -97,8 +98,8 @@ export default function MyProfilePage() {
 
       const profileData = profileRes.data;
       if (profileData) {
-        // Guard: Jika role === admin, lempar ke dashboard admin
-        if (profileData.role === "admin") {
+        // Guard: Khusus akun root superadmin lempar ke dashboard admin karena tidak punya profil member
+        if (isDedicatedAdmin(profileData.username)) {
           const isLocalhost =
             window.location.hostname === "localhost" ||
             window.location.hostname === "127.0.0.1";
@@ -110,13 +111,13 @@ export default function MyProfilePage() {
           return;
         }
 
-        // Guard: Jika member belum mengisi data minat, lempar ke /myprofile/onboarding
+        // Guard: Jika belum mengisi data minat, lempar ke /myprofile/onboarding
         const interests = profileData.interests;
         const hasCompletedInterests =
           interests &&
           (Array.isArray(interests) ? interests.length > 0 : !!(interests as any)?.id);
 
-        if (profileData.role === "member" && !hasCompletedInterests) {
+        if (!hasCompletedInterests) {
           router.replace("/myprofile/onboarding");
           return;
         }

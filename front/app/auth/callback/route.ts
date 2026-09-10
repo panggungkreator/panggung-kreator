@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getPublicOrigin, getCookieDomain } from "@/lib/utils/url";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { isDedicatedAdmin } from "@/lib/constants";
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -163,11 +164,11 @@ export async function GET(request: Request) {
 
     let targetUrl: string;
 
-    const isDedicatedAdmin =
-        member?.username?.toLowerCase() === "adminpangkreas" ||
-        authUser?.email?.toLowerCase().includes("adminpangkreas");
+    const isDedicated =
+        isDedicatedAdmin(member?.username) ||
+        isDedicatedAdmin(authUser?.email);
 
-    if (isDedicatedAdmin) {
+    if (isDedicated) {
         if (isLocalhost) {
             targetUrl = `${redirectTo}/admin`;
         } else {

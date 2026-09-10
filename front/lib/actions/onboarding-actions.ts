@@ -7,6 +7,7 @@ import { syncDualOperation } from "@/lib/supabase/dual-sync";
 export interface OnboardingMemberData {
   id: string;
   role: string;
+  username?: string;
   membership_tier: string;
   hasCompletedInterests: boolean;
   initialData: {
@@ -63,6 +64,7 @@ export async function getMemberOnboardingDataAction(): Promise<{
       data: {
         id: member.id,
         role: member.role || "member",
+        username: member.username || "",
         membership_tier: member.membership_tier || "free",
         hasCompletedInterests: !!hasCompletedInterests,
         initialData: {

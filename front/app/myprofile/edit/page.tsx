@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react";
 
 import ProfileNavbar from "../components/ProfileNavbar";
 import Footer from "@/components/community/Footer";
+import { isDedicatedAdmin } from "@/lib/constants";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function EditProfilePage() {
       if (error) throw error;
 
       if (data) {
-        if (data.role === "admin") {
+        if (isDedicatedAdmin(data.username)) {
           const isLocalhost =
             window.location.hostname === "localhost" ||
             window.location.hostname === "127.0.0.1";
@@ -56,7 +57,7 @@ export default function EditProfilePage() {
           interests &&
           (Array.isArray(interests) ? interests.length > 0 : !!(interests as any)?.id);
 
-        if (data.role === "member" && !hasCompletedInterests) {
+        if (!hasCompletedInterests) {
           router.replace("/myprofile/onboarding");
           return;
         }

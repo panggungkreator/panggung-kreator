@@ -12,6 +12,7 @@ import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 import Logo from "@/components/ui/Logo";
 import { Eye, EyeOff, Shield, User } from "lucide-react";
+import { isDedicatedAdmin } from "@/lib/constants";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -93,12 +94,12 @@ function LoginPageContent() {
 
             const urls = computeRedirectUrls(false);
 
-            const isDedicatedAdmin =
-              member?.username?.toLowerCase() === "adminpangkreas" ||
-              user.email?.toLowerCase().includes("adminpangkreas");
+            const isRootAdmin =
+              isDedicatedAdmin(member?.username) ||
+              isDedicatedAdmin(user.email);
 
-            // adminpangkreas langsung masuk ke admin dashboard
-            if (isDedicatedAdmin) {
+            // root admin langsung masuk ke admin dashboard
+            if (isRootAdmin) {
               window.location.href = urls.adminUrl;
               return;
             }
@@ -127,13 +128,13 @@ function LoginPageContent() {
       if (result.success) {
         const urls = computeRedirectUrls(result.needsOnboarding);
 
-        const isDedicatedAdmin =
+        const isRootAdmin =
           result.isDedicatedAdmin ||
-          emailOrUsername.trim().toLowerCase() === "adminpangkreas" ||
-          result.username?.toLowerCase() === "adminpangkreas";
+          isDedicatedAdmin(emailOrUsername) ||
+          isDedicatedAdmin(result.username);
 
-        // Khusus adminpangkreas langsung ke dashboard admin tanpa modal role
-        if (isDedicatedAdmin) {
+        // Khusus root admin langsung ke dashboard admin tanpa modal role
+        if (isRootAdmin) {
           window.location.href = urls.adminUrl;
           return;
         }

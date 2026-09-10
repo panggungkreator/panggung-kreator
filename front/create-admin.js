@@ -23,7 +23,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
 async function run() {
   const email = 'panggungkreator.idn@gmail.com';
   const password = passwordAdmin;
-  const username = 'adminpangkreas';
+  const username = process.env.USERNAME_ADMIN || 'adminpangkreas';
 
   console.log("Checking if admin already exists in members table...");
 

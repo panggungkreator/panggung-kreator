@@ -2,6 +2,7 @@ import React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import MembersClient from "./MembersClient";
+import { ADMIN_USERNAME } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export default async function MembersPage() {
   let membersQuery = supabase
     .from("members")
     .select("*, interests:member_interests(*), package:packages(id, name)")
-    .neq("username", "adminpangkreas")
+    .neq("username", ADMIN_USERNAME)
     .or("role.eq.admin,payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership");
 
   let { data: members, error } = await membersQuery.order("created_at", { ascending: false });
@@ -44,7 +45,7 @@ export default async function MembersPage() {
     let fallbackQuery = supabase
       .from("members")
       .select("*")
-      .neq("username", "adminpangkreas")
+      .neq("username", ADMIN_USERNAME)
       .or("role.eq.admin,payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership");
 
     const { data: rawMembers } = await fallbackQuery.order("created_at", { ascending: false });
@@ -69,13 +70,28 @@ export default async function MembersPage() {
     console.error("Error fetching packages for admin map:", pkgError);
   }
 
+  // Tarik data admin_roles untuk memetakan jabatan admin
+  const { data: adminRolesData } = await supabase
+    .from("admin_roles")
+    .select("member_id, label, color, status")
+    .neq("status", "revoked");
+
+  const adminRolesMap = new Map(
+    (adminRolesData || []).map((ar: any) => [ar.member_id, ar])
+  );
+
+  const enrichedMembers = (members || []).map((m: any) => ({
+    ...m,
+    admin_role: adminRolesMap.get(m.id) || null,
+  }));
+
   // Tarik batas limit pagination dari pengaturan sistem (default: 10)
   const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
   const paginationLimit = await getPaginationLimitSettingAction();
 
   return (
     <MembersClient
-      initialMembers={members || []}
+      initialMembers={enrichedMembers}
       packages={packages || []}
       paginationLimit={paginationLimit}
     />

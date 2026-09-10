@@ -1,6 +1,7 @@
 import React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { ADMIN_USERNAME } from "@/lib/constants";
 import DashboardClient from "@/components/admin/dashboard/DashboardClient";
 import {
   DashboardPayload,
@@ -72,7 +73,7 @@ export default async function AdminDashboardPage() {
       supabase
         .from("members")
         .select("id, full_name, stage_name, email, membership_tier, avatar_url, birth_date, city, address, occupation, role, created_at, username")
-        .neq("username", "adminpangkreas")
+        .neq("username", ADMIN_USERNAME)
         .or("role.eq.admin,payment_status.eq.paid,membership_tier.eq.priority,membership_tier.eq.reguler,membership_tier.eq.membership"),
       supabase
         .from("events")

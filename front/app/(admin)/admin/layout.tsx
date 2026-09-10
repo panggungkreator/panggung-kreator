@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signout } from "@/lib/actions/auth-actions";
+import { ADMIN_USERNAME, isDedicatedAdmin } from "@/lib/constants";
 import {
   Sun,
   Moon,
@@ -274,8 +275,8 @@ export default function AdminLayout({
           setAdminName(member.full_name || "Admin");
           setIsAdmin(member.role === "admin");
           setAdminUsername(member.username || "");
-        } else if (user.email && user.email.toLowerCase().includes("adminpangkreas")) {
-          setAdminUsername("adminpangkreas");
+        } else if (isDedicatedAdmin(user.email)) {
+          setAdminUsername(ADMIN_USERNAME);
         }
 
 
@@ -581,8 +582,8 @@ export default function AdminLayout({
                     {isSuperAdmin ? "SUPER ADMIN" : "OPERATOR"}
                   </p>
                 </div>
-                {/* Switch to Member Area (Kecuali adminpangkreas yang tidak memiliki profil member) */}
-                {adminUsername.toLowerCase() !== "adminpangkreas" && (
+                {/* Switch to Member Area (Kecuali dedicated admin yang tidak memiliki profil member) */}
+                {!isDedicatedAdmin(adminUsername) && (
                   <a
                     href={getMemberAreaHref()}
                     onClick={() => setIsProfileOpen(false)}

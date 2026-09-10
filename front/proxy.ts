@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { ADMIN_USERNAME, isDedicatedAdmin } from "./lib/constants";
 
 function noCacheRedirect(url: URL | string, init?: { headers?: HeadersInit }) {
   const res = NextResponse.redirect(url, init);
@@ -325,25 +326,25 @@ export async function proxy(request: NextRequest) {
       // Check member role & onboarding status
       let { data: member } = await supabase
         .from("members")
-        .select("role, membership_tier, interests:member_interests(id)")
+        .select("role, username, membership_tier, interests:member_interests(id)")
         .eq("id", user.id)
         .maybeSingle();
 
       if (!member && user.email) {
         const { data: memberByEmail } = await supabase
           .from("members")
-          .select("role, membership_tier, interests:member_interests(id)")
+          .select("role, username, membership_tier, interests:member_interests(id)")
           .ilike("email", user.email)
           .maybeSingle();
         if (memberByEmail) member = memberByEmail;
       }
 
-      const isAdmin = member?.role === "admin";
-      const interests = member?.interests;
-      const hasInterests = interests && (Array.isArray(interests) ? interests.length > 0 : !!(interests as any)?.id);
+      const isRootAdmin =
+        isDedicatedAdmin(member?.username) ||
+        isDedicatedAdmin(user.email);
 
-      // Jika role === admin, selalu lempar ke halaman admin
-      if (isAdmin) {
+      // Khusus akun dedicated root superadmin yang tidak punya profil member
+      if (isRootAdmin) {
         const defaultAdminUrl = isLocalhost
           ? `${protocol}//localhost${port}/admin`
           : `${protocol}//admin.${rootHost}`;
@@ -354,6 +355,8 @@ export async function proxy(request: NextRequest) {
       }
 
       const isOnboardingPath = pathname === "/myprofile/onboarding";
+      const interests = member?.interests;
+      const hasInterests = interests && (Array.isArray(interests) ? interests.length > 0 : !!(interests as any)?.id);
 
       // Jika member biasa belum melengkapi data minat dan BUKAN sedang di halaman /myprofile/onboarding
       if (!hasInterests && !isOnboardingPath) {
@@ -371,24 +374,30 @@ export async function proxy(request: NextRequest) {
     }
 
     // If logged in (not in recovery mode) and goes to login page via GET (page load), redirect based on role/tier
-    if (pathname === "/login" && user && !isRecoveryMode && request.method === "GET") {
+    // KECUALI jika ada query ?roleSelect=1 (modal pilih peran)
+    const isRoleSelect = request.nextUrl.searchParams.has("roleSelect");
+    if (pathname === "/login" && user && !isRecoveryMode && request.method === "GET" && !isRoleSelect) {
       let { data: member } = await supabase
         .from("members")
-        .select("role, membership_tier, interests:member_interests(id)")
+        .select("role, username, membership_tier, interests:member_interests(id)")
         .eq("id", user.id)
         .maybeSingle();
 
       if (!member && user.email) {
         const { data: memberByEmail } = await supabase
           .from("members")
-          .select("role, membership_tier, interests:member_interests(id)")
+          .select("role, username, membership_tier, interests:member_interests(id)")
           .ilike("email", user.email)
           .maybeSingle();
         if (memberByEmail) member = memberByEmail;
       }
 
       if (member) {
-        if (member.role === "admin") {
+        const isRootAdmin =
+          isDedicatedAdmin(member.username) ||
+          isDedicatedAdmin(user.email);
+
+        if (isRootAdmin) {
           const defaultAdminUrl = isLocalhost
             ? `${protocol}//localhost${port}/admin`
             : `${protocol}//admin.${rootHost}`;
@@ -396,6 +405,9 @@ export async function proxy(request: NextRequest) {
             ? `${process.env.NEXT_PUBLIC_ADMIN_URL}/`
             : `${defaultAdminUrl}/`;
           return noCacheRedirect(new URL(adminRedirectUrl, request.url));
+        } else if (member.role === "admin") {
+          // Member yang diangkat jadi admin: arahkan ke login dengan ?roleSelect=1 agar bisa memilih Admin atau Member
+          return noCacheRedirect(new URL("/login?roleSelect=1", request.url));
         } else {
           const interests = member.interests;
           const hasInterests = interests && (Array.isArray(interests) ? interests.length > 0 : !!(interests as any)?.id);

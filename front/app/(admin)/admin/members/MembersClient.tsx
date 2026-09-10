@@ -28,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Modal, ModalSection } from "@/components/ui/Modal";
 import { toast } from "sonner";
 import AdminPagination from "@/components/admin/AdminPagination";
+import { isDedicatedAdmin } from "@/lib/constants";
 import { sendMemberCredentialsAction, deleteMemberAction, fetchLatestMembersAction } from "./actions";
 import { MemberFormRecapModal } from "./MemberFormRecapModal";
 
@@ -57,6 +58,11 @@ type Member = {
   created_at: string;
   tier_note?: string;
   role?: string;
+  admin_role?: {
+    label: string;
+    color: string;
+    status: string;
+  } | null;
   package_id?: string;
   package?: { id: string; name: string } | null;
   subscribed_newsletter?: boolean;
@@ -456,8 +462,8 @@ export default function MembersClient({
   // Filtered and sorted members list
   const filteredMembers = useMemo(() => {
     const list = members.filter((m) => {
-      // Kecualikan akun root sistem 'adminpangkreas' karena tidak memiliki data profil/portofolio member
-      if (m.username?.toLowerCase() === "adminpangkreas") return false;
+      // Kecualikan akun root sistem dedicated admin karena tidak memiliki data profil/portofolio member
+      if (isDedicatedAdmin(m.username)) return false;
 
       const matchSearch =
         (m.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -500,7 +506,7 @@ export default function MembersClient({
 
   // Statistics calculation
   const stats = useMemo(() => {
-    const activeMembers = members.filter(m => m.username?.toLowerCase() !== "adminpangkreas");
+    const activeMembers = members.filter(m => !isDedicatedAdmin(m.username));
     const total = activeMembers.length;
     const pkCount = activeMembers.filter(m => m.community === "panggung_kreator").length;
     const btbCount = activeMembers.filter(m => m.community === "berani_tampil_bicara").length;
@@ -914,11 +920,6 @@ export default function MembersClient({
                                   ADMIN
                                 </span>
                               )}
-                              {m.membership_tier === "priority" && (
-                                <span className="px-1.5 py-0.5 rounded text-[8px] bg-red-500 text-white font-black uppercase tracking-wider shrink-0">
-                                  PRIORITY
-                                </span>
-                              )}
                             </div>
                             <div className="text-[10px] text-text-secondary mt-0.5 font-mono truncate">@{m.username}</div>
                           </div>
@@ -1017,7 +1018,7 @@ export default function MembersClient({
                       </h3>
                       {m.role === "admin" && (
                         <span className="px-1.5 py-0.5 rounded text-[8px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-black uppercase tracking-wider shrink-0">
-                          ADMIN
+                          ADMIN{m.admin_role?.label ? ` • ${m.admin_role.label.toUpperCase()}` : ""}
                         </span>
                       )}
                       {m.stage_name && (
@@ -1451,6 +1452,14 @@ export default function MembersClient({
                     })}
                   </span>
                 </div>
+                {detailMember.role === "admin" && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-text-muted font-medium">Peran Khusus:</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-black uppercase tracking-wider">
+                      ADMIN{detailMember.admin_role?.label ? ` • ${detailMember.admin_role.label.toUpperCase()}` : ""}
+                    </span>
+                  </div>
+                )}
               </div>
             </ModalSection>
 

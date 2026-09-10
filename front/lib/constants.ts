@@ -24,3 +24,15 @@ export function colorRangerStyle(slug: ColorRangerSlug) {
 
 export const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "panggungkreator.idn@gmail.com";
 export const SUPER_ADMIN_COLOR = "slate";
+
+export const ADMIN_USERNAME = (
+  process.env.USERNAME_ADMIN ||
+  process.env.NEXT_PUBLIC_USERNAME_ADMIN ||
+  "adminpangkreas"
+).toLowerCase().trim();
+
+export function isDedicatedAdmin(usernameOrEmail?: string | null): boolean {
+  if (!usernameOrEmail) return false;
+  const clean = usernameOrEmail.toLowerCase().trim();
+  return clean === ADMIN_USERNAME || clean.includes(ADMIN_USERNAME);
+}

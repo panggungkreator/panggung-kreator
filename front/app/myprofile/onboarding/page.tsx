@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getMemberOnboardingDataAction } from "@/lib/actions/onboarding-actions";
 import OnboardingClient from "./OnboardingClient";
+import { isDedicatedAdmin } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +14,10 @@ export default async function MemberOnboardingPage() {
     redirect("/login");
   }
 
-  const { role, hasCompletedInterests, initialData, membership_tier } = result.data;
+  const { role, username, hasCompletedInterests, initialData, membership_tier } = result.data;
 
-  // Jika admin, lempar ke dashboard admin
-  if (role === "admin") {
+  // Khusus akun root superadmin lempar ke dashboard admin
+  if (isDedicatedAdmin(username)) {
     const headersList = await headers();
     const host = headersList.get("host") || "";
     const isLocalhost =

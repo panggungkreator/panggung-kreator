@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import nodemailer from "nodemailer";
 import { getPublicOrigin, getCookieDomain } from "@/lib/utils/url";
+import { isDedicatedAdmin } from "@/lib/constants";
 
 async function clearAllAuthCookies() {
   try {
@@ -223,12 +224,12 @@ export async function signInWithPasswordAction(emailOrUsername: string, password
       isAdmin = true;
     }
 
-    const isDedicatedAdmin =
-      loginEmail.toLowerCase().includes("adminpangkreas") ||
-      emailOrUsername.trim().toLowerCase() === "adminpangkreas" ||
-      username.toLowerCase() === "adminpangkreas";
+    const isDedicated =
+      isDedicatedAdmin(loginEmail) ||
+      isDedicatedAdmin(emailOrUsername) ||
+      isDedicatedAdmin(username);
 
-    return { success: true, isAdmin, needsOnboarding, username, isDedicatedAdmin };
+    return { success: true, isAdmin, needsOnboarding, username, isDedicatedAdmin: isDedicated };
   }
 
   return { success: true, isAdmin: false, needsOnboarding: false, isDedicatedAdmin: false };

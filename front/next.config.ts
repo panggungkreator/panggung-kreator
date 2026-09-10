@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  env: {
+    USERNAME_ADMIN: process.env.USERNAME_ADMIN || process.env.NEXT_PUBLIC_USERNAME_ADMIN || "adminpangkreas",
+    NEXT_PUBLIC_USERNAME_ADMIN: process.env.NEXT_PUBLIC_USERNAME_ADMIN || process.env.USERNAME_ADMIN || "adminpangkreas",
+  },
 };
 
 export default nextConfig;
