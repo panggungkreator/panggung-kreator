@@ -55,6 +55,21 @@ export async function savePaginationLimitSettingAction(limit: number) {
       return { success: false, error: error.message || "Gagal menyimpan limit pagination." };
     }
 
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        action: "UPDATE",
+        module: "Settings",
+        targetId: "pagination_limit",
+        description: `Mengubah limit pagination menjadi ${safeLimit} baris per halaman`,
+        oldData: null,
+        newData: { pagination_limit: safeLimit },
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log setting pagination:", logErr);
+    }
+
     return { success: true, limit: safeLimit };
   } catch (err: any) {
     console.error("savePaginationLimitSettingAction error:", err);
@@ -170,6 +185,21 @@ export async function saveReferralCommissionSettingsAction(settings: ReferralCom
       return true;
     });
 
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        action: "UPDATE",
+        module: "Settings",
+        targetId: "referral_commission",
+        description: `Mengubah pengaturan komisi referral: Mode ${settings.mode} (${settings.mode === "percentage" ? `${settings.percentage}%` : `Rp ${Number(settings.flatAmount).toLocaleString("id-ID")}`})`,
+        oldData: null,
+        newData: settings,
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log setting komisi:", logErr);
+    }
+
     return { success: true, settings };
   } catch (err: any) {
     console.error("saveReferralCommissionSettingsAction error:", err);
@@ -238,6 +268,21 @@ export async function saveTabVisibilitySettingsAction(settings: TabVisibilitySet
       if (error) throw error;
       return true;
     });
+
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        action: "UPDATE",
+        module: "Settings",
+        targetId: "tab_visibility",
+        description: `Mengubah visibilitas tab member: Absensi=${settings.tab_attendance_enabled}, Portofolio=${settings.tab_portfolio_enabled}, Afiliasi=${settings.tab_affiliate_enabled}`,
+        oldData: null,
+        newData: settings,
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log setting tab visibility:", logErr);
+    }
 
     return { success: true, settings };
   } catch (err: any) {

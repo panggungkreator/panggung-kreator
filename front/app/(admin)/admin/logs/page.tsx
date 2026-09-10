@@ -1,5 +1,6 @@
 import React from "react";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { redirect } from "next/navigation";
 import LogsClient from "./LogsClient";
 
@@ -27,9 +28,12 @@ export default async function LogsPage() {
     redirect("/myprofile");
   }
 
+  // Gunakan serviceRoleClient untuk membaca logs audit secara menyeluruh (superadmin & admin viewer)
+  const serviceClient = createServiceRoleClient();
+
   // Fetch admin logs and list of admins in parallel
   const [logsResponse, adminsResponse] = await Promise.all([
-    supabase
+    serviceClient
       .from("admin_activity_logs")
       .select(`
         id,
@@ -49,7 +53,7 @@ export default async function LogsPage() {
       `)
       .order("created_at", { ascending: false }),
     // Fetch all admins for filter select list
-    supabase
+    serviceClient
       .from("members")
       .select("id, full_name")
       .neq("role", "member")

@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import AdminsClient from "./AdminsClient";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
+import { isSuperAdmin } from "@/lib/security";
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminsPage() {
@@ -26,6 +28,25 @@ export default async function AdminsPage() {
 
   if (!member || member.role !== "admin") {
     redirect("/myprofile");
+  }
+
+  // Only Super Admin can access Admin Management
+  const { data: currentAdminRole } = await supabase
+    .from("admin_roles")
+    .select("id, color, status, is_super_admin")
+    .eq("member_id", user.id)
+    .maybeSingle();
+
+  const isSuper = isSuperAdmin({
+    email: user.email,
+    memberRole: member.role,
+    adminRoleColor: currentAdminRole?.color,
+    adminRoleStatus: currentAdminRole?.status,
+    isSuperAdminFlag: currentAdminRole?.is_super_admin,
+  });
+
+  if (!isSuper) {
+    redirect("/admin/denied");
   }
 
   // Fetch admin roles from DB joining members info using Service Role Client to bypass RLS

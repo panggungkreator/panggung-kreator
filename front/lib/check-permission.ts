@@ -29,21 +29,23 @@ export async function checkPermission(
     return false;
   }
 
-  // 1. Cek role global di tabel members
-  const { data: member } = await supabase
-    .from("members")
-    .select("role")
-    .eq("id", session.user.id)
-    .maybeSingle();
+  // 1 & 2. Dapatkan role member dan detail admin_role secara paralel
+  const [memberRes, adminRoleRes] = await Promise.all([
+    supabase
+      .from("members")
+      .select("role")
+      .eq("id", session.user.id)
+      .maybeSingle(),
+    supabase
+      .from("admin_roles")
+      .select("id, status, color, is_super_admin")
+      .eq("member_id", session.user.id)
+      .maybeSingle(),
+  ]);
 
+  const member = memberRes.data;
+  const adminRole = adminRoleRes.data;
   const isGlobalAdmin = member?.role === "admin";
-
-  // 2. Dapatkan detail admin_role (jika terdaftar di admin_roles)
-  const { data: adminRole } = await supabase
-    .from("admin_roles")
-    .select("id, status, color, is_super_admin")
-    .eq("member_id", session.user.id)
-    .maybeSingle();
 
   // Multi-layered Bulletproof Super Admin Check (Full Unconstrained Access)
   if (
@@ -58,27 +60,53 @@ export async function checkPermission(
     return true;
   }
 
-  // 3. Cek spesifik di tabel admin_role_permissions (relasi via action_id)
-  if (adminRole && adminRole.status === "active") {
-    const { data: perm } = await supabase
+  // 3. Cek status aktivasi admin_roles
+  if (adminRole) {
+    if (adminRole.status !== "active") {
+      if (mode === "page") {
+        redirect("/admin/denied");
+      }
+      return false;
+    }
+
+    // Cek spesifik di tabel admin_role_permissions (relasi via action_id)
+    const possibleSlugs = [
+      pageSlug,
+      `cms_${pageSlug}`,
+      pageSlug.replace(/^cms_/, ""),
+    ];
+
+    const { data: perms } = await supabase
       .from("admin_role_permissions")
       .select(`
         id,
-        privilege_items!inner(slug),
+        privilege_items!inner(id, slug, href),
         privilege_actions:action_id!inner(slug)
       `)
       .eq("admin_role_id", adminRole.id)
-      .eq("privilege_items.slug", pageSlug)
-      .eq("privilege_actions.slug", action)
-      .limit(1)
-      .maybeSingle();
+      .eq("privilege_actions.slug", action);
 
-    if (perm) {
+    const hasMatch = perms?.some((p: any) => {
+      const itemSlug = p.privilege_items?.slug;
+      const itemHref = p.privilege_items?.href;
+      return (
+        possibleSlugs.includes(itemSlug) ||
+        (itemHref && itemHref.includes(`/${pageSlug}`))
+      );
+    });
+
+    if (hasMatch) {
       return true;
     }
+
+    // Admin role terdaftar dan aktif, namun permission tidak diberikan: tolak akses!
+    if (mode === "page") {
+      redirect("/admin/denied");
+    }
+    return false;
   }
 
-  // 4. Fallback: Jika pengguna memiliki role = 'admin' di tabel members
+  // 4. Fallback: Hanya untuk akun lama yang tidak memiliki record di admin_roles sama sekali
   if (isGlobalAdmin) {
     return true;
   }
@@ -104,17 +132,21 @@ export async function getPermissionMap(
   } = await supabase.auth.getSession();
 
   if (session) {
-    const { data: member } = await supabase
-      .from("members")
-      .select("role")
-      .eq("id", session.user.id)
-      .maybeSingle();
+    const [memberRes, adminRoleRes] = await Promise.all([
+      supabase
+        .from("members")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle(),
+      supabase
+        .from("admin_roles")
+        .select("id, status, color, is_super_admin")
+        .eq("member_id", session.user.id)
+        .maybeSingle(),
+    ]);
 
-    const { data: adminRole } = await supabase
-      .from("admin_roles")
-      .select("id, status, color, is_super_admin")
-      .eq("member_id", session.user.id)
-      .maybeSingle();
+    const member = memberRes.data;
+    const adminRole = adminRoleRes.data;
 
     if (
       isSuperAdmin({
@@ -123,10 +155,13 @@ export async function getPermissionMap(
         adminRoleColor: adminRole?.color,
         adminRoleStatus: adminRole?.status,
         isSuperAdminFlag: adminRole?.is_super_admin,
-      }) ||
-      member?.role === "admin"
+      })
     ) {
       return { "*": ["*"] };
+    }
+
+    if (!adminRoleId && adminRole?.id) {
+      adminRoleId = adminRole.id;
     }
   }
 
@@ -135,7 +170,7 @@ export async function getPermissionMap(
   const { data: perms } = await supabase
     .from("admin_role_permissions")
     .select(`
-      privilege_items!inner ( slug ),
+      privilege_items!inner ( id, slug, href ),
       privilege_actions:action_id!inner ( slug )
     `)
     .eq("admin_role_id", adminRoleId);
@@ -150,6 +185,13 @@ export async function getPermissionMap(
       }
       if (!permMap[page].includes(action)) {
         permMap[page].push(action);
+      }
+      if (page.startsWith("cms_")) {
+        const alias = page.replace(/^cms_/, "");
+        if (!permMap[alias]) permMap[alias] = [];
+        if (!permMap[alias].includes(action)) {
+          permMap[alias].push(action);
+        }
       }
     }
   });

@@ -109,6 +109,40 @@ export default function AdminDetailClient({
     }
   };
 
+  // Helper untuk centang semua hak akses yang tersedia
+  const handleSelectAll = () => {
+    const allKeys: string[] = [];
+    items.forEach(item => {
+      item.available_actions.forEach(actId => {
+        allKeys.push(`${item.id}:${actId}`);
+      });
+    });
+    setPermissions(allKeys);
+  };
+
+  // Helper untuk hapus semua centang
+  const handleDeselectAll = () => {
+    setPermissions([]);
+  };
+
+  // Helper untuk toggle seluruh hak akses dalam satu group
+  const handleToggleGroup = (groupId: string) => {
+    const groupItems = itemsByGroup[groupId] || [];
+    const groupKeys: string[] = [];
+    groupItems.forEach(item => {
+      item.available_actions.forEach(actId => {
+        groupKeys.push(`${item.id}:${actId}`);
+      });
+    });
+
+    const isAllGroupChecked = groupKeys.every(k => permissions.includes(k));
+    if (isAllGroupChecked) {
+      setPermissions(prev => prev.filter(k => !groupKeys.includes(k)));
+    } else {
+      setPermissions(prev => Array.from(new Set([...prev, ...groupKeys])));
+    }
+  };
+
   const handleSavePermissions = () => {
     setIsSaveConfirmOpen(true);
   };
@@ -354,14 +388,34 @@ export default function AdminDetailClient({
 
       {/* Permission Matrix Table */}
       <div className="bg-bg-card border border-border-default rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-border-default">
-          <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">
-            <Shield size={15} className="text-violet-500" />
-            <span>Matriks Hak Akses Per Halaman (Dynamic RBAC)</span>
-          </h3>
-          <p className="text-xs text-text-muted mt-0.5">
-            Tentukan halaman mana saja yang bisa diakses dan aksi (CRUD) yang diizinkan untuk admin ini.
-          </p>
+        <div className="p-5 border-b border-border-default flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">
+              <span>Matriks Hak Akses Per Halaman (Dynamic RBAC)</span>
+            </h3>
+            <p className="text-xs text-text-muted mt-0.5">
+              Tentukan halaman mana saja yang bisa diakses dan aksi (CRUD) yang diizinkan untuk admin ini.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSelectAll}
+              disabled={status === "revoked" || isSaving || isApproving}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-bg-well hover:bg-bg-well/80 text-text-primary border border-border-default transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Pilih Semua Hak Akses
+            </button>
+            <button
+              type="button"
+              onClick={handleDeselectAll}
+              disabled={status === "revoked" || isSaving || isApproving}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-bg-well hover:bg-bg-well/80 text-text-secondary hover:text-text-primary border border-border-default transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Kosongkan Semua
+            </button>
+          </div>
         </div>
 
         <div className="p-6 space-y-8">
@@ -371,9 +425,19 @@ export default function AdminDetailClient({
 
             return (
               <div key={group.id} className="space-y-3">
-                <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider bg-bg-well px-3 py-1.5 rounded-lg w-max">
-                  {group.name}
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider bg-bg-well px-3 py-1.5 rounded-lg w-max">
+                    {group.name}
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleGroup(group.id)}
+                    disabled={status === "revoked" || isSaving || isApproving}
+                    className="text-[11px] font-semibold text-text-muted hover:text-text-primary transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Toggle Grup Ini
+                  </button>
+                </div>
 
                 <div className="border border-border-default/70 rounded-xl overflow-hidden">
                   <table className="w-full text-left border-collapse text-xs">

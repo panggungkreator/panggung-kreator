@@ -83,6 +83,22 @@ export async function saveVenueAction(
     return { success: false, error: error.message };
   }
 
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: id ? "UPDATE" : "CREATE",
+      module: "Venue",
+      targetId: id || null,
+      description: `${id ? "Memperbarui" : "Menambahkan"} venue: "${data.name}" (${data.city})`,
+      oldData: null,
+      newData: payload,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log venue:", logErr);
+  }
+
   revalidatePath("/admin/venue");
   return { success: true };
 }
@@ -114,6 +130,13 @@ export async function deleteVenueAction(id: string) {
     };
   }
 
+  // Get venue info before delete
+  const { data: venueToDelete } = await supabase
+    .from("venues")
+    .select("id, name, city")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await syncDualOperation(async (client) => {
     const { error: err } = await client
       .from("venues")
@@ -125,6 +148,22 @@ export async function deleteVenueAction(id: string) {
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: "DELETE",
+      module: "Venue",
+      targetId: id,
+      description: `Menghapus venue: "${venueToDelete?.name || id}"`,
+      oldData: venueToDelete,
+      newData: null,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log delete venue:", logErr);
   }
 
   revalidatePath("/admin/venue");

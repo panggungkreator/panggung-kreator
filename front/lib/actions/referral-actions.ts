@@ -602,6 +602,28 @@ export async function confirmPaymentWithRewardAction({
       }
     }
 
+    // Log admin activity for Payment Confirmation
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      const payerName = payingMember?.stage_name || payingMember?.full_name || tx.member_id;
+      await logAdminActivity({
+        adminId: user.id,
+        action: "CONFIRM_PAYMENT",
+        module: "Payment",
+        targetId: tx.id,
+        description: `Mengonfirmasi pembayaran lunas transaksi #${tx.id.slice(0, 8)} (${payerName}) sebesar Rp ${Number(tx.final_amount || 0).toLocaleString("id-ID")}${referrerMember ? ` [Komisi Referral: Rp ${cleanRewardAmount.toLocaleString("id-ID")}]` : ""}`,
+        oldData: { status: tx.status, final_amount: tx.final_amount, member_id: tx.member_id },
+        newData: {
+          status: "paid",
+          paid_at: nowStr,
+          commission_earned: cleanRewardAmount,
+          member_tier: targetTier,
+        },
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log konfirmasi pembayaran:", logErr);
+    }
+
     return {
       success: true,
       rewardRecorded: !!referrerMember,

@@ -85,6 +85,22 @@ export async function savePartnerAction(
     return { success: false, error: error.message };
   }
 
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: id ? "UPDATE" : "CREATE",
+      module: "Partner",
+      targetId: id || null,
+      description: `${id ? "Memperbarui" : "Menambahkan"} partner: "${data.name}" (${data.type})`,
+      oldData: null,
+      newData: payload,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log partner:", logErr);
+  }
+
   revalidatePath("/admin/partner");
   return { success: true };
 }
@@ -116,6 +132,13 @@ export async function deletePartnerAction(id: string) {
     };
   }
 
+  // Get partner info before delete
+  const { data: partnerToDelete } = await supabase
+    .from("partners")
+    .select("id, name, type")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await syncDualOperation(async (client) => {
     const { error: err } = await client
       .from("partners")
@@ -127,6 +150,22 @@ export async function deletePartnerAction(id: string) {
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: "DELETE",
+      module: "Partner",
+      targetId: id,
+      description: `Menghapus partner: "${partnerToDelete?.name || id}" (${partnerToDelete?.type || "-"})`,
+      oldData: partnerToDelete,
+      newData: null,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log delete partner:", logErr);
   }
 
   revalidatePath("/admin/partner");

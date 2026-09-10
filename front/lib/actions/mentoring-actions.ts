@@ -85,6 +85,22 @@ export async function saveMentoringSessionAction(
     return { success: false, error: error.message };
   }
 
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: id ? "UPDATE" : "CREATE",
+      module: "Mentoring",
+      targetId: id || null,
+      description: `${id ? "Memperbarui" : "Membuat"} sesi mentoring #${data.session_number} (${data.session_date})`,
+      oldData: null,
+      newData: payload,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log mentoring:", logErr);
+  }
+
   revalidatePath("/admin/mentoring");
   return { success: true };
 }
@@ -116,6 +132,13 @@ export async function deleteMentoringSessionAction(id: string) {
     };
   }
 
+  // Get session info before delete
+  const { data: sessionToDelete } = await supabase
+    .from("mentoring_sessions")
+    .select("id, session_number, session_date")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await syncDualOperation(async (client) => {
     const { error: err } = await client
       .from("mentoring_sessions")
@@ -127,6 +150,22 @@ export async function deleteMentoringSessionAction(id: string) {
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: "DELETE",
+      module: "Mentoring",
+      targetId: id,
+      description: `Menghapus sesi mentoring #${sessionToDelete?.session_number || id} (${sessionToDelete?.session_date || "-"})`,
+      oldData: sessionToDelete,
+      newData: null,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log delete mentoring:", logErr);
   }
 
   revalidatePath("/admin/mentoring");

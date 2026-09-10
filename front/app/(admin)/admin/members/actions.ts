@@ -274,6 +274,14 @@ export async function deleteMemberAction(memberId: string): Promise<ActionRespon
       };
     }
 
+    // Fetch target member details for logging
+    const supabaseAdmin = createServiceRoleClient();
+    const { data: memberToDelete } = await supabaseAdmin
+      .from("members")
+      .select("id, full_name, stage_name, email, username, membership_tier")
+      .eq("id", memberId)
+      .maybeSingle();
+
     const { syncDualOperation } = await import("@/lib/supabase/dual-sync");
 
     const { devResult } = await syncDualOperation(async (client) => {
@@ -292,11 +300,26 @@ export async function deleteMemberAction(memberId: string): Promise<ActionRespon
     }
 
     // Delete from Supabase Auth auth.users
-    const supabaseAdmin = createServiceRoleClient();
     try {
       await supabaseAdmin.auth.admin.deleteUser(memberId);
     } catch (authDelErr: any) {
       console.warn("Auth delete warning (user might already be deleted):", authDelErr?.message);
+    }
+
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        adminId: currentUser.id,
+        action: "DELETE",
+        module: "Members",
+        targetId: memberId,
+        description: `Menghapus data member "${memberToDelete?.stage_name || memberToDelete?.full_name || memberId}" (${memberToDelete?.email || "-"}) beserta seluruh relasi datanya`,
+        oldData: memberToDelete,
+        newData: null,
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log hapus member:", logErr);
     }
 
     revalidatePath("/admin/members");
@@ -392,4 +415,71 @@ export async function fetchLatestMembersAction(): Promise<{ success: boolean; da
   }
 }
 
+export async function updateMemberStatusAction(payload: {
+  memberId: string;
+  community: string;
+  membership_tier: string;
+  tier_note?: string | null;
+}) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
 
+    if (!currentUser) {
+      return { success: false, error: "Sesi tidak valid. Silakan login kembali." };
+    }
+
+    const { data: adminMember } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", currentUser.id)
+      .single();
+
+    if (!adminMember || adminMember.role !== "admin") {
+      return { success: false, error: "Akses ditolak. Anda tidak memiliki wewenang admin." };
+    }
+
+    // Fetch old data
+    const { data: oldMember } = await supabase
+      .from("members")
+      .select("id, full_name, stage_name, community, membership_tier, tier_note")
+      .eq("id", payload.memberId)
+      .single();
+
+    const nowStr = new Date().toISOString();
+    const updateData = {
+      community: payload.community,
+      membership_tier: payload.membership_tier,
+      tier_changed_at: nowStr,
+      tier_changed_by: currentUser.id,
+      tier_note: payload.tier_note ? payload.tier_note.trim() : null,
+    };
+
+    const { error: updateErr } = await supabase
+      .from("members")
+      .update(updateData)
+      .eq("id", payload.memberId);
+
+    if (updateErr) throw updateErr;
+
+    // Log the activity
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: currentUser.id,
+      action: "UPDATE",
+      module: "Members",
+      targetId: payload.memberId,
+      description: `Mengubah status/tier member "${oldMember?.stage_name || oldMember?.full_name || payload.memberId}" menjadi ${payload.membership_tier} (${payload.community})`,
+      oldData: oldMember,
+      newData: { ...oldMember, ...updateData },
+    });
+
+    revalidatePath("/admin/members");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error in updateMemberStatusAction:", err);
+    return { success: false, error: err.message || "Gagal memperbarui status member." };
+  }
+}

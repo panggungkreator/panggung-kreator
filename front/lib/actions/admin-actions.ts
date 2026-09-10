@@ -365,6 +365,21 @@ export async function approveAdminAction(
       console.warn("SMTP_USER/PASS tidak ditemukan, email kredensial tidak dikirim.");
     }
 
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        action: "APPROVE",
+        module: "Admins",
+        targetId: adminRoleId,
+        description: `Menyetujui permohonan admin baru: "${member.full_name}" (${label})`,
+        oldData: { status: "pending" },
+        newData: { status: "active", label, username },
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log approve admin:", logErr);
+    }
+
     revalidatePath("/admin/admins");
     return { success: true };
   } catch (error: any) {
@@ -390,6 +405,13 @@ export async function deleteAdminAction(adminRoleId: string) {
     }
 
     const memberId = adminRole.member_id;
+
+    // Fetch member details before deleting for audit log
+    const { data: adminMemberInfo } = await serviceRoleClient
+      .from("members")
+      .select("id, full_name, email, username")
+      .eq("id", memberId)
+      .maybeSingle();
 
     // 2. Delete privilege rows, admin_roles record, and members record across both databases
     const { error: dualErr } = await syncDualOperation(async (client) => {
@@ -417,6 +439,21 @@ export async function deleteAdminAction(adminRoleId: string) {
     const { error: authError } = await serviceRoleClient.auth.admin.deleteUser(memberId);
     if (authError) {
       console.warn("Gagal menghapus user dari Supabase Auth (mungkin sudah terhapus):", authError.message);
+    }
+
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        action: "DELETE",
+        module: "Admins",
+        targetId: adminRoleId,
+        description: `Menghapus akun admin: "${adminMemberInfo?.full_name || memberId}" (${adminMemberInfo?.username || adminMemberInfo?.email || "-"})`,
+        oldData: adminMemberInfo,
+        newData: null,
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log delete admin:", logErr);
     }
 
     revalidatePath("/admin/admins");
@@ -593,6 +630,22 @@ export async function promoteMemberToAdminAction(input: {
     });
 
     if (dualErr) throw dualErr;
+
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        adminId: currentUser.id,
+        action: "CREATE",
+        module: "Admins",
+        targetId: input.memberId,
+        description: `Mengangkat member menjadi admin dengan peran "${input.label}" (Ranger ${input.color})`,
+        oldData: { role: "member" },
+        newData: { role: "admin", label: input.label, color: input.color },
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log promote member to admin:", logErr);
+    }
 
     revalidatePath("/admin/admins");
     revalidatePath("/admin/members");

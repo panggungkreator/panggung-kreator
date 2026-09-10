@@ -87,6 +87,22 @@ export async function saveGalleryAlbumAction(
     return { success: false, error: error.message };
   }
 
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: id ? "UPDATE" : "CREATE",
+      module: "Galeri",
+      targetId: id || null,
+      description: `${id ? "Memperbarui" : "Membuat"} album galeri: "${data.title}"`,
+      oldData: null,
+      newData: payload,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log galeri:", logErr);
+  }
+
   revalidatePath("/admin/galeri");
   revalidatePath("/galeri");
   return { success: true };
@@ -119,6 +135,13 @@ export async function deleteGalleryAlbumAction(id: string) {
     };
   }
 
+  // Get album info before delete
+  const { data: albumToDelete } = await supabase
+    .from("gallery_albums")
+    .select("id, title")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await syncDualOperation(async (client) => {
     const { error: err } = await client
       .from("gallery_albums")
@@ -130,6 +153,22 @@ export async function deleteGalleryAlbumAction(id: string) {
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: "DELETE",
+      module: "Galeri",
+      targetId: id,
+      description: `Menghapus album galeri: "${albumToDelete?.title || id}"`,
+      oldData: albumToDelete,
+      newData: null,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log delete galeri:", logErr);
   }
 
   revalidatePath("/admin/galeri");

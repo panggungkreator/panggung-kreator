@@ -80,6 +80,22 @@ export async function saveResourceAction(
     return { success: false, error: error.message };
   }
 
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: id ? "UPDATE" : "CREATE",
+      module: "Resources",
+      targetId: id || null,
+      description: `${id ? "Memperbarui" : "Menambahkan"} resource: "${data.title}" (${data.category})`,
+      oldData: null,
+      newData: payload,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log resource:", logErr);
+  }
+
   revalidatePath("/admin/resources");
   return { success: true };
 }
@@ -111,6 +127,13 @@ export async function deleteResourceAction(id: string) {
     };
   }
 
+  // Get resource info before delete
+  const { data: resToDelete } = await supabase
+    .from("resources")
+    .select("id, title")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await syncDualOperation(async (client) => {
     const { error: err } = await client
       .from("resources")
@@ -122,6 +145,22 @@ export async function deleteResourceAction(id: string) {
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: "DELETE",
+      module: "Resources",
+      targetId: id,
+      description: `Menghapus resource: "${resToDelete?.title || id}"`,
+      oldData: resToDelete,
+      newData: null,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log delete resource:", logErr);
   }
 
   revalidatePath("/admin/resources");

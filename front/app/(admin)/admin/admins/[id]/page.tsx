@@ -4,6 +4,8 @@ import { redirect, notFound } from "next/navigation";
 import AdminDetailClient from "./AdminDetailClient";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
+import { isSuperAdmin } from "@/lib/security";
+
 export const dynamic = "force-dynamic";
 
 interface Props {
@@ -35,6 +37,25 @@ export default async function AdminDetailPage({ params }: Props) {
     redirect("/myprofile");
   }
 
+  // Only Super Admin can view and manage admin permissions
+  const { data: currentAdminRole } = await supabase
+    .from("admin_roles")
+    .select("id, color, status, is_super_admin")
+    .eq("member_id", user.id)
+    .maybeSingle();
+
+  const isSuper = isSuperAdmin({
+    email: user.email,
+    memberRole: member.role,
+    adminRoleColor: currentAdminRole?.color,
+    adminRoleStatus: currentAdminRole?.status,
+    isSuperAdminFlag: currentAdminRole?.is_super_admin,
+  });
+
+  if (!isSuper) {
+    redirect("/admin/denied");
+  }
+
   // 1. Fetch admin role joined with member using Service Role Client to bypass RLS
   const serviceRoleClient = createServiceRoleClient();
   const { data: admin, error: adminError } = await serviceRoleClient
@@ -50,8 +71,7 @@ export default async function AdminDetailPage({ params }: Props) {
         full_name,
         email,
         whatsapp_number,
-        instagram_username,
-        tiktok_username,
+        social_media,
         occupation
       )
     `)
@@ -59,8 +79,14 @@ export default async function AdminDetailPage({ params }: Props) {
     .maybeSingle();
 
   if (adminError || !admin) {
+    if (adminError) {
+      console.error("Error fetching admin in AdminDetailPage:", adminError.message);
+    }
     notFound();
   }
+
+  const rawMember = Array.isArray(admin.members) ? admin.members[0] : (admin.members as any);
+  const socialMedia = (rawMember?.social_media as any) || {};
 
   const formattedAdmin = {
     id: admin.id,
@@ -68,7 +94,15 @@ export default async function AdminDetailPage({ params }: Props) {
     color: admin.color,
     status: admin.status as any,
     created_at: admin.created_at,
-    members: Array.isArray(admin.members) ? admin.members[0] : (admin.members as any)
+    members: {
+      id: rawMember?.id || "",
+      full_name: rawMember?.full_name || "Admin",
+      email: rawMember?.email || "",
+      whatsapp_number: rawMember?.whatsapp_number || "-",
+      occupation: rawMember?.occupation || "-",
+      instagram_username: socialMedia.instagram || null,
+      tiktok_username: socialMedia.tiktok || null,
+    }
   };
 
   // 2. Fetch privilege groups, items, actions, and current admin permissions using Service Role Client

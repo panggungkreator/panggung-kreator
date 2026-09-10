@@ -45,6 +45,7 @@ interface Permission {
 }
 
 interface NavItem {
+  id?: string;
   label: string;
   href: string;
   icon: React.ReactNode;
@@ -166,29 +167,32 @@ export default function AdminLayout({
       try {
         const supabase = createClient();
 
-        // Fetch groups
-        const { data: groupsData, error: groupsError } = await supabase
-          .from("privilege_groups")
-          .select("*")
-          .eq("status", "active")
-          .order("sort_order", { ascending: true });
+        // Fetch groups and items concurrently
+        const [groupsRes, itemsRes] = await Promise.all([
+          supabase
+            .from("privilege_groups")
+            .select("*")
+            .eq("status", "active")
+            .order("sort_order", { ascending: true }),
+          supabase
+            .from("privilege_items")
+            .select("*")
+            .eq("status", "active")
+            .order("sort_order", { ascending: true }),
+        ]);
 
-        if (groupsError) throw groupsError;
+        if (groupsRes.error) throw groupsRes.error;
+        if (itemsRes.error) throw itemsRes.error;
 
-        // Fetch items
-        const { data: itemsData, error: itemsError } = await supabase
-          .from("privilege_items")
-          .select("*")
-          .eq("status", "active")
-          .order("sort_order", { ascending: true });
-
-        if (itemsError) throw itemsError;
+        const groupsData = groupsRes.data;
+        const itemsData = itemsRes.data;
 
         if (groupsData && itemsData) {
           const groups: NavGroup[] = groupsData.map((g: any) => {
             const groupItems = itemsData
               .filter((item: any) => item.group_id === g.id)
               .map((item: any) => ({
+                id: item.id,
                 label: item.name,
                 href: item.href,
                 icon: getIconComponent(item.icon_name),
@@ -256,11 +260,22 @@ export default function AdminLayout({
           return;
         }
 
-        let { data: member } = await supabase
-          .from("members")
-          .select("full_name, role, username")
-          .eq("id", user.id)
-          .maybeSingle();
+        // Fetch member profile and admin_roles concurrently in parallel
+        const [memberRes, adminRoleRes] = await Promise.all([
+          supabase
+            .from("members")
+            .select("full_name, role, username")
+            .eq("id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("admin_roles")
+            .select("id, color, status, is_super_admin")
+            .eq("member_id", user.id)
+            .maybeSingle(),
+        ]);
+
+        let member = memberRes.data;
+        const adminRole = adminRoleRes.data;
 
         if (!member && user.email) {
           const { data: memberByEmail } = await supabase
@@ -279,14 +294,6 @@ export default function AdminLayout({
           setAdminUsername(ADMIN_USERNAME);
         }
 
-
-        // Fetch admin_roles to check status and get color/is_super_admin
-        const { data: adminRole } = await supabase
-          .from("admin_roles")
-          .select("id, color, status, is_super_admin")
-          .eq("member_id", user.id)
-          .maybeSingle();
-
         const isSuper = checkIsSuperAdmin({
           email: user.email,
           memberRole: member?.role,
@@ -297,14 +304,14 @@ export default function AdminLayout({
 
         setIsSuperAdmin(isSuper);
 
-        if (adminRole && adminRole.status === "active") {
+        // Jika bukan super admin, tapi memiliki adminRole aktif, baru fetch permissions spesifik
+        if (!isSuper && adminRole && adminRole.status === "active") {
           setIsAdmin(true);
-
-          // Fetch permissions (pages where admin has 'view' privilege)
           const { data: permData, error } = await supabase
             .from("admin_role_permissions")
             .select(`
-              privilege_items!inner ( slug ),
+              privilege_item_id,
+              privilege_items!inner ( slug, href ),
               privilege_actions!inner ( slug )
             `)
             .eq("admin_role_id", adminRole.id)
@@ -314,8 +321,16 @@ export default function AdminLayout({
             const permMap: Record<string, Permission> = {};
             permData.forEach((p: any) => {
               const slug = p.privilege_items?.slug;
+              const itemId = p.privilege_item_id;
+              const href = p.privilege_items?.href;
               if (slug) {
                 permMap[slug] = { can_view: true };
+              }
+              if (itemId) {
+                permMap[itemId] = { can_view: true };
+              }
+              if (href) {
+                permMap[href] = { can_view: true };
               }
             });
             setPermissions(permMap);
@@ -390,17 +405,21 @@ export default function AdminLayout({
     }
   };
 
-  // Safe view check - defaults to showing navigation if role database isn't fully loaded/configured
-  const canView = (module: string | undefined) => {
-    if (!module) return true;
+  // Safe view check - strictly checks granular permissions for non-super admins
+  const canView = (itemOrModule: NavItem | string | undefined) => {
+    if (!itemOrModule) return true;
     if (isSuperAdmin) return true;
+    if (isLoadingUser) return false;
 
-    // Fallback: If no permissions are set/fetched yet in the state, show everything
-    if (Object.keys(permissions).length === 0) return true;
+    if (typeof itemOrModule === "string") {
+      return permissions[itemOrModule]?.can_view || false;
+    }
 
-    if (isAdmin) return true;
+    if (itemOrModule.id && permissions[itemOrModule.id]?.can_view) return true;
+    if (itemOrModule.href && permissions[itemOrModule.href]?.can_view) return true;
+    if (itemOrModule.module && permissions[itemOrModule.module]?.can_view) return true;
 
-    return permissions[module]?.can_view || false;
+    return false;
   };
 
   // Helper to dynamically adjust links for subdomain vs localhost
@@ -598,14 +617,16 @@ export default function AdminLayout({
                     </span>
                   </a>
                 )}
-                <Link
-                  href={getCleanHref("/admin/sidebar-layout")}
-                  onClick={() => setIsProfileOpen(false)}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-page rounded-md transition-all duration-150 cursor-pointer"
-                >
-                  <PanelLeft size={13} />
-                  <span>Sidebar Layout</span>
-                </Link>
+                {isSuperAdmin && (
+                  <Link
+                    href={getCleanHref("/admin/sidebar-layout")}
+                    onClick={() => setIsProfileOpen(false)}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-page rounded-md transition-all duration-150 cursor-pointer"
+                  >
+                    <PanelLeft size={13} />
+                    <span>Sidebar Layout</span>
+                  </Link>
+                )}
                 {/* settings */}
                 <Link
                   href={getCleanHref("/admin/settings")}
@@ -706,7 +727,7 @@ export default function AdminLayout({
 
                 {/* Grouped Menus */}
                 {navGroups.map((group) => {
-                  const visibleItems = group.items.filter((item) => canView(item.module));
+                  const visibleItems = group.items.filter((item) => canView(item));
                   if (visibleItems.length === 0) return null;
 
                   return (

@@ -116,6 +116,22 @@ export async function createPackageAction(packageData: any) {
       console.warn("Sync package create to prod failed:", prodErr);
     }
 
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        adminId: session.user.id,
+        action: "CREATE",
+        module: "Packages",
+        targetId: data.id,
+        description: `Membuat paket baru: "${data.name}" (${data.price ? `Rp ${Number(data.price).toLocaleString("id-ID")}` : "Gratis"})`,
+        oldData: null,
+        newData: data,
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log create package:", logErr);
+    }
+
     revalidatePath("/");
     revalidatePath("/admin/packages");
     return { success: true, data };
@@ -165,6 +181,22 @@ export async function updatePackageAction(id: string, packageData: any) {
       console.warn("Sync package update to prod failed:", prodErr);
     }
 
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        adminId: session.user.id,
+        action: "UPDATE",
+        module: "Packages",
+        targetId: id,
+        description: `Memperbarui paket: "${packageData.name || id}"`,
+        oldData: null,
+        newData: updatePayload,
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log update package:", logErr);
+    }
+
     revalidatePath("/");
     revalidatePath("/admin/packages");
     return { success: true };
@@ -192,6 +224,13 @@ export async function deletePackageAction(id: string) {
       return { success: false, error: "Akses ditolak" };
     }
 
+    // Get package info before delete
+    const { data: pkgToDelete } = await supabase
+      .from("packages")
+      .select("id, name, price")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("packages")
       .delete()
@@ -211,6 +250,22 @@ export async function deletePackageAction(id: string) {
       }
     } catch (prodErr) {
       console.warn("Sync package delete to prod failed:", prodErr);
+    }
+
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        adminId: session.user.id,
+        action: "DELETE",
+        module: "Packages",
+        targetId: id,
+        description: `Menghapus paket: "${pkgToDelete?.name || id}"`,
+        oldData: pkgToDelete,
+        newData: null,
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log delete package:", logErr);
     }
 
     revalidatePath("/");

@@ -184,6 +184,22 @@ export async function createEventAction(data: EventFormData) {
     return { success: false, error: error.message || "Gagal membuat acara di database." };
   }
 
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: "CREATE",
+      module: "Acara",
+      targetId: devResult?.id,
+      description: `Membuat acara baru: "${trimmedTitle}" (${data.event_date})`,
+      oldData: null,
+      newData: payload,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log acara:", logErr);
+  }
+
   revalidatePath("/admin/acara");
   revalidatePath("/myprofile");
 
@@ -276,6 +292,22 @@ export async function updateEventAction(id: string, data: EventFormData) {
     return { success: false, error: error.message || "Gagal memperbarui acara di database." };
   }
 
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: "UPDATE",
+      module: "Acara",
+      targetId: id,
+      description: `Memperbarui acara: "${trimmedTitle}" (${data.event_date})`,
+      oldData: null,
+      newData: payload,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log update acara:", logErr);
+  }
+
   revalidatePath("/admin/acara");
   revalidatePath(`/admin/acara/${id}`);
   revalidatePath(`/absensi/${id}`);
@@ -313,6 +345,13 @@ export async function deleteEventAction(id: string) {
     };
   }
 
+  // Get event info before deleting
+  const { data: eventToDelete } = await supabase
+    .from("events")
+    .select("id, title, event_date")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await syncDualOperation(async (client) => {
     const { error: err } = await client
       .from("events")
@@ -324,6 +363,22 @@ export async function deleteEventAction(id: string) {
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: "DELETE",
+      module: "Acara",
+      targetId: id,
+      description: `Menghapus acara: "${eventToDelete?.title || id}" (${eventToDelete?.event_date || "-"})`,
+      oldData: eventToDelete,
+      newData: null,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log hapus acara:", logErr);
   }
 
   revalidatePath("/admin/acara");

@@ -80,6 +80,23 @@ export async function createVoucherAction(data: {
     if (error.code === '23505') return { success: false, error: "Kode voucher sudah ada." };
     return { success: false, error: error.message };
   }
+
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: "CREATE",
+      module: "Voucher",
+      targetId: payload.code,
+      description: `Membuat voucher baru: "${payload.code}" (${payload.discount_type === "percentage" ? `${payload.discount_value}%` : `Rp ${payload.discount_value.toLocaleString("id-ID")}`})`,
+      oldData: null,
+      newData: payload,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log create voucher:", logErr);
+  }
+
   return { success: true };
 }
 
@@ -97,6 +114,13 @@ export async function deleteVoucherAction(id: string) {
     return { success: false, error: "Akses ditolak: Anda tidak memiliki izin untuk menghapus voucher." };
   }
 
+  // Get voucher info before delete
+  const { data: voucherToDelete } = await supabase
+    .from("vouchers")
+    .select("id, code")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await syncDualOperation(async (client) => {
     const { error: delErr } = await client.from("vouchers").delete().eq("id", id);
     if (delErr) throw delErr;
@@ -104,6 +128,23 @@ export async function deleteVoucherAction(id: string) {
   });
 
   if (error) return { success: false, error: error.message };
+
+  // Log admin activity
+  try {
+    const { logAdminActivity } = await import("@/lib/actions/log-actions");
+    await logAdminActivity({
+      adminId: session.user.id,
+      action: "DELETE",
+      module: "Voucher",
+      targetId: id,
+      description: `Menghapus voucher: "${voucherToDelete?.code || id}"`,
+      oldData: voucherToDelete,
+      newData: null,
+    });
+  } catch (logErr) {
+    console.warn("Notice: Gagal mencatat log delete voucher:", logErr);
+  }
+
   return { success: true };
 }
 

@@ -29,7 +29,7 @@ import { Modal, ModalSection } from "@/components/ui/Modal";
 import { toast } from "sonner";
 import AdminPagination from "@/components/admin/AdminPagination";
 import { isDedicatedAdmin } from "@/lib/constants";
-import { sendMemberCredentialsAction, deleteMemberAction, fetchLatestMembersAction } from "./actions";
+import { sendMemberCredentialsAction, deleteMemberAction, fetchLatestMembersAction, updateMemberStatusAction } from "./actions";
 import { MemberFormRecapModal } from "./MemberFormRecapModal";
 
 type Member = {
@@ -533,20 +533,16 @@ export default function MembersClient({
     setSuccessMessage(null);
 
     try {
-      const supabase = createClient();
+      const res = await updateMemberStatusAction({
+        memberId: editingMember.id,
+        community: editCommunity,
+        membership_tier: editTier,
+        tier_note: editNote.trim() || null,
+      });
 
-      const { error } = await supabase
-        .from("members")
-        .update({
-          community: editCommunity,
-          membership_tier: editTier,
-          tier_changed_at: new Date().toISOString(),
-          tier_changed_by: currentUserId,
-          tier_note: editNote.trim() || null
-        })
-        .eq("id", editingMember.id);
-
-      if (error) throw error;
+      if (!res.success) {
+        throw new Error(res.error || "Gagal memperbarui status member.");
+      }
 
       // Update local state
       setMembers(prev =>
