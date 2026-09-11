@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import AdminsClient from "./AdminsClient";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-
 import { isSuperAdmin } from "@/lib/security";
+import { getPaginationLimitSettingAction } from "@/lib/actions/settings-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,23 +19,23 @@ export default async function AdminsPage() {
     redirect("/login");
   }
 
-  // Verify that the user is an admin
-  const { data: member } = await supabase
-    .from("members")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  // Verify member role & admin status concurrently
+  const [{ data: member }, { data: currentAdminRole }] = await Promise.all([
+    supabase
+      .from("members")
+      .select("role")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("admin_roles")
+      .select("id, color, status, is_super_admin")
+      .eq("member_id", user.id)
+      .maybeSingle(),
+  ]);
 
   if (!member || member.role !== "admin") {
     redirect("/myprofile");
   }
-
-  // Only Super Admin can access Admin Management
-  const { data: currentAdminRole } = await supabase
-    .from("admin_roles")
-    .select("id, color, status, is_super_admin")
-    .eq("member_id", user.id)
-    .maybeSingle();
 
   const isSuper = isSuperAdmin({
     email: user.email,
@@ -49,26 +49,29 @@ export default async function AdminsPage() {
     redirect("/admin/denied");
   }
 
-  // Fetch admin roles from DB joining members info using Service Role Client to bypass RLS
+  // Fetch admin roles and pagination settings concurrently
   const serviceRoleClient = createServiceRoleClient();
-  const { data: adminRoles, error } = await serviceRoleClient
-    .from("admin_roles")
-    .select(`
-      id,
-      label,
-      color,
-      status,
-      created_at,
-      members:members!member_id (
+  const [{ data: adminRoles, error }, paginationLimit] = await Promise.all([
+    serviceRoleClient
+      .from("admin_roles")
+      .select(`
         id,
-        full_name,
-        email,
-        whatsapp_number,
-        role
-      )
-    `)
-    .neq("status", "revoked")
-    .order("created_at", { ascending: false });
+        label,
+        color,
+        status,
+        created_at,
+        members:members!member_id (
+          id,
+          full_name,
+          email,
+          whatsapp_number,
+          role
+        )
+      `)
+      .neq("status", "revoked")
+      .order("created_at", { ascending: false }),
+    getPaginationLimitSettingAction(),
+  ]);
 
   if (error) {
     console.error("Error fetching admin roles:", error);
@@ -99,10 +102,6 @@ export default async function AdminsPage() {
       }
       return true;
     });
-
-  // Fetch pagination limit setting
-  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
-  const paginationLimit = await getPaginationLimitSettingAction();
 
   return (
     <AdminsClient

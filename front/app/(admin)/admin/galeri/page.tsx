@@ -2,6 +2,7 @@ import React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import GaleriCMSClient from "./GaleriCMSClient";
+import { getPaginationLimitSettingAction } from "@/lib/actions/settings-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -28,19 +29,18 @@ export default async function GaleriCMSPage() {
     redirect("/myprofile");
   }
 
-  // Tarik data seluruh album galeri
-  const { data: albums, error } = await supabase
-    .from("gallery_albums")
-    .select("*")
-    .order("event_date", { ascending: false });
+  // Tarik data seluruh album galeri & pagination setting secara paralel
+  const [{ data: albums, error }, paginationLimit] = await Promise.all([
+    supabase
+      .from("gallery_albums")
+      .select("*")
+      .order("event_date", { ascending: false }),
+    getPaginationLimitSettingAction(),
+  ]);
 
   if (error) {
     console.error("Error fetching gallery albums for admin:", error);
   }
-
-  // Fetch pagination limit setting
-  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
-  const paginationLimit = await getPaginationLimitSettingAction();
 
   return (
     <GaleriCMSClient

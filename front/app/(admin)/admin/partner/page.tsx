@@ -2,6 +2,7 @@ import React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import PartnerClient from "./PartnerClient";
+import { getPaginationLimitSettingAction } from "@/lib/actions/settings-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +28,15 @@ export default async function PartnerPage() {
     redirect("/myprofile");
   }
 
-  // Fetch all partners
-  const { data: rawPartners } = await supabase
-    .from("partners")
-    .select("*")
-    .order("order_index", { ascending: true })
-    .order("name", { ascending: true });
+  // Fetch partners & settings concurrently
+  const [{ data: rawPartners }, paginationLimit] = await Promise.all([
+    supabase
+      .from("partners")
+      .select("*")
+      .order("order_index", { ascending: true })
+      .order("name", { ascending: true }),
+    getPaginationLimitSettingAction(),
+  ]);
 
   const partners = rawPartners || [];
 
@@ -53,10 +57,6 @@ export default async function PartnerPage() {
     order_index: p.order_index || 0,
     created_at: p.created_at,
   }));
-
-  // Fetch pagination limit setting
-  const { getPaginationLimitSettingAction } = await import("@/lib/actions/settings-actions");
-  const paginationLimit = await getPaginationLimitSettingAction();
 
   return (
     <PartnerClient
