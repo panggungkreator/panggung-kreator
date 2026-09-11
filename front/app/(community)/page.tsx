@@ -8,6 +8,7 @@ import JourneySection from "@/components/community/JourneySection";
 import MembershipSection from "@/components/community/MembershipSection";
 import GallerySection from "@/components/community/GallerySection";
 import ValuesSection from "@/components/community/ValuesSection";
+import CollaborationsSection from "@/components/community/CollaborationsSection";
 import ClosingCTA from "@/components/community/ClosingCTA";
 
 export default function Page() {
@@ -40,7 +41,10 @@ export default function Page() {
       {/* 9. Values Section (NEW - core community values 5-column grid) */}
       <ValuesSection />
 
-      {/* 10. Closing CTA Section (Full-bleed contrast call-to-action block) */}
+      {/* 10. Collaborations Section (PARTNERS & COLLABORATIONS - dynamic from table partners) */}
+      <CollaborationsSection />
+
+      {/* 11. Closing CTA Section (Full-bleed contrast call-to-action block) */}
       {/* <ClosingCTA /> */}
     </div>
   );
