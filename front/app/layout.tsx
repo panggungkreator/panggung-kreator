@@ -13,12 +13,8 @@ import SmoothScroll from "@/components/ui/SmoothScroll";
 import PageTransitionLoader from "@/components/ui/PageTransitionLoader";
 import TopProgressBar from "@/components/ui/TopProgressBar";
 import ThemeScript from "@/components/ui/ThemeScript";
-import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
-
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
-
 
 export default function RootLayout({
   children,
@@ -28,7 +24,7 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={cn("h-full antialiased", "font-sans", geist.variable)}
+      className={cn("h-full antialiased", "font-sans")}
       suppressHydrationWarning
     >
       <head>

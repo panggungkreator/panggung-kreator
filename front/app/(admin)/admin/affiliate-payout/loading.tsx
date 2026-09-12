@@ -1,8 +1,10 @@
 import React from "react";
+import LoadingStateTracker from "@/components/ui/LoadingStateTracker";
 
 export default function AffiliatePayoutLoading() {
   return (
     <div className="space-y-6 animate-pulse select-none">
+      <LoadingStateTracker />
       {/* Header */}
       <div className="flex flex-col gap-2 pb-4 border-b border-border-default">
         <div className="h-3 w-24 bg-zinc-200 dark:bg-zinc-800 rounded" />

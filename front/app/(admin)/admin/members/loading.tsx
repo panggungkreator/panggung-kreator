@@ -1,8 +1,10 @@
 import React from "react";
+import LoadingStateTracker from "@/components/ui/LoadingStateTracker";
 
 export default function MembersLoading() {
   return (
     <div className="space-y-6 pb-28 md:pb-12 animate-pulse select-none">
+      <LoadingStateTracker />
       {/* Top Header Skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-default/40">
         <div className="space-y-2">

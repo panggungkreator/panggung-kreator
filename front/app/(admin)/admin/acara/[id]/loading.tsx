@@ -1,8 +1,10 @@
 import React from "react";
+import LoadingStateTracker from "@/components/ui/LoadingStateTracker";
 
 export default function AcaraDetailLoading() {
   return (
     <div className="space-y-6 pb-12 animate-pulse select-none">
+      <LoadingStateTracker />
       {/* Top Header Skeleton */}
       <div className="flex items-center justify-between gap-3 pb-4 border-b border-border-default/60">
         <div className="flex items-center gap-3">

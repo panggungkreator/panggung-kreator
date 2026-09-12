@@ -1,8 +1,10 @@
 import React from "react";
+import LoadingStateTracker from "@/components/ui/LoadingStateTracker";
 
 export default function ConfirmationLoading() {
   return (
     <div className="space-y-6 pb-12 animate-pulse select-none">
+      <LoadingStateTracker />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-default/40">
         <div className="space-y-2">
           <div className="h-2.5 w-24 bg-zinc-200 dark:bg-zinc-800 rounded"></div>

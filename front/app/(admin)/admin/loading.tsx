@@ -1,8 +1,10 @@
 import React from "react";
+import LoadingStateTracker from "@/components/ui/LoadingStateTracker";
 
 export default function AdminLoading() {
   return (
     <div className="space-y-6 animate-pulse select-none">
+      <LoadingStateTracker />
       
       {/* Page Header Skeleton */}
       <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-4 border-b border-border-default/40">
