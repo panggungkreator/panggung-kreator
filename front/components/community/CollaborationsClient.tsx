@@ -130,7 +130,7 @@ export default function CollaborationsClient({ partners }: CollaborationsClientP
       {/* Main Container (Clean, Minimalist & Focused) */}
       <div
         ref={cardRef}
-        className="max-w-6xl mx-auto bg-white dark:bg-[#2c2c2c] border border-[#2c2c2c]/15 dark:border-white/15 p-8 sm:p-12 md:p-16 lg:p-20 relative rounded-none shadow-none"
+        className="max-w-6xl mx-auto bg-white dark:bg-[#2c2c2c]  p-8 sm:p-12 md:p-16 lg:p-20 relative rounded-none shadow-none"
       >
         {/* Centered Heading Block (Matching the reference layout) */}
         <div className="text-center max-w-2xl mx-auto mb-8 md:mb-12">
