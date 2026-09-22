@@ -2,6 +2,7 @@ import React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import AttendanceClient from "./AttendanceClient";
+import { isDedicatedAdmin } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +36,7 @@ export default async function AttendancePage() {
       .order("event_date", { ascending: false }),
     supabase
       .from("members")
-      .select("id, full_name, stage_name, whatsapp_number")
-      .eq("role", "member")
+      .select("id, full_name, stage_name, username, email, whatsapp_number")
       .order("full_name", { ascending: true }),
     supabase
       .from("attendances")
@@ -64,7 +64,10 @@ export default async function AttendancePage() {
 
   const rawAttendances = attendancesResponse.data || [];
   const events = eventsResponse.data || [];
-  const members = membersResponse.data || [];
+  const rawMembers = membersResponse.data || [];
+  const members = rawMembers.filter(
+    (m: any) => !isDedicatedAdmin(m.username) && !isDedicatedAdmin(m.email)
+  );
 
   // Format attendance list for strict TypeScript safety
   const formattedAttendances = rawAttendances.map((att: any) => ({

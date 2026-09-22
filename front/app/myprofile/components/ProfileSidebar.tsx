@@ -9,9 +9,10 @@ import ChangePasswordModal from "@/components/member/ChangePasswordModal";
 
 interface ProfileSidebarProps {
   member: MemberProfile;
-  onSignout: () => void;
+  onSignout?: () => void;
   onLinkClick?: () => void;
   isLoggingOut?: boolean;
+  showActions?: boolean;
 }
 
 // Clean Monochrome Brand Icons
@@ -49,7 +50,13 @@ function LinkedInIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
   );
 }
 
-export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggingOut }: ProfileSidebarProps) {
+export default function ProfileSidebar({
+  member,
+  onSignout,
+  onLinkClick,
+  isLoggingOut,
+  showActions = true,
+}: ProfileSidebarProps) {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -96,8 +103,8 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
     toast.success("Link pendaftaran referral berhasil disalin!");
     setTimeout(() => setCopiedLink(false), 2500);
   };
-  const initials = (member.stage_name || member.full_name || "M")
-    .substring(0, 2)
+  const initials = (member.full_name || member.stage_name || "M")
+    .charAt(0)
     .toUpperCase();
 
   const formattedJoinDate = member.profile_completed_at || (member as any).created_at
@@ -154,37 +161,27 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
     : null;
 
   return (
-    <div className="bg-transparent border-0 p-0 flex flex-col items-center text-center shadow-none relative overflow-hidden rounded-none w-full">
+    <div className="w-full flex flex-col items-center text-center relative">
       {/* CARD TOP LABEL */}
-      <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-2">
+      <span className="text-[10px] font-sans font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-6 hidden">
         PROFIL MEMBER
       </span>
 
-      {/* AVATAR PHOTO / INITIALS (COMPACT PROPORTIONS) */}
+      {/* PURE CANVAS INITIAL AVATAR */}
       <div className="relative my-2 sm:my-3 flex items-center justify-center w-full">
-        <div className="w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-900 flex-shrink-0 border border-neutral-200 dark:border-neutral-800">
-          {member.avatar_url ? (
-            <img
-              src={member.avatar_url}
-              alt={member.stage_name || member.full_name}
-              className="w-full h-full object-cover transition-all duration-500"
-            />
-          ) : (
-            <div className="w-full h-full bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 flex items-center justify-center text-2xl font-bold font-mono">
-              {initials}
-            </div>
-          )}
+        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#1C1C1C] dark:bg-white text-white dark:text-[#1C1C1C] flex items-center justify-center text-4xl sm:text-5xl font-sans font-bold shadow-md select-none">
+          {initials}
         </div>
       </div>
 
       {/* MEMBER NAME & STAGE NAME */}
       <div className="space-y-1 w-full mt-2">
         <h2 className="font-serif text-2xl sm:text-3xl text-neutral-900 dark:text-white font-normal leading-snug">
-          <span className="highlight-stabilo font-semibold">{member.stage_name || member.full_name}</span>
+          <span className="highlight-stabilo font-semibold">{member.full_name || member.stage_name}</span>
         </h2>
         {member.stage_name && member.full_name && (
           <p className="text-xs font-sans text-neutral-500 dark:text-neutral-400">
-            {member.full_name}
+            {member.stage_name}
           </p>
         )}
         {member.username && (
@@ -194,200 +191,195 @@ export default function ProfileSidebar({ member, onSignout, onLinkClick, isLoggi
         )}
       </div>
 
-      {/* TIER & METADATA BADGES (NO ICONS) */}
-      <div className="flex flex-wrap justify-center items-center gap-2 mt-4 w-full">
-        <span className="px-3 py-1 text-[10px] font-mono uppercase tracking-widest border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200">
+      {/* TIER & METADATA PILLS */}
+      <div className="flex flex-wrap justify-center items-center gap-1.5 mt-4 w-full">
+        <span className="px-3 py-1 text-[11px] font-sans font-bold uppercase tracking-wider rounded-full border border-neutral-300 dark:border-neutral-700 bg-white/80 dark:bg-neutral-800/80 text-neutral-800 dark:text-neutral-200">
           {member.membership_tier.toUpperCase()} TIER
         </span>
 
         {member.city && (
-          <span className="px-3 py-1 text-[10px] font-mono uppercase tracking-widest border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400">
+          <span className="px-3 py-1 text-[11px] font-sans font-medium uppercase tracking-wider rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 bg-white/40 dark:bg-neutral-900/40">
             {member.city}
           </span>
         )}
 
         {age !== null && (
-          <span className="px-3 py-1 text-[10px] font-mono uppercase tracking-widest border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400">
+          <span className="px-3 py-1 text-[11px] font-sans font-medium uppercase tracking-wider rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 bg-white/40 dark:bg-neutral-900/40">
             {age} THN
           </span>
         )}
 
         {member.occupation && (
-          <span className="px-3 py-1 text-[10px] font-mono uppercase tracking-widest border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400">
+          <span className="px-3 py-1 text-[11px] font-sans font-medium uppercase tracking-wider rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 bg-white/40 dark:bg-neutral-900/40">
             {member.occupation.replace(/_/g, " ")}
           </span>
         )}
       </div>
 
-      {/* SOCIAL LINKS (VERTICAL LIST, MONOCHROME WITH ICONS) */}
+      {/* SOCIAL LINKS (CIRCULAR BUTTONS) */}
       {socialLinks.length > 0 && (
-        <div className="w-full pt-4 pb-1 space-y-1 border-b border-neutral-200 dark:border-neutral-800">
-          {socialLinks.map((item, idx) => {
-            const Icon = item.icon;
-            return (
-              <a
-                key={idx}
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between py-1.5 px-2 rounded-none hover:bg-neutral-100/70 dark:hover:bg-neutral-900/60 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors group w-full text-left"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Icon className="w-3.5 h-3.5 flex-shrink-0 text-neutral-500 dark:text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors" />
-                  <span className="text-[11px] font-mono uppercase tracking-wider font-semibold">
-                    {item.label}
-                  </span>
-                </div>
-                <span className="text-[11px] font-mono text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300 truncate max-w-[140px]">
-                  {item.text}
-                </span>
-              </a>
-            );
-          })}
-        </div>
-      )}
-
-      {/* REFERRAL QUICK COPY BADGE */}
-      {member.affiliate_code && (
-        <div className="w-full pt-4">
-          <div className="w-full p-3 bg-neutral-100 dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 text-left space-y-2.5 transition-colors">
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block font-medium">
-                KODE REFERRAL
-              </span>
-              <span className="text-[9px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                Bagikan
-              </span>
-            </div>
-
-            {/* Code pill / clickable to copy code */}
-            <div
-              onClick={handleCopyCode}
-              className="flex items-center justify-between p-2 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors cursor-pointer group select-none"
-              title="Klik untuk salin kode saja"
-            >
-              <span className="text-xs font-mono font-bold text-neutral-900 dark:text-white tracking-wider truncate">
-                {member.affiliate_code}
-              </span>
-              {copiedCode ? (
-                <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 ml-1.5" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white shrink-0 ml-1.5 transition-colors" />
-              )}
-            </div>
-
-            {/* Two Action Buttons: Salin Kode & Salin Link */}
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                onClick={handleCopyCode}
-                className={`py-1.5 px-2 border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${copiedCode
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-                    : "bg-white dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-neutral-700"
-                  }`}
-                title="Salin hanya kode referral"
-              >
-                {copiedCode ? (
-                  <>
-                    <Check className="w-3 h-3 text-emerald-500 shrink-0" />
-                    <span>Tersalin</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3 text-neutral-500 shrink-0" />
-                    <span>Salin Kode</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className={`py-1.5 px-2 border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${copiedLink
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-                    : "bg-white dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-neutral-700"
-                  }`}
-                title="Salin tautan pendaftaran referral lengkap"
-              >
-                {copiedLink ? (
-                  <>
-                    <Check className="w-3 h-3 text-emerald-500 shrink-0" />
-                    <span>Tersalin</span>
-                  </>
-                ) : (
-                  <>
-                    <Link2 className="w-3 h-3 text-neutral-500 shrink-0" />
-                    <span>Salin Link</span>
-                  </>
-                )}
-              </button>
-            </div>
+        <div className="w-full pt-6 pb-2">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {socialLinks.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <a
+                  key={idx}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-full flex items-center justify-center bg-white dark:bg-[#151B18] text-[#1C1C1C] dark:text-white border border-neutral-200/80 dark:border-neutral-800 shadow-2xs hover:scale-110 active:scale-95 transition-all"
+                  title={item.label}
+                >
+                  <Icon className="w-4 h-4" />
+                </a>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* ACTION BUTTONS (EDIT PROFIL, GANTI PASSWORD & LOGOUT) */}
-      <div className="w-full space-y-2.5 pt-4">
-        {member.role === "admin" && (
-          <a
-            href={getAdminUrl()}
-            onClick={onLinkClick}
-            className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2 font-bold border border-amber-500 shadow-sm"
+      {/* REFERRAL QUICK COPY (CANVAS CLEAN) */}
+      {member.affiliate_code && (
+        <div className="w-full pt-6 space-y-2 text-left">
+          <span className="text-[10px] font-sans font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block">
+            KODE REFERRAL
+          </span>
+
+          {/* Code pill / clickable to copy code */}
+          <div
+            onClick={handleCopyCode}
+            className="flex items-center justify-between p-3 bg-white dark:bg-[#151B18] border border-neutral-200/80 dark:border-neutral-800 rounded-2xl hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors cursor-pointer group select-none shadow-2xs"
+            title="Klik untuk salin kode saja"
           >
-            <Shield className="w-3.5 h-3.5" />
-            <span>Dashboard Admin &rarr;</span>
-          </a>
-        )}
-
-        <Link
-          href="/myprofile/edit"
-          onClick={onLinkClick}
-          className="w-full py-2.5 px-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-mono text-xs uppercase tracking-widest transition-colors block text-center border border-neutral-900 dark:border-white"
-        >
-          Edit Profil
-        </Link>
-
-
-        <button
-          onClick={() => {
-            setIsChangePasswordOpen(true);
-            if (onLinkClick) onLinkClick();
-          }}
-          className="w-full py-2.5 px-4 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700 font-mono text-xs uppercase tracking-widest transition-colors cursor-pointer block text-center"
-        >
-          Ganti Password
-        </button>
-
-        <button
-          onClick={onSignout}
-          disabled={isLoggingOut}
-          className="w-full py-2.5 px-4 bg-transparent hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40 font-mono text-xs uppercase tracking-widest transition-colors cursor-pointer block text-center disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoggingOut ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin h-3.5 w-3.5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              <span>Logging out...</span>
+            <span className="text-sm font-mono font-bold text-[#1C1C1C] dark:text-white tracking-wider truncate">
+              {member.affiliate_code}
             </span>
-          ) : (
-            "Logout"
-          )}
-        </button>
-      </div>
+            {copiedCode ? (
+              <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
+            ) : (
+              <Copy className="w-4 h-4 text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white shrink-0 ml-1.5 transition-colors" />
+            )}
+          </div>
 
-      <ChangePasswordModal
-        isOpen={isChangePasswordOpen}
-        onClose={() => setIsChangePasswordOpen(false)}
-      />
+          {/* Two Action Buttons: Salin Kode & Salin Link */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              className={`py-2 px-3 text-xs font-sans font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none rounded-full active:scale-95 border ${copiedCode
+                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                  : "bg-white dark:bg-[#151B18] hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[#1C1C1C] dark:text-white border-neutral-200/80 dark:border-neutral-800 shadow-2xs"
+                }`}
+              title="Salin hanya kode referral"
+            >
+              {copiedCode ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Tersalin</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 opacity-70" />
+                  <span>Salin Kode</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className={`py-2 px-3 text-xs font-sans font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none rounded-full active:scale-95 border ${copiedLink
+                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                  : "bg-white dark:bg-[#151B18] hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[#1C1C1C] dark:text-white border-neutral-200/80 dark:border-neutral-800 shadow-2xs"
+                }`}
+              title="Salin tautan pendaftaran referral lengkap"
+            >
+              {copiedLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Tersalin</span>
+                </>
+              ) : (
+                <>
+                  <Link2 className="w-3.5 h-3.5 opacity-70" />
+                  <span>Salin Link</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ACTION BUTTONS (FOR MOBILE DRAWER) */}
+      {showActions && (
+        <>
+          <div className="w-full space-y-2.5 pt-4">
+            {member.role === "admin" && (
+              <a
+                href={getAdminUrl()}
+                onClick={onLinkClick}
+                className="w-full h-10 px-4 bg-amber-500 hover:bg-amber-600 text-black font-sans text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 font-bold rounded-full shadow-xs active:scale-95"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Dashboard Admin &rarr;</span>
+              </a>
+            )}
+
+            <Link
+              href="/myprofile/edit"
+              onClick={onLinkClick}
+              className="w-full h-10 px-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 font-sans text-xs uppercase tracking-wider transition-all flex items-center justify-center font-bold rounded-full shadow-xs active:scale-95"
+            >
+              Edit Profil
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsChangePasswordOpen(true);
+                if (onLinkClick) onLinkClick();
+              }}
+              className="w-full h-10 px-4 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border border-neutral-200/80 dark:border-neutral-700 font-sans text-xs uppercase tracking-wider font-semibold transition-all cursor-pointer flex items-center justify-center rounded-full active:scale-95"
+            >
+              Ganti Password
+            </button>
+
+            {onSignout && (
+              <button
+                type="button"
+                onClick={onSignout}
+                disabled={isLoggingOut}
+                className="w-full h-10 px-4 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200/80 dark:border-red-900/60 font-sans text-xs uppercase tracking-wider font-semibold transition-all cursor-pointer flex items-center justify-center rounded-full disabled:opacity-50 active:scale-95"
+              >
+                {isLoggingOut ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-3.5 w-3.5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    <span>Logging out...</span>
+                  </span>
+                ) : (
+                  "Logout"
+                )}
+              </button>
+            )}
+          </div>
+
+          <ChangePasswordModal
+            isOpen={isChangePasswordOpen}
+            onClose={() => setIsChangePasswordOpen(false)}
+          />
+        </>
+      )}
 
       {/* JOIN DATE */}
-      <div className="pt-4 mt-4 border-t border-neutral-200 dark:border-neutral-800 w-full text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+      <div className="pt-4 mt-4 border-t border-neutral-200/80 dark:border-neutral-800/80 w-full text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
         TERDAFTAR: {formattedJoinDate}
       </div>
     </div>

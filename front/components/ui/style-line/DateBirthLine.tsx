@@ -7,12 +7,17 @@ import { cn } from "@/lib/utils";
 
 export interface DateBirthLineProps {
   id?: string;
-  label: string;
   value?: string; // Format: YYYY-MM-DD
   onChange?: (val: string) => void;
   error?: string;
   placeholder?: string;
   className?: string;
+  variant?: "line" | "box";
+  disabled?: boolean;
+  minDate?: string; // Format: YYYY-MM-DD
+  maxDate?: string; // Format: YYYY-MM-DD
+  title?: string;
+  allowFuture?: boolean;
 }
 
 const MONTH_NAMES = [
@@ -30,36 +35,55 @@ const MONTH_NAMES = [
   { short: "Des", full: "Desember", index: 11 },
 ];
 
+const parseDateString = (str?: string) => {
+  if (!str) return null;
+  const parts = str.split("-");
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      return { year: y, monthIndex: m, day: d };
+    }
+  }
+  return null;
+};
+
 export const DateBirthLine: React.FC<DateBirthLineProps> = ({
   id,
-  label,
   value,
   onChange,
   error,
   placeholder = "Pilih tanggal lahir",
   className = "",
+  variant = "line",
+  disabled = false,
+  minDate,
+  maxDate,
+  title,
+  allowFuture = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Parse initial value or default to 1998-06-24
-  const parsedDate = useMemo(() => {
-    if (!value) return null;
-    const parts = value.split("-");
-    if (parts.length === 3) {
-      const y = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10) - 1;
-      const d = parseInt(parts[2], 10);
-      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-        return { year: y, monthIndex: m, day: d };
-      }
-    }
-    return null;
-  }, [value]);
+  const parsedDate = useMemo(() => parseDateString(value), [value]);
+  const parsedMin = useMemo(() => parseDateString(minDate), [minDate]);
+  const parsedMax = useMemo(() => parseDateString(maxDate), [maxDate]);
 
   const today = useMemo(() => new Date(), []);
   const currentYear = today.getFullYear();
   const currentMonthIndex = today.getMonth();
   const currentDay = today.getDate();
+
+  const maxAllowedYear = useMemo(() => {
+    if (parsedMax) return parsedMax.year;
+    if (allowFuture) return currentYear + 10;
+    return currentYear;
+  }, [parsedMax, allowFuture, currentYear]);
+
+  const minAllowedYear = useMemo(() => {
+    if (parsedMin) return parsedMin.year;
+    return 1940;
+  }, [parsedMin]);
 
   const [tempYear, setTempYear] = useState<number>(parsedDate?.year || currentYear);
   const [tempMonthIndex, setTempMonthIndex] = useState<number>(parsedDate?.monthIndex ?? currentMonthIndex);
@@ -73,82 +97,164 @@ export const DateBirthLine: React.FC<DateBirthLineProps> = ({
         setTempMonthIndex(parsedDate.monthIndex);
         setTempDay(parsedDate.day);
       } else {
-        const now = new Date();
-        setTempYear(now.getFullYear());
-        setTempMonthIndex(now.getMonth());
-        setTempDay(now.getDate());
+        let defY = currentYear;
+        if (defY > maxAllowedYear) defY = maxAllowedYear;
+        if (defY < minAllowedYear) defY = minAllowedYear;
+
+        let defM = currentMonthIndex;
+        if (parsedMax && defY === parsedMax.year && defM > parsedMax.monthIndex) {
+          defM = parsedMax.monthIndex;
+        } else if (!allowFuture && !parsedMax && defY === currentYear && defM > currentMonthIndex) {
+          defM = currentMonthIndex;
+        }
+        if (parsedMin && defY === parsedMin.year && defM < parsedMin.monthIndex) {
+          defM = parsedMin.monthIndex;
+        }
+
+        let defD = currentDay;
+        const totalD = new Date(defY, defM + 1, 0).getDate();
+        let maxD = totalD;
+        if (parsedMax && defY === parsedMax.year && defM === parsedMax.monthIndex) {
+          maxD = Math.min(maxD, parsedMax.day);
+        } else if (!allowFuture && !parsedMax && defY === currentYear && defM === currentMonthIndex) {
+          maxD = Math.min(maxD, currentDay);
+        }
+        let minD = 1;
+        if (parsedMin && defY === parsedMin.year && defM === parsedMin.monthIndex) {
+          minD = parsedMin.day;
+        }
+        defD = Math.max(minD, Math.min(maxD, defD));
+
+        setTempYear(defY);
+        setTempMonthIndex(defM);
+        setTempDay(defD);
       }
     }
-  }, [isOpen, parsedDate]);
+  }, [isOpen, parsedDate, maxAllowedYear, minAllowedYear, parsedMax, parsedMin, allowFuture, currentYear, currentMonthIndex, currentDay]);
 
-  // Generate list of years (1940 to currentYear)
+  // Generate list of years
   const years = useMemo(() => {
     const list: number[] = [];
-    for (let y = currentYear; y >= 1940; y--) {
+    const high = Math.max(maxAllowedYear, minAllowedYear);
+    const low = Math.min(maxAllowedYear, minAllowedYear);
+    for (let y = high; y >= low; y--) {
       list.push(y);
     }
-    return list;
-  }, [currentYear]);
+    return list.length > 0 ? list : [currentYear];
+  }, [maxAllowedYear, minAllowedYear, currentYear]);
 
-  // Available months (restricted to <= currentMonthIndex if currentYear is selected)
+  // Available months
   const availableMonths = useMemo(() => {
-    if (tempYear === currentYear) {
-      return MONTH_NAMES.filter((m) => m.index <= currentMonthIndex);
-    }
-    return MONTH_NAMES;
-  }, [tempYear, currentYear, currentMonthIndex]);
+    return MONTH_NAMES.filter((m) => {
+      if (parsedMin && tempYear === parsedMin.year && m.index < parsedMin.monthIndex) {
+        return false;
+      }
+      if (parsedMax && tempYear === parsedMax.year && m.index > parsedMax.monthIndex) {
+        return false;
+      }
+      if (!allowFuture && !parsedMax && tempYear === currentYear && m.index > currentMonthIndex) {
+        return false;
+      }
+      return true;
+    });
+  }, [tempYear, parsedMin, parsedMax, allowFuture, currentYear, currentMonthIndex]);
 
-  // Max days in selected month/year (restricted to <= currentDay if currentYear and currentMonthIndex are selected)
+  // Max and Min days in selected month/year
   const maxDays = useMemo(() => {
     const totalDays = new Date(tempYear, tempMonthIndex + 1, 0).getDate();
-    if (tempYear === currentYear && tempMonthIndex === currentMonthIndex) {
-      return Math.min(totalDays, currentDay);
+    let maxD = totalDays;
+    if (parsedMax && tempYear === parsedMax.year && tempMonthIndex === parsedMax.monthIndex) {
+      maxD = Math.min(maxD, parsedMax.day);
+    } else if (!allowFuture && !parsedMax && tempYear === currentYear && tempMonthIndex === currentMonthIndex) {
+      maxD = Math.min(maxD, currentDay);
     }
-    return totalDays;
-  }, [tempYear, tempMonthIndex, currentYear, currentMonthIndex, currentDay]);
+    return maxD;
+  }, [tempYear, tempMonthIndex, parsedMax, allowFuture, currentYear, currentMonthIndex, currentDay]);
+
+  const minDay = useMemo(() => {
+    if (parsedMin && tempYear === parsedMin.year && tempMonthIndex === parsedMin.monthIndex) {
+      return parsedMin.day;
+    }
+    return 1;
+  }, [tempYear, tempMonthIndex, parsedMin]);
 
   // Generate list of days
   const days = useMemo(() => {
     const list: number[] = [];
-    for (let d = 1; d <= maxDays; d++) {
+    for (let d = minDay; d <= maxDays; d++) {
       list.push(d);
     }
-    return list;
-  }, [maxDays]);
+    return list.length > 0 ? list : [minDay];
+  }, [minDay, maxDays]);
 
-  // Adjust tempMonthIndex if it exceeds available months for currentYear
+  // Adjust tempYear if outside range
   useEffect(() => {
-    if (tempYear === currentYear && tempMonthIndex > currentMonthIndex) {
-      setTempMonthIndex(currentMonthIndex);
-    }
-  }, [tempYear, tempMonthIndex, currentYear, currentMonthIndex]);
+    if (tempYear > maxAllowedYear) setTempYear(maxAllowedYear);
+    else if (tempYear < minAllowedYear) setTempYear(minAllowedYear);
+  }, [tempYear, maxAllowedYear, minAllowedYear]);
 
-  // Adjust tempDay if it exceeds maxDays
+  // Adjust tempMonthIndex if it exceeds available months
+  useEffect(() => {
+    if (availableMonths.length > 0) {
+      const isAvailable = availableMonths.some((m) => m.index === tempMonthIndex);
+      if (!isAvailable) {
+        if (tempMonthIndex < availableMonths[0].index) {
+          setTempMonthIndex(availableMonths[0].index);
+        } else {
+          setTempMonthIndex(availableMonths[availableMonths.length - 1].index);
+        }
+      }
+    }
+  }, [availableMonths, tempMonthIndex]);
+
+  // Adjust tempDay if outside range
   useEffect(() => {
     if (tempDay > maxDays) {
       setTempDay(maxDays);
+    } else if (tempDay < minDay) {
+      setTempDay(minDay);
     }
-  }, [maxDays, tempDay]);
+  }, [maxDays, minDay, tempDay]);
 
   const handleSubmit = () => {
     let finalYear = tempYear;
     let finalMonthIndex = tempMonthIndex;
     let finalDay = tempDay;
 
-    if (finalYear > currentYear) {
-      finalYear = currentYear;
-    }
-    if (finalYear === currentYear && finalMonthIndex > currentMonthIndex) {
-      finalMonthIndex = currentMonthIndex;
-    }
-    const maxAllowedDay = new Date(finalYear, finalMonthIndex + 1, 0).getDate();
-    const upperDay = (finalYear === currentYear && finalMonthIndex === currentMonthIndex) 
-      ? Math.min(maxAllowedDay, currentDay) 
-      : maxAllowedDay;
+    if (finalYear > maxAllowedYear) finalYear = maxAllowedYear;
+    if (finalYear < minAllowedYear) finalYear = minAllowedYear;
 
-    if (finalDay > upperDay) {
-      finalDay = upperDay;
+    const availableForFinalYear = MONTH_NAMES.filter((m) => {
+      if (parsedMin && finalYear === parsedMin.year && m.index < parsedMin.monthIndex) return false;
+      if (parsedMax && finalYear === parsedMax.year && m.index > parsedMax.monthIndex) return false;
+      if (!allowFuture && !parsedMax && finalYear === currentYear && m.index > currentMonthIndex) return false;
+      return true;
+    });
+
+    if (availableForFinalYear.length > 0) {
+      const isAvailable = availableForFinalYear.some((m) => m.index === finalMonthIndex);
+      if (!isAvailable) {
+        if (finalMonthIndex < availableForFinalYear[0].index) {
+          finalMonthIndex = availableForFinalYear[0].index;
+        } else {
+          finalMonthIndex = availableForFinalYear[availableForFinalYear.length - 1].index;
+        }
+      }
     }
+
+    const totalDays = new Date(finalYear, finalMonthIndex + 1, 0).getDate();
+    let maxD = totalDays;
+    if (parsedMax && finalYear === parsedMax.year && finalMonthIndex === parsedMax.monthIndex) {
+      maxD = Math.min(maxD, parsedMax.day);
+    } else if (!allowFuture && !parsedMax && finalYear === currentYear && finalMonthIndex === currentMonthIndex) {
+      maxD = Math.min(maxD, currentDay);
+    }
+    let minD = 1;
+    if (parsedMin && finalYear === parsedMin.year && finalMonthIndex === parsedMin.monthIndex) {
+      minD = parsedMin.day;
+    }
+
+    finalDay = Math.max(minD, Math.min(maxD, finalDay));
 
     const yStr = String(finalYear);
     const mStr = String(finalMonthIndex + 1).padStart(2, "0");
@@ -170,25 +276,33 @@ export const DateBirthLine: React.FC<DateBirthLineProps> = ({
 
   return (
     <div id={id} className={cn("w-full notranslate", className)} translate="no">
-      <label className="text-[11px] font-bold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase block mb-1">
-        {label}
-      </label>
-
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <Popover open={disabled ? false : isOpen} onOpenChange={(open) => !disabled && setIsOpen(open)}>
         <PopoverTrigger asChild>
           <div
-            className={`flex items-center justify-between w-full border-b py-1.5 cursor-pointer transition-colors notranslate ${
-              error
-                ? "border-red-500 dark:border-red-500"
-                : "border-zinc-300 dark:border-zinc-700 hover:border-black dark:hover:border-white focus-within:border-black dark:focus-within:border-white"
-            }`}
+            className={
+              variant === "box"
+                ? `flex items-center justify-between w-full h-10 px-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border rounded-xl transition-all notranslate ${
+                    disabled
+                      ? "opacity-40 cursor-not-allowed bg-zinc-100 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-800"
+                      : error
+                      ? "border-red-500 cursor-pointer"
+                      : "border-[#212121]/10 dark:border-white/10 hover:border-[#212121]/30 dark:hover:border-white/30 cursor-pointer"
+                  }`
+                : `flex items-center justify-between w-full border-b py-1.5 transition-colors notranslate ${
+                    disabled
+                      ? "opacity-40 cursor-not-allowed border-zinc-200 dark:border-zinc-800"
+                      : error
+                      ? "border-red-500 dark:border-red-500 cursor-pointer"
+                      : "border-zinc-300 dark:border-zinc-700 hover:border-black dark:hover:border-white focus-within:border-black dark:focus-within:border-white cursor-pointer"
+                  }`
+            }
             translate="no"
           >
             <span
               className={cn(
-                "text-sm notranslate",
+                variant === "box" ? "text-xs font-medium notranslate" : "text-sm notranslate",
                 displayString
-                  ? "text-zinc-900 dark:text-white font-medium"
+                  ? "text-zinc-900 dark:text-white"
                   : "text-zinc-400 dark:text-zinc-500"
               )}
               translate="no"
@@ -209,7 +323,7 @@ export const DateBirthLine: React.FC<DateBirthLineProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/80">
             <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mx-auto pl-4">
-              PILIH TANGGAL LAHIR
+              {title || "PILIH TANGGAL"}
             </span>
             <button
               type="button"

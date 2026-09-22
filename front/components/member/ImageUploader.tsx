@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Upload, X, Camera } from "lucide-react";
 
 interface ImageUploaderProps {
-  memberId: string;
+  memberId?: string;
   target: "avatar" | "portfolio" | "thumbnail";
   onUploadSuccess: (url: string) => void;
   onFileSelect?: (file: File | null) => void;
@@ -57,10 +57,15 @@ export default function ImageUploader({
     try {
       const compressedFile = await compressImageForTarget(file, target);
       const supabase = createClient();
+      let targetMemberId = memberId;
+      if (!targetMemberId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        targetMemberId = user?.id || "general";
+      }
       const bucketName = "member-assets";
       const fileExt = compressedFile.name.split(".").pop() || "webp";
       const fileName = `${target}_${Date.now()}.${fileExt}`;
-      const path = `${memberId}/${fileName}`;
+      const path = `${targetMemberId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from(bucketName)

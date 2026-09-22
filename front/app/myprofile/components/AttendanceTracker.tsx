@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { AttendanceRecord, AttendanceStats as IAttendanceStats } from "@/lib/types/member";
+import { AttendanceRecord, AttendanceStats as IAttendanceStats, GalleryAlbumSummary } from "@/lib/types/member";
 import AttendanceStats from "./AttendanceStats";
 import AttendanceHistory from "./AttendanceHistory";
 import { Loader2 } from "lucide-react";
@@ -61,6 +61,7 @@ function calculateAttendanceStats(
 
 export default function AttendanceTracker({ memberId }: AttendanceTrackerProps) {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [albums, setAlbums] = useState<GalleryAlbumSummary[]>([]);
   const [totalEventsCount, setTotalEventsCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,24 +72,31 @@ export default function AttendanceTracker({ memberId }: AttendanceTrackerProps) 
       setError(null);
       try {
         const supabase = createClient();
-        const [attendanceRes, eventsRes] = await Promise.all([
+        const [attendanceRes, eventsRes, albumsRes] = await Promise.all([
           supabase
             .from("attendances")
             .select(`
               id, event_id, member_id, is_present, scan_method, scanned_at, created_at,
-              event:events(title, event_type, event_date, start_time, end_time, location)
+              event:events(id, title, description, event_type, event_date, start_time, end_time, location, capacity)
             `)
             .eq("member_id", memberId)
             .order("created_at", { ascending: false }),
           supabase
             .from("events")
             .select("id", { count: "exact", head: true }),
+          supabase
+            .from("gallery_albums")
+            .select("id, title, event_date, album_link, hero_image_url, description")
+            .eq("is_published", true),
         ]);
 
         if (attendanceRes.error) throw attendanceRes.error;
         setRecords((attendanceRes.data as any) || []);
         if (eventsRes.count !== null && eventsRes.count !== undefined) {
           setTotalEventsCount(eventsRes.count);
+        }
+        if (albumsRes.data) {
+          setAlbums(albumsRes.data as GalleryAlbumSummary[]);
         }
       } catch (err: any) {
         console.error("Error loading attendance records:", err);
@@ -105,11 +113,20 @@ export default function AttendanceTracker({ memberId }: AttendanceTrackerProps) 
 
   if (isLoading) {
     return (
-      <div className="bg-transparent border-0 p-12 flex flex-col items-center justify-center gap-3 text-neutral-500 w-full rounded-none">
-        <Loader2 className="animate-spin h-6 w-6 text-neutral-900 dark:text-white" />
-        <span className="text-xs font-mono uppercase tracking-widest">
-          Memuat data absensi...
-        </span>
+      <div className="bg-transparent border-0 p-0 space-y-6 w-full animate-pulse">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 rounded-xl bg-neutral-100 dark:bg-neutral-900/60 border border-neutral-200/60 dark:border-neutral-800/60" />
+          ))}
+        </div>
+        <div className="space-y-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+          <div className="h-6 w-56 bg-neutral-200 dark:bg-neutral-800 rounded-md" />
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-16 rounded-xl bg-neutral-100 dark:bg-neutral-900/60 border border-neutral-200/60 dark:border-neutral-800/60" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -130,18 +147,15 @@ export default function AttendanceTracker({ memberId }: AttendanceTrackerProps) 
       <AttendanceStats stats={stats} />
 
       {/* SECTION HEADER FOR HISTORY */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
-          <h3 className="text-base font-bold font-sans text-neutral-900 dark:text-white">
+      <div className="space-y-4 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-[#212121]/10 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-[#212121] dark:text-white flex items-center gap-2">
             Riwayat Kehadiran <span className="highlight-stabilo">Event Komunitas</span>
           </h3>
-          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-            [ {records.length} EVENT RECORDED ]
-          </span>
         </div>
 
         {/* HISTORY TABLE */}
-        <AttendanceHistory records={records} />
+        <AttendanceHistory records={records} albums={albums} />
       </div>
     </div>
   );

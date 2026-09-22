@@ -1,12 +1,49 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { MemberProfile } from "@/lib/types/member";
+import { QrCode, Copy, Check, Link2, Globe, MapPin, Mail, Phone, Calendar } from "lucide-react";
+import { toast } from "sonner";
 
 interface ProfileOverviewContentProps {
   member: MemberProfile;
   totalAttended: number;
   totalReferrals: number;
+}
+
+// Clean Monochrome Brand Icons
+function InstagramIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+    </svg>
+  );
+}
+
+function TikTokIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.86 4.43V12a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-.04-3.43z" />
+    </svg>
+  );
+}
+
+function YouTubeIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+  );
+}
+
+function LinkedInIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.64 1.64 0 1 0 0-3.28 1.64 1.64 0 0 0 0 3.28m1.4 9.74v-8.37H5.06v8.37z" />
+    </svg>
+  );
 }
 
 const DEFAULT_PILLARS = [
@@ -42,9 +79,101 @@ export default function ProfileOverviewContent({
   member,
   totalAttended,
 }: ProfileOverviewContentProps) {
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleCopyCode = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!member.affiliate_code) return;
+    navigator.clipboard.writeText(member.affiliate_code);
+    setCopiedCode(true);
+    toast.success(`Kode referral "${member.affiliate_code}" berhasil disalin!`);
+    setTimeout(() => setCopiedCode(false), 2500);
+  };
+
+  const handleCopyLink = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!member.affiliate_code) return;
+    const link = `${window.location.origin}/akademi/checkout?ref=${member.affiliate_code}`;
+    navigator.clipboard.writeText(link);
+    setCopiedLink(true);
+    toast.success("Link pendaftaran referral berhasil disalin!");
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const initials = (member.full_name || member.stage_name || "M")
+    .charAt(0)
+    .toUpperCase();
+
+  const formattedBirthDate = member.birth_date
+    ? new Date(member.birth_date).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+    : null;
+
+  const age = member.birth_date
+    ? new Date().getFullYear() - new Date(member.birth_date).getFullYear()
+    : null;
+
+  const isValidVal = (val?: string | null): boolean => {
+    if (!val) return false;
+    const trimmed = val.trim();
+    return trimmed !== "" && trimmed !== "-" && trimmed !== "none" && trimmed !== "null" && trimmed !== "undefined";
+  };
+
+  const socialMedia = member.social_media || {};
+
+  const socialLinks = [
+    isValidVal(socialMedia.instagram) && {
+      label: "Instagram",
+      icon: InstagramIcon,
+      url: `https://instagram.com/${socialMedia.instagram!.replace("@", "").trim()}`,
+      text: `@${socialMedia.instagram!.replace("@", "").trim()}`,
+    },
+    isValidVal(socialMedia.tiktok) && {
+      label: "TikTok",
+      icon: TikTokIcon,
+      url: `https://tiktok.com/@${socialMedia.tiktok!.replace("@", "").trim()}`,
+      text: `@${socialMedia.tiktok!.replace("@", "").trim()}`,
+    },
+    isValidVal(socialMedia.youtube) && {
+      label: "YouTube",
+      icon: YouTubeIcon,
+      url: socialMedia.youtube!.startsWith("http") ? socialMedia.youtube! : `https://${socialMedia.youtube!}`,
+      text: "Channel",
+    },
+    isValidVal(socialMedia.linkedin) && {
+      label: "LinkedIn",
+      icon: LinkedInIcon,
+      url: socialMedia.linkedin!.startsWith("http") ? socialMedia.linkedin! : `https://${socialMedia.linkedin!}`,
+      text: "Profil",
+    },
+    isValidVal(member.portfolio_url) && {
+      label: "Website",
+      icon: Globe,
+      url: member.portfolio_url!.startsWith("http") ? member.portfolio_url! : `https://${member.portfolio_url!}`,
+      text: "Portfolio",
+    },
+  ].filter(Boolean) as { label: string; icon: React.ElementType; url: string; text: string }[];
+
   const interests = member.interests;
   const primaryInterests = interests?.primary_interests;
   const hasInterests = Array.isArray(primaryInterests) && primaryInterests.length > 0;
+
+  // Split name for stacked bold typography (Nama Member)
+  const nameToDisplay = (member.full_name || member.stage_name || "MEMBER").trim();
+  const nameParts = nameToDisplay.split(" ");
+  const firstWord = nameParts[0] || "";
+  const restWords = nameParts.slice(1).join(" ") || "";
+
+  // Headline occupation / subtitle role
+  const subtitleRole = member.occupation
+    ? member.occupation.replace(/_/g, " ").toUpperCase()
+    : hasInterests
+      ? primaryInterests.map((p) => INTEREST_MAP[p] || p.replace(/_/g, " ")).join(" • ").toUpperCase()
+      : "CREATOR & TALENT";
 
   const rawGoals = interests?.goals || [];
   const goals = Array.isArray(rawGoals)
@@ -69,175 +198,315 @@ export default function ProfileOverviewContent({
     if (score <= 40) return { label: "FONDASI BELAJAR", desc: "Fokus penguasaan materi dasar & latihan awal." };
     if (score <= 70) return { label: "TUMBUH & LATIHAN", desc: "Mulai aktif tampil di kelas & membangun jam terbang." };
     if (score <= 90) return { label: "SIAP MANGGUNG / MC", desc: "Siap tampil di panggung publik & event komunitas utama." };
-    return { label: "🏆 KREATOR MASTER", desc: "Berpengalaman tinggi & siap membimbing kreator lain." };
+    return { label: "KREATOR MASTER", desc: "Berpengalaman tinggi & siap membimbing kreator lain." };
   };
 
   const stageInfo = getStageInfo(readinessScore);
 
   return (
-    <div className="bg-transparent border-0 p-0 space-y-8 shadow-none rounded-none w-full animate-fade-in text-neutral-900 dark:text-neutral-100 font-sans">
+    <div className="bg-transparent border-0 p-0 space-y-8 shadow-none w-full animate-fade-in text-[#212121] dark:text-[#F4F4F4] font-sans">
 
-      {/* SECTION 0: BIO / TENTANG MEMBER */}
-      {member.description && (
-        <div className="space-y-2 pb-2">
-          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block">
-            [ TENTANG / BIO ]
-          </span>
-          <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed font-sans">
-            {member.description}
-          </p>
+      {/* 🌟 HERO TALENT PROFILE (CLEAN MINIMALIST MONOCHROME & SMOOTH PALETTE) */}
+      <div className="w-full flex flex-col md:flex-row items-start gap-6 sm:gap-8 pb-8 border-b border-[#212121]/10 dark:border-white/10">
+
+        {/* LEFT: TALL PORTRAIT RECTANGLE PHOTO / CANVAS */}
+        <div className="w-full sm:w-[220px] md:w-[240px] lg:w-[260px] aspect-[3/4] min-h-[320px] md:min-h-[360px] bg-[#212121] text-white relative overflow-hidden flex items-center justify-center shrink-0 rounded-2xl shadow-sm">
+          {member.avatar_url ? (
+            <img
+              src={member.avatar_url}
+              alt={member.full_name || member.stage_name}
+              className="w-full h-full object-cover contrast-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-tr from-[#1A1A1A] via-[#212121] to-[#2E2E2E] text-white p-6 select-none">
+              <span className="text-5xl font-bold font-sans tracking-tight opacity-90">{initials}</span>
+              <span className="text-[8px] font-mono tracking-widest text-neutral-400 uppercase mt-3">[ TALENT CANVAS ]</span>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* SECTION 1: RINGKASAN ABSENSI & KEHADIRAN */}
+        {/* RIGHT: STACKED BOLD TYPOGRAPHY & IDENTITY DETAILS (CONTENT ANCHORED BOTTOM-UP) */}
+        <div className="flex-1 w-full flex flex-col justify-end self-stretch py-0.5 space-y-4">
+
+          {/* TOP / MAIN HEADER SECTION: STACKED NAME + NAMA PANGGUNG & OCCUPATION + BIO */}
+          <div className="space-y-2">
+            <div>
+              <h1 className="font-sans font-black text-3xl sm:text-4xl md:text-5xl uppercase tracking-tight text-[#212121] dark:text-white leading-[0.95]">
+                <span>{firstWord}</span>
+                {restWords && <span className="block mt-1">{restWords}</span>}
+              </h1>
+
+              {/* NAMA PANGGUNG & OCCUPATION INLINE META */}
+              <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-neutral-500 dark:text-neutral-400 mt-2 font-medium">
+                {member.stage_name ? (
+                  <span className="text-neutral-700 dark:text-neutral-300 font-semibold tracking-wide">
+                    {member.stage_name}
+                  </span>
+                ) : member.username ? (
+                  <span>@{member.username}</span>
+                ) : null}
+                {member.occupation && (
+                  <>
+                    {(member.stage_name || member.username) && (
+                      <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                    )}
+                    <span className="uppercase tracking-wider text-neutral-600 dark:text-neutral-300 font-semibold">
+                      {member.occupation.replace(/_/g, " ")}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* BIO SECTION (NATURALLY INTEGRATED) */}
+            {member.description ? (
+              <p className="text-xs sm:text-[13px] text-neutral-700 dark:text-neutral-300 leading-relaxed font-sans pt-1">
+                {member.description}
+              </p>
+            ) : (
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 italic font-sans pt-0.5">
+                Belum ada bio singkat. Lengkapi profilmu di menu Edit Profil.
+              </p>
+            )}
+          </div>
+
+          {/* METADATA LIST (LOCATION, EMAIL, PHONE) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 pt-3 border-t border-[#212121]/10 dark:border-white/10 text-xs">
+            {member.city && (
+              <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 font-mono text-[11px]">
+                <MapPin size={13} className="text-neutral-400 shrink-0" />
+                <span className="truncate">{member.city}</span>
+              </div>
+            )}
+            {member.email && (
+              <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 font-mono text-[11px] truncate">
+                <Mail size={13} className="text-neutral-400 shrink-0" />
+                <span className="truncate">{member.email}</span>
+              </div>
+            )}
+            {member.whatsapp_number && (
+              <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 font-mono text-[11px]">
+                <Phone size={13} className="text-neutral-400 shrink-0" />
+                <span className="truncate">{member.whatsapp_number}</span>
+              </div>
+            )}
+          </div>
+
+          {/* SOCIAL LINKS & REFERRAL QUICK ACTION */}
+          <div className="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#212121]/10 dark:border-white/10">
+            {/* Social Icons */}
+            <div className="flex items-center gap-2">
+              {socialLinks.map((item, idx) => {
+                const Icon = item.icon;
+                return (
+                  <a
+                    key={idx}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-[#151B18] text-[#212121] dark:text-neutral-300 hover:text-black dark:hover:text-white border border-[#212121]/10 dark:border-white/10 transition-all shadow-2xs hover:scale-105 active:scale-95"
+                    title={item.label}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                  </a>
+                );
+              })}
+            </div>
+
+            {/* Referral Code Copy */}
+            {member.affiliate_code && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyCode}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#eff0a3] text-[#1E301B] dark:bg-[#253822] dark:text-[#eff0a3] text-xs font-mono font-bold hover:opacity-90 transition-all shadow-2xs cursor-pointer active:scale-95 border border-[#1E301B]/10"
+                  title="Salin Kode Referral"
+                >
+                  {copiedCode ? <Check size={12} className="text-emerald-700 dark:text-emerald-300" /> : <Copy size={12} />}
+                  <span>{member.affiliate_code}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#212121] dark:bg-white text-white dark:text-[#212121] text-xs font-sans font-bold hover:opacity-90 transition-opacity shadow-2xs cursor-pointer active:scale-95"
+                  title="Salin Link Referral"
+                >
+                  {copiedLink ? <Check size={12} /> : <Link2 size={12} />}
+                  <span>Bagikan</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+
+      {/* SECTION 1: RINGKASAN KEHADIRAN & AKTIVITAS EVENT (CADENCE STREAK) */}
       <div className="space-y-4">
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
-          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-neutral-900 dark:text-white">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-[#212121]/10 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-[#212121] dark:text-white flex items-center gap-2">
             Ringkasan <span className="highlight-stabilo">Kehadiran</span>
           </h3>
           <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-            [ KEHADIRAN ]
+            [ KEHADIRAN & AKTIVITAS ]
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          <div className="border-l-2 border-neutral-900 dark:border-white pl-4 py-1 space-y-0.5">
-            <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block">
-              [ EVENT DIHADIRI ]
-            </span>
-            <p className="text-base font-bold font-sans text-neutral-900 dark:text-white">
-              {totalAttended} Event Komunitas
-            </p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Kehadiran aktif pada agenda mingguan & event komunitas.
-            </p>
-          </div>
-
-          <div className="border-l-2 border-neutral-300 dark:border-neutral-700 pl-4 py-1 space-y-0.5">
-            <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block">
-              [ LEVEL PENGALAMAN ]
-            </span>
-            <p className="text-base font-bold font-sans text-neutral-900 dark:text-white uppercase">
-              {experienceLevel ? `${experienceLevel}` : "Belum Diatur"}
-            </p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Tingkat kematangan dalam berbicara dan memproduksi konten.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION 2: CREATOR READINESS INDEX & STAGE LEVEL */}
-      <div className="space-y-4">
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
-          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-neutral-900 dark:text-white flex items-center gap-2">
-            Indikator <span className="highlight-stabilo">Kesiapan</span> Panggung
-          </h3>
-          <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-            [ READINESS INDEX ]
-          </span>
-        </div>
-
-        <div className="p-5 border border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-900/40 rounded-none space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-1">
+          {/* SISI KIRI: METRIK EVENT TOTAL (4 COLS) - HONEYDEW ACCENT TINT */}
+          <div className="lg:col-span-4 p-5 rounded-2xl bg-[#CFDECA]/25 dark:bg-[#CFDECA]/10 border border-[#CFDECA]/50 dark:border-[#CFDECA]/20 flex flex-col justify-between space-y-4 shadow-2xs">
             <div>
-              <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-                STAGE LEVEL SEKARANG
+              <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#212121] dark:bg-white text-white dark:text-[#212121] px-2.5 py-0.5 rounded-md mb-3">
+                TOTAL EVENT DIHADIRI
               </span>
-              <p className="text-base font-bold font-mono text-neutral-900 dark:text-white uppercase mt-0.5">
-                {stageInfo.label}
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-3xl sm:text-4xl font-black font-mono text-[#212121] dark:text-white">
+                  {totalAttended}
+                </span>
+                <span className="text-xs font-sans text-neutral-700 dark:text-neutral-300 font-semibold uppercase tracking-wider">
+                  Sesi Komunitas
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-[#212121]/10 dark:border-white/10 space-y-1">
+              <span className="text-[10px] uppercase tracking-wider font-mono text-neutral-500 dark:text-neutral-400 font-bold block">
+                TINGKAT KOMITMEN
+              </span>
+              <p className="font-bold text-[#212121] dark:text-white text-xs leading-relaxed">
+                {interests?.time_commitment || "2 Minggu Sekali"}
               </p>
             </div>
-            <div className="text-left sm:text-right">
-              <span className="text-2xl font-bold font-mono text-neutral-900 dark:text-white">
-                {readinessScore}<span className="text-xs text-neutral-400 font-normal">/100</span>
-              </span>
-              <span className="text-[10px] font-mono text-neutral-400 block">SKOR KESIAPAN</span>
-            </div>
           </div>
 
-          {/* PROGRESS BAR */}
-          <div className="space-y-1">
-            <div className="w-full bg-neutral-200 dark:bg-neutral-800 h-2.5 rounded-none overflow-hidden">
-              <div
-                className="bg-neutral-900 dark:bg-white h-full transition-all duration-700 ease-out"
-                style={{ width: `${readinessScore}%` }}
-              />
-            </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 italic">
-              {stageInfo.desc}
-            </p>
-          </div>
+          {/* SISI KANAN: EVENT ACTIVITY CADENCE STREAK (GITHUB-STYLE HEATMAP TILES) (8 COLS) */}
+          <div className="lg:col-span-8 p-5 rounded-2xl bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 flex flex-col justify-between space-y-3 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#212121] dark:bg-white text-white dark:text-[#212121] px-2.5 py-0.5 rounded-md mb-2">
+                  RIWAYAT SESI MANGGUNG (16 SESI)
+                </span>
+                <p className="text-xs text-neutral-600 dark:text-neutral-300 font-medium leading-relaxed">
+                  Visualisasi kehadiran sesi berkala panggung & komunitas.
+                </p>
+              </div>
 
-          {/* METRICS METERS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-neutral-200/80 dark:border-neutral-800/80">
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">EVENT DIHADIRI</span>
-              <p className="text-sm font-bold font-mono text-neutral-900 dark:text-white">{totalAttended} Sesi</p>
+              {/* LEGEND BADGE */}
+              <div className="flex items-center gap-1.5 text-[9px] font-mono text-neutral-600 dark:text-neutral-400">
+                <span className="w-2.5 h-2.5 rounded-sm bg-neutral-200 dark:bg-neutral-800" />
+                <span>Kosong</span>
+                <span className="w-2.5 h-2.5 rounded-sm bg-[#EFF0A3] dark:bg-[#EFF0A3]/90 border border-black/10" />
+                <span>Hadir</span>
+              </div>
             </div>
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">KEPERCAYAAN DIRI</span>
-              <p className="text-sm font-bold font-mono text-neutral-900 dark:text-white">{confidenceScale}/10 Pede</p>
+
+            {/* HEATMAP CADENCE GRID */}
+            <div className="grid grid-cols-8 sm:grid-cols-16 gap-1.5 sm:gap-2 py-1">
+              {Array.from({ length: 16 }).map((_, idx) => {
+                const isAttended = idx < totalAttended;
+                const sessionNum = idx + 1;
+                return (
+                  <div
+                    key={idx}
+                    title={`Sesi #${sessionNum}: ${isAttended ? "Hadir di Acara" : "Belum / Terlewat"}`}
+                    className={`aspect-square rounded-md sm:rounded-lg flex flex-col items-center justify-center transition-all cursor-default group relative ${isAttended
+                        ? "bg-[#EFF0A3] dark:bg-[#EFF0A3] text-[#212121] font-bold shadow-2xs scale-100 border border-[#212121]/10"
+                        : "bg-neutral-100 dark:bg-neutral-800/80 text-neutral-400 dark:text-neutral-600 hover:border-neutral-400"
+                      }`}
+                  >
+                    <span className="text-[8px] sm:text-[9px] font-mono">
+                      {sessionNum}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">TINGKAT PENGALAMAN</span>
-              <p className="text-sm font-bold font-mono text-neutral-900 dark:text-white uppercase">{experienceLevel || "-"}</p>
+
+            <div className="flex items-center justify-between text-[9px] font-mono text-neutral-400 dark:text-neutral-500 pt-2 border-t border-[#212121]/10 dark:border-white/10">
+              <span>SESI 01</span>
+              <span>SESI 08</span>
+              <span>SESI 16</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* SECTION 3: SELF-DIAGNOSTIC PUBLIC SPEAKING & MENTAL */}
+      {/* SECTION 2: SELF-DIAGNOSTIC PUBLIC SPEAKING & MENTAL (TABLE & TIMELINE HIGHLIGHT) */}
       {(interests?.ps_challenges || interests?.nervous_trigger || interests?.confidence_scale) && (
-        <div className="space-y-4 pt-2">
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
-            <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-neutral-900 dark:text-white">
+        <div className="space-y-4 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-[#212121]/10 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+            <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-[#212121] dark:text-white">
               Diagnosis & Tantangan <span className="highlight-stabilo">Public Speaking</span>
             </h3>
             <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-              [ DIAGNOSIS ]
+              [ DIAGNOSTIK MENTAL ]
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* TANTANGAN UTAMA */}
-            {interests.ps_challenges && interests.ps_challenges.length > 0 && (
-              <div className="p-4 border border-neutral-200 dark:border-neutral-800 space-y-2">
-                <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block">
-                  [ TANTANGAN UTAMA BERBICARA ]
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-1">
+            {/* TANTANGAN UTAMA DENGAN CONNECTED DOT LIST (7 COLS) */}
+            <div className="md:col-span-7 p-5 rounded-2xl bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 space-y-4 shadow-2xs">
+              <div>
+                <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#212121] dark:bg-white text-white dark:text-[#212121] px-2.5 py-0.5 rounded-md">
+                  TANTANGAN UTAMA BERBICARA
                 </span>
-                <div className="flex flex-wrap gap-1.5 pt-1">
+              </div>
+
+              {interests.ps_challenges && interests.ps_challenges.length > 0 ? (
+                <div className="relative pl-6 space-y-2.5 pt-1 before:absolute before:left-[7px] before:top-3.5 before:bottom-3.5 before:w-[2px] before:bg-neutral-200 dark:before:bg-neutral-800">
                   {interests.ps_challenges.map((challenge: string, idx: number) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-1 text-[11px] font-mono uppercase border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200"
-                    >
-                      {challenge}
-                    </span>
+                    <div key={idx} className="relative flex items-center gap-3">
+                      {/* Connected Dot */}
+                      <span className="absolute -left-6 w-4 h-4 rounded-full flex items-center justify-center">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#212121] dark:bg-white ring-4 ring-white dark:ring-[#151B18] shadow-2xs" />
+                      </span>
+                      {/* Content Pill Card */}
+                      <div className="flex-1 px-3.5 py-2 rounded-xl bg-[#F6F5FA] dark:bg-[#1E2622] border border-[#212121]/5 dark:border-white/5 text-xs font-semibold text-[#212121] dark:text-neutral-100 shadow-2xs hover:border-[#212121]/20 dark:hover:border-white/20 transition-colors">
+                        {challenge}
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-neutral-400 italic">Belum ada data tantangan yang dipilih.</p>
+              )}
+            </div>
 
-            {/* PEMICU GUGUP */}
-            {interests.nervous_trigger && (
-              <div className="p-4 border border-neutral-200 dark:border-neutral-800 space-y-2">
-                <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block">
-                  [ PEMICU GUGUP UTAMA ]
+            {/* PEMICU GUGUP & TINGKAT KEPERCAYAAN DIRI (5 COLS) - SOFT SLATE TINT */}
+            <div className="md:col-span-5 p-5 rounded-2xl bg-[#D8DFE9]/25 dark:bg-[#D8DFE9]/10 border border-[#D8DFE9]/50 dark:border-[#D8DFE9]/20 flex flex-col justify-between space-y-4 shadow-2xs">
+              <div className="space-y-2">
+                <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#212121] dark:bg-white text-white dark:text-[#212121] px-2.5 py-0.5 rounded-md">
+                  PEMICU GUGUP UTAMA
                 </span>
-                <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed font-sans pt-0.5">
-                  {interests.nervous_trigger}
+                <p className="text-xs font-medium text-[#212121] dark:text-neutral-200 leading-relaxed pt-1">
+                  {interests.nervous_trigger || "Tidak ada catatan pemicu gugup spesifik."}
                 </p>
               </div>
-            )}
+
+              {/* CONFIDENCE SCALE BAR */}
+              <div className="pt-3 border-t border-[#212121]/10 dark:border-white/10 space-y-2">
+                <div className="flex items-center justify-between text-xs font-sans">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-600 dark:text-neutral-400 font-bold">Skala Kepercayaan Diri</span>
+                  <span className="font-mono font-bold text-[#212121] dark:text-white">
+                    {confidenceScale}/10 Pede
+                  </span>
+                </div>
+                <div className="w-full bg-white/70 dark:bg-neutral-800 h-2 rounded-full overflow-hidden border border-black/5">
+                  <div
+                    className="bg-[#212121] dark:bg-white h-full rounded-full transition-all duration-500"
+                    style={{ width: `${(confidenceScale / 10) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* SECTION 4: PERSONA, VISI & MONETISASI KREATOR */}
-      <div className="space-y-4 pt-2">
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
-          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-neutral-900 dark:text-white">
+      {/* SECTION 3: PERSONA, VISI & MONETISASI KREATOR (STRUCTURED BENTO TABLE) */}
+      <div className="space-y-4 pt-4">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-[#212121]/10 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-[#212121] dark:text-white">
             Persona, Visi & <span className="highlight-stabilo">Monetisasi</span>
           </h3>
           <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
@@ -245,149 +514,143 @@ export default function ProfileOverviewContent({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* ROLE MODEL & AUDIENS */}
-          {(interests?.role_model || interests?.target_audience) && (
-            <div className="p-4 border border-neutral-200 dark:border-neutral-800 space-y-3">
-              {interests.role_model && (
-                <div>
-                  <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">ROLE MODEL / INSPIRASI</span>
-                  <p className="text-xs font-semibold text-neutral-900 dark:text-white mt-0.5">{interests.role_model}</p>
-                </div>
-              )}
-
-              {interests.target_audience && (
-                <div>
-                  <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">TARGET AUDIENS KREATOR</span>
-                  <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed mt-0.5">{interests.target_audience}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* MONETISASI & SKILLS */}
-          {(interests?.monetization_interest || interests?.skills_to_master || interests?.time_commitment) && (
-            <div className="p-4 border border-neutral-200 dark:border-neutral-800 space-y-3">
-              {interests.monetization_interest && (
-                <div>
-                  <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">MINAT MONETISASI</span>
-                  <span className="inline-block mt-1 px-2.5 py-0.5 text-xs font-mono font-bold uppercase border border-neutral-900 dark:border-white bg-neutral-900 dark:bg-white text-white dark:text-neutral-900">
-                    {interests.monetization_interest}
-                  </span>
-                </div>
-              )}
-
-              {interests.skills_to_master && (
-                <div>
-                  <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">SKILL YANG INGIN DIKUASAI</span>
-                  <p className="text-xs text-neutral-700 dark:text-neutral-300 mt-0.5">{interests.skills_to_master}</p>
-                </div>
-              )}
-
-              {interests.time_commitment && (
-                <div>
-                  <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">KOMITMEN MENTORING</span>
-                  <p className="text-xs text-neutral-700 dark:text-neutral-300 mt-0.5">{interests.time_commitment}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* KENDALA KARIER & KOMUNITAS */}
-        {(interests?.career_obstacle || interests?.active_communities) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-            {interests.career_obstacle && (
-              <div className="p-4 border border-neutral-200 dark:border-neutral-800 space-y-1">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">TANTANGAN KARIER UTAMA</span>
-                <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">{interests.career_obstacle}</p>
-              </div>
-            )}
-
-            {interests.active_communities && (
-              <div className="p-4 border border-neutral-200 dark:border-neutral-800 space-y-1">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">KOMUNITAS LAIN YANG DIIKUTI</span>
-                <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">{interests.active_communities}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* SECTION 5: PILAR KEAHLIAN & TARGET KREATOR (DISATUKAN DENGAN GAYA SECTION 4) */}
-      <div className="space-y-4 pt-2">
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
-          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-neutral-900 dark:text-white">
-            Pilar Keahlian & <span className="highlight-stabilo">Target Kreator</span>
-          </h3>
-          <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-            [ SKILLS & GOALS ]
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* PILAR KEAHLIAN UTAMA */}
-          <div className="p-4 border border-neutral-200 dark:border-neutral-800 space-y-3 flex flex-col justify-between">
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">
-                [ PILAR KEAHLIAN UTAMA ]
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          {/* KARTU 1: INSPIRASI & AUDIENS */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 space-y-4 shadow-2xs">
+            <div className="space-y-1.5">
+              <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#CFDECA] text-[#1E301B] dark:bg-[#253822] dark:text-[#CFDECA] px-2.5 py-0.5 rounded-md">
+                ROLE MODEL / INSPIRASI
               </span>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                Fokus kompetensi dan bidang kreasi yang ditekuni saat ini.
+              <p className="text-sm font-bold text-[#212121] dark:text-white">
+                {interests?.role_model || "-"}
               </p>
             </div>
 
+            <div className="space-y-1.5 pt-3 border-t border-[#212121]/10 dark:border-white/10">
+              <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#CFDECA] text-[#1E301B] dark:bg-[#253822] dark:text-[#CFDECA] px-2.5 py-0.5 rounded-md">
+                TARGET AUDIENS KREATOR
+              </span>
+              <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed font-medium">
+                {interests?.target_audience || "-"}
+              </p>
+            </div>
+
+            {interests?.career_obstacle && (
+              <div className="space-y-1.5 pt-3 border-t border-[#212121]/10 dark:border-white/10">
+                <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#CFDECA] text-[#1E301B] dark:bg-[#253822] dark:text-[#CFDECA] px-2.5 py-0.5 rounded-md">
+                  TANTANGAN KARIER UTAMA
+                </span>
+                <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed font-medium">
+                  {interests.career_obstacle}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* KARTU 2: MONETISASI, SKILL & KOMITMEN */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 space-y-4 shadow-2xs">
+            <div className="space-y-1.5">
+              <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#EFF0A3] text-[#302F1A] dark:bg-[#38371F] dark:text-[#EFF0A3] px-2.5 py-0.5 rounded-md">
+                MINAT MONETISASI
+              </span>
+              <div>
+                <span className="inline-flex items-center px-3.5 py-1 rounded-full text-xs font-bold font-sans bg-[#212121] text-white dark:bg-white dark:text-[#212121] shadow-2xs">
+                  {interests?.monetization_interest || "Belum Dipilih"}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-3 border-t border-[#212121]/10 dark:border-white/10">
+              <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#EFF0A3] text-[#302F1A] dark:bg-[#38371F] dark:text-[#EFF0A3] px-2.5 py-0.5 rounded-md">
+                SKILL YANG INGIN DIKUASAI
+              </span>
+              <p className="text-xs font-bold text-[#212121] dark:text-white">
+                {interests?.skills_to_master || "-"}
+              </p>
+            </div>
+
+            <div className="space-y-1.5 pt-3 border-t border-[#212121]/10 dark:border-white/10">
+              <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#EFF0A3] text-[#302F1A] dark:bg-[#38371F] dark:text-[#EFF0A3] px-2.5 py-0.5 rounded-md">
+                KOMUNITAS AKTIF
+              </span>
+              <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed font-medium">
+                {interests?.active_communities || "Panggung Kreator"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 4: PILAR KEAHLIAN & TARGET KREATOR (CONNECTED TIMELINE & TAGS) */}
+      <div className="space-y-4 pt-4">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-[#212121]/10 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+          <h3 className="font-sans font-bold text-base sm:text-lg md:text-xl text-[#212121] dark:text-white">
+            Pilar Keahlian & <span className="highlight-stabilo">Target Kreator</span>
+          </h3>
+          <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+            [ SKILLS & ROADMAP ]
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          {/* PILAR KEAHLIAN UTAMA */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 space-y-3 shadow-2xs">
+            <div className="space-y-1">
+              <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#212121] dark:bg-white text-white dark:text-[#212121] px-2.5 py-0.5 rounded-md">
+                BIDANG KREASI YANG DITEKUNI
+              </span>
+            </div>
+
             {hasInterests ? (
-              <div className="flex flex-wrap gap-1.5 pt-1">
+              <div className="flex flex-wrap gap-2 pt-2">
                 {primaryInterests.map((interest: string, idx: number) => (
                   <span
                     key={idx}
-                    className="px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200"
+                    className="px-3.5 py-1.5 rounded-full text-xs font-semibold border border-[#212121]/10 dark:border-white/10 bg-[#F6F5FA] dark:bg-neutral-800 text-[#212121] dark:text-neutral-100 shadow-2xs hover:border-[#212121]/30 transition-colors"
                   >
-                    {(INTEREST_MAP[interest] || interest.replace(/_/g, " ")).toUpperCase()}
+                    {(INTEREST_MAP[interest] || interest.replace(/_/g, " "))}
                   </span>
                 ))}
               </div>
             ) : (
-              <div className="flex flex-wrap gap-1.5 pt-1">
+              <div className="flex flex-wrap gap-2 pt-2">
                 {DEFAULT_PILLARS.map((pilar, idx) => (
                   <span
                     key={idx}
-                    className="px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider border border-neutral-200 dark:border-neutral-800 bg-transparent text-neutral-600 dark:text-neutral-400"
+                    className="px-3 py-1 rounded-full text-xs font-medium border border-neutral-200 dark:border-neutral-800 bg-transparent text-neutral-600 dark:text-neutral-400"
                   >
-                    [ {pilar} ]
+                    {pilar}
                   </span>
                 ))}
               </div>
             )}
           </div>
 
-          {/* TARGET & GOALS KREATOR */}
-          <div className="p-4 border border-neutral-200 dark:border-neutral-800 space-y-3 flex flex-col justify-between">
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">
-                [ TARGET & GOALS KREATOR ]
+          {/* TARGET & GOALS ROADMAP (CONNECTED DOT LIST) */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 space-y-3 shadow-2xs">
+            <div className="space-y-1">
+              <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#212121] dark:bg-white text-white dark:text-[#212121] px-2.5 py-0.5 rounded-md">
+                ROADMAP & TARGET KREATOR
               </span>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                Arah pengembangan diri, bisnis, dan pencapaian karier panggung.
-              </p>
             </div>
 
             {hasGoals ? (
-              <div className="space-y-2 pt-1">
+              <div className="relative pl-6 space-y-2.5 pt-2 before:absolute before:left-[7px] before:top-3.5 before:bottom-3.5 before:w-[2px] before:bg-[#EFF0A3]/70 dark:before:bg-[#EFF0A3]/40">
                 {goals.map((goal: string, idx: number) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-2 text-xs text-neutral-700 dark:text-neutral-300 font-sans"
-                  >
-                    <span className="text-neutral-400 dark:text-neutral-600 font-mono mt-0.5">•</span>
-                    <span className="leading-relaxed">{goal}</span>
+                  <div key={idx} className="relative flex items-center gap-3 text-xs text-[#212121] dark:text-neutral-200 font-sans">
+                    {/* Precise Connected Dot on vertical line with Vanilla Accent */}
+                    <span className="absolute -left-6 w-4 h-4 rounded-full flex items-center justify-center">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#EFF0A3] ring-4 ring-white dark:ring-[#151B18] border border-[#212121]/20 shadow-2xs" />
+                    </span>
+                    <div className="flex-1 px-3.5 py-2 rounded-xl bg-[#F6F5FA] dark:bg-neutral-800/90 border border-[#212121]/5 dark:border-white/5 font-semibold leading-relaxed shadow-2xs">
+                      {goal}
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-neutral-500 font-mono italic pt-1">
-                [ Belum ada target spesifik yang disimpan. Perbarui di Edit Profil. ]
+              <p className="text-xs text-neutral-500 font-sans italic pt-2">
+                Belum ada target spesifik yang disimpan. Perbarui di Edit Profil.
               </p>
             )}
           </div>
@@ -396,4 +659,3 @@ export default function ProfileOverviewContent({
     </div>
   );
 }
-

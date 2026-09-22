@@ -117,9 +117,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Logika Affiliate Code / Referral Code
-    let affiliate_code = currentMember?.affiliate_code
-    if (!affiliate_code && profileData.stage_name) {
-      affiliate_code = generateAffiliateCode(profileData.stage_name)
+    let newlyGeneratedAffiliateCode: string | null = null
+    if (!currentMember?.affiliate_code && profileData.stage_name) {
+      const generatedCode = generateAffiliateCode(profileData.stage_name)
       
       // Sinkronisasi ke tabel referral_codes (Single Source of Truth)
       try {
@@ -128,15 +128,18 @@ export async function POST(req: NextRequest) {
         await adminClient
           .from('referral_codes')
           .insert({
-            code: affiliate_code,
+            code: generatedCode,
             owner_member_id: user.id,
             description: `Auto-generated referral code untuk ${profileData.stage_name}`,
             is_active: true,
           })
+        newlyGeneratedAffiliateCode = generatedCode
       } catch (err) {
         console.error('Failed to sync to referral_codes:', err)
       }
     }
+
+    const affiliate_code = newlyGeneratedAffiliateCode || currentMember?.affiliate_code || null
 
     let referred_by = currentMember?.referred_by
     if (!referred_by && profileData.referred_by_code) {
@@ -168,13 +171,17 @@ export async function POST(req: NextRequest) {
       ...profileData,
       profile_completed_at: new Date().toISOString(),
     }
-    if (affiliate_code) updateData.affiliate_code = affiliate_code
-    if (referred_by) updateData.referred_by = referred_by
+    if (newlyGeneratedAffiliateCode) {
+      updateData.affiliate_code = newlyGeneratedAffiliateCode
+    }
+    if (!currentMember?.referred_by && referred_by) {
+      updateData.referred_by = referred_by
+    }
     
     // Hapus referred_by_code karena tidak ada di kolom members
     delete updateData.referred_by_code
 
-    // Logika Perubahan Username
+    // Logika Perubahan Username (hanya diproses jika field username dikirim secara eksplisit)
     if (profileData.username !== undefined) {
       const rawNewUsername = profileData.username;
       const cleanNewUsername = rawNewUsername ? rawNewUsername.trim().toLowerCase() : null;
@@ -221,6 +228,9 @@ export async function POST(req: NextRequest) {
         // Tidak ada perubahan username, jangan update kolom username / counter
         delete updateData.username;
       }
+    } else {
+      // Form profil biasa tidak mengirim username, pastikan updateData tidak menyentuh kolom username
+      delete updateData.username;
     }
 
     const { error: memberError } = await supabase
@@ -229,9 +239,29 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
 
     if (memberError) {
-      if (memberError.code === '23505' || memberError.message?.includes('members_username_key')) {
-        return NextResponse.json({ error: 'Username sudah digunakan oleh pengguna lain.' }, { status: 400 });
+      console.error('[API /member/profile] Update member error:', memberError);
+
+      const dbErrMsg = `${memberError.message || ''} ${memberError.details || ''}`.toLowerCase();
+
+      // Kode 23505 = PostgreSQL unique_violation untuk constraint apapun
+      if (memberError.code === '23505' || dbErrMsg.includes('unique constraint') || dbErrMsg.includes('duplicate key')) {
+        if (dbErrMsg.includes('members_username_key') || dbErrMsg.includes('(username)')) {
+          return NextResponse.json({ error: 'Username sudah digunakan oleh pengguna lain.' }, { status: 400 });
+        }
+        if (dbErrMsg.includes('members_whatsapp_number_key') || dbErrMsg.includes('(whatsapp_number)')) {
+          return NextResponse.json({ error: 'Nomor WhatsApp ini sudah terdaftar pada akun lain. Silakan gunakan nomor lain.' }, { status: 400 });
+        }
+        if (dbErrMsg.includes('members_email_key') || dbErrMsg.includes('(email)')) {
+          return NextResponse.json({ error: 'Email ini sudah terdaftar pada akun lain.' }, { status: 400 });
+        }
+        if (dbErrMsg.includes('referral') || dbErrMsg.includes('affiliate')) {
+          return NextResponse.json({ error: 'Kode referral/afiliasi bertabrakan dengan akun lain. Silakan coba simpan kembali.' }, { status: 400 });
+        }
+        return NextResponse.json({ 
+          error: `Data yang dimasukkan sudah digunakan oleh akun lain (${memberError.details || memberError.message}).` 
+        }, { status: 400 });
       }
+
       return NextResponse.json({ error: memberError.message }, { status: 500 })
     }
 

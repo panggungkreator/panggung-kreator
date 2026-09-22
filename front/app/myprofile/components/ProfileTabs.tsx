@@ -1,84 +1,32 @@
 "use client";
 
 import React from "react";
-import { LayoutDashboard, CalendarCheck, FolderKanban, Share2, Home } from "lucide-react";
+import { PROFILE_NAV_ITEMS, ProfileTab, ProfileNavItem } from "@/lib/constants/profile-navigation";
 
-export type ProfileTab = "overview" | "attendance" | "portfolio" | "affiliate";
+export type { ProfileTab, ProfileNavItem };
 
 interface ProfileTabsProps {
   activeTab: ProfileTab;
   onTabChange: (tab: ProfileTab) => void;
-  isAffiliateActive: boolean;
+  isAffiliateActive?: boolean;
   disabledTabs?: Partial<Record<ProfileTab, boolean>>;
+  layoutMode?: "rail" | "sidebar" | "mobile" | "horizontal";
 }
 
 export default function ProfileTabs({
   activeTab,
   onTabChange,
-  isAffiliateActive,
   disabledTabs,
 }: ProfileTabsProps) {
-  const allTabs: { key: ProfileTab; label: string; icon: React.ElementType }[] = [
-    { key: "overview", label: "Dashboard", icon: LayoutDashboard },
-    { key: "attendance", label: "Absensi", icon: CalendarCheck },
-    { key: "portfolio", label: "Portofolio", icon: FolderKanban },
-    { key: "affiliate", label: "Affiliate", icon: Share2 },
-  ];
-
-  // Tab affiliate selalu tampil agar member yang belum memiliki kode dapat mengaktifkannya di dalam tab
-  const visibleTabs = allTabs;
+  const visibleTabs = PROFILE_NAV_ITEMS;
 
   return (
     <>
-      {/* ═══ DESKTOP TAB BAR (hidden on mobile, visible on lg) — Persis Sesuai Gambar Referensi ═══ */}
-      <div className="hidden lg:block w-full">
-        <div className="w-full">
-          <div className="flex items-center gap-8 border-b border-neutral-200/80 dark:border-neutral-800 overflow-x-auto no-scrollbar">
-            {visibleTabs.map((tab) => {
-              const isActive = activeTab === tab.key;
-              const isDisabled = !!disabledTabs?.[tab.key];
-              const Icon = tab.icon;
-
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => onTabChange(tab.key)}
-                  className={`group relative flex items-center gap-2.5 pb-3 px-1 text-sm transition-all duration-150 cursor-pointer whitespace-nowrap flex-shrink-0 ${isActive
-                    ? "text-neutral-900 dark:text-white font-semibold"
-                    : isDisabled
-                      ? "text-amber-500/70 hover:text-amber-600 cursor-not-allowed"
-                      : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                    }`}
-                >
-                  <Icon
-                    size={17}
-                    className={`transition-colors ${isActive
-                      ? "text-neutral-900 dark:text-white stroke-[2.2]"
-                      : isDisabled
-                        ? "text-amber-500"
-                        : "text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-600 dark:group-hover:text-neutral-400 stroke-[1.8]"
-                      }`}
-                  />
-                  <span>{tab.label}</span>
-                  {isDisabled && <span className="text-xs" title="Fitur sedang dalam pengembangan">🚧</span>}
-
-                  {/* Active Underline Indicator sitting right on the bottom border line */}
-                  {isActive && (
-                    <span className="absolute -bottom-[1px] left-0 right-0 h-[2px] bg-neutral-900 dark:bg-white rounded-full transition-all duration-200" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* ═══ MOBILE FLOATING PILL / FLOATING ACTION DOCK (Persis Sesuai Gambar Referensi) ═══ */}
-      <div className="lg:hidden fixed bottom-2.5 left-1/2 -translate-x-1/2 z-30">
+      {/* 💻 DESKTOP COMPACT VERTICAL CAPSULE DOCK (COLUMN 1) */}
+      <div className="hidden lg:flex items-center justify-center">
         <nav
-          aria-label="Navigasi Tab Profil"
-          className="flex items-center gap-1.5 p-1.5 bg-black/90 dark:bg-neutral-950/95 backdrop-blur-md rounded-full border border-neutral-800/80 shadow-[0_10px_35px_rgba(0,0,0,0.4)]"
+          aria-label="Navigasi Menu Utama"
+          className="flex flex-col items-center gap-2 p-2 bg-[#1C1C1C] dark:bg-[#18181B] border border-white/10 shadow-xl rounded-[2.5rem]"
         >
           {visibleTabs.map((tab) => {
             const isActive = activeTab === tab.key;
@@ -90,20 +38,70 @@ export default function ProfileTabs({
                 key={tab.key}
                 type="button"
                 onClick={() => onTabChange(tab.key)}
-                aria-label={tab.label}
-                title={tab.label}
-                className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-95 ${isActive
-                  ? "bg-white text-neutral-950 shadow-md scale-105"
-                  : "text-neutral-400 hover:text-white bg-transparent"
-                  } ${isDisabled ? "opacity-60" : ""}`}
+                disabled={isDisabled}
+                title={`${tab.label} — ${tab.description}`}
+                className={`group relative flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 cursor-pointer active:scale-95 ${isActive
+                  ? "bg-white text-[#1C1C1C] shadow-md scale-105"
+                  : isDisabled
+                    ? "opacity-30 cursor-not-allowed text-neutral-500"
+                    : "text-neutral-400 hover:text-white hover:bg-white/10"
+                  }`}
               >
                 <Icon
-                  size={14}
-                  className={`transition-all duration-150 ${isActive ? "stroke-[2.4]" : "stroke-[1.8]"
+                  size={18}
+                  className={`transition-all duration-150 ${isActive ? "stroke-[2.2]" : "stroke-[1.6]"
+                    }`}
+                />
+
+                {/* DISABLED BADGE */}
+                {isDisabled && (
+                  <span className="absolute top-0.5 right-0.5 text-[7px] leading-none">🚧</span>
+                )}
+
+                {/* HOVER TOOLTIP FLOATING ON RIGHT */}
+                <div className="absolute left-full ml-3.5 px-3 py-1.5 bg-white dark:bg-[#151B18] text-[#1C1C1C] dark:text-white text-xs font-sans font-bold whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all duration-150 z-50 shadow-xl rounded-full border border-black/5 dark:border-white/10">
+                  <span>{tab.label}</span>
+                  {isDisabled && <span className="ml-1 text-amber-500 text-[9px]">(Segera)</span>}
+                </div>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* 📱 MOBILE FLOATING BOTTOM DOCK (ERGONOMIC CAPSULE) */}
+      <div className="lg:hidden fixed bottom-6 inset-x-0 z-40 pointer-events-none flex justify-center px-4">
+        <nav
+          aria-label="Navigasi Tab Mobile"
+          className="pointer-events-auto bg-[#1C1C1C] dark:bg-[#18181B] border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center justify-between gap-1 w-full max-w-xs text-white"
+        >
+          {visibleTabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            const isDisabled = !!disabledTabs?.[tab.key];
+            const Icon = tab.icon;
+
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => onTabChange(tab.key)}
+                disabled={isDisabled}
+                aria-label={tab.label}
+                title={tab.label}
+                className={`relative flex items-center justify-center rounded-full transition-all duration-200 cursor-pointer active:scale-90 flex-1 ${isActive
+                  ? "h-9 bg-white text-[#1C1C1C] shadow-sm px-3"
+                  : isDisabled
+                    ? "opacity-30 cursor-not-allowed h-8 text-neutral-500"
+                    : "h-8 text-neutral-400 hover:text-white bg-transparent"
+                  }`}
+              >
+                <Icon
+                  size={isActive ? 16 : 17}
+                  className={`transition-all duration-150 ${isActive ? "stroke-[2.2]" : "stroke-[1.6]"
                     }`}
                 />
                 {isDisabled && (
-                  <span className="absolute -top-1 -right-1 text-[8px] leading-none">🚧</span>
+                  <span className="absolute top-0.5 right-0.5 text-[7px] leading-none">🚧</span>
                 )}
               </button>
             );
@@ -113,4 +111,3 @@ export default function ProfileTabs({
     </>
   );
 }
-

@@ -67,16 +67,20 @@ export const Section1Profile: React.FC<Section1ProfileProps> = React.memo(functi
         error={fieldErrors.fullName}
       />
 
-      <DateBirthLine
-        id="birthDate"
-        label="TANGGAL LAHIR *"
-        value={birthDate}
-        onChange={(val) => {
-          setBirthDate(val);
-          handleFieldChange("birthDate", val);
-        }}
-        error={fieldErrors.birthDate}
-      />
+      <div>
+        <label className="text-[11px] font-bold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase block mb-1">
+          TANGGAL LAHIR *
+        </label>
+        <DateBirthLine
+          id="birthDate"
+          value={birthDate}
+          onChange={(val) => {
+            setBirthDate(val);
+            handleFieldChange("birthDate", val);
+          }}
+          error={fieldErrors.birthDate}
+        />
+      </div>
 
       <InputLine
         id="address"

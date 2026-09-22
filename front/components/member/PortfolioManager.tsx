@@ -1,54 +1,65 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import VideoLinkInput from "./VideoLinkInput";
-import ImageUploader from "./ImageUploader";
-import { PortfolioItem, Pillar, ItemType, MediaSource } from "@/lib/types/member";
+import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { PortfolioItem, MemberExperience, Pillar } from "@/lib/types/member";
+import PortfolioDrawer from "./PortfolioDrawer";
+import ExperienceDrawer from "./ExperienceDrawer";
 import { toast } from "sonner";
-import { Plus, Trash2, Globe, Lock, Star, ExternalLink, Video, Image as ImageIcon, FileText } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import {
+  Plus,
+  Trash2,
+  Lock,
+  ExternalLink,
+  Video,
+  Image as ImageIcon,
+  Award,
+  Link as LinkIcon,
+  Edit2,
+  ChevronUp,
+  ChevronDown,
+  Loader2,
+  Sparkles,
+  Briefcase,
+  Calendar,
+  MapPin,
+  Building,
+  Eye,
+} from "lucide-react";
 
 interface PortfolioManagerProps {
   memberId: string;
+  username?: string;
 }
 
-const PILLARS: { value: Pillar; label: string }[] = [
+type SubSection = "portfolio" | "experience";
+
+const PILLARS: { value: Pillar | "all"; label: string }[] = [
+  { value: "all", label: "🌟 Semua Pilar" },
   { value: "public_speaking", label: "🎤 Public Speaking" },
-  { value: "content_creation", label: "🎬 Content Creation" },
+  { value: "content_creation", label: "🎬 Storytelling" },
   { value: "personal_branding", label: "✨ Personal Branding" },
 ];
 
-const ITEM_TYPES: { value: ItemType; label: string }[] = [
-  { value: "video", label: "Video" },
-  { value: "image", label: "Gambar" },
-  { value: "article", label: "Artikel / Tulisan" },
-  { value: "link", label: "Tautan Karya" },
-  { value: "achievement", label: "Prestasi / Sertifikasi" },
-];
+export default function PortfolioManager({ memberId, username }: PortfolioManagerProps) {
+  void memberId;
+  const [activeSection, setActiveSection] = useState<SubSection>("portfolio");
 
-export default function PortfolioManager({ memberId }: PortfolioManagerProps) {
+  // Portfolio State
   const [items, setItems] = useState<PortfolioItem[]>([]);
-  const [activePillar, setActivePillar] = useState<Pillar>("public_speaking");
-  const [isLoading, setIsLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<Pillar | "all">("all");
+  const [isPortfolioLoading, setIsPortfolioLoading] = useState(true);
+  const [isPortfolioDrawerOpen, setIsPortfolioDrawerOpen] = useState(false);
+  const [editingPortfolioItem, setEditingPortfolioItem] = useState<PortfolioItem | null>(null);
 
-  // Modal States
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // Experience State
+  const [experiences, setExperiences] = useState<MemberExperience[]>([]);
+  const [isExpLoading, setIsExpLoading] = useState(true);
+  const [isExpDrawerOpen, setIsExpDrawerOpen] = useState(false);
+  const [editingExperience, setEditingExperience] = useState<MemberExperience | null>(null);
 
-  // Form States inside Modal
-  const [pillar, setPillar] = useState<Pillar>("public_speaking");
-  const [itemType, setItemType] = useState<ItemType>("video");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [mediaUrl, setMediaUrl] = useState("");
-  const [mediaSource, setMediaSource] = useState<MediaSource>("external");
-  const [thumbnailUrl, setThumbnailUrl] = useState("");
-  const [isFeatured, setIsFeatured] = useState(false);
-  const [isPublic, setIsPublic] = useState(true);
-
-  const fetchPortfolio = async () => {
-    setIsLoading(true);
+  // Fetch Portfolios
+  const fetchPortfolio = useCallback(async () => {
     try {
       const response = await fetch("/api/member/portfolio");
       if (response.ok) {
@@ -56,79 +67,45 @@ export default function PortfolioManager({ memberId }: PortfolioManagerProps) {
         setItems(json.data || []);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching portfolio:", err);
     } finally {
-      setIsLoading(false);
+      setIsPortfolioLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch Experiences
+  const fetchExperiences = useCallback(async () => {
+    try {
+      const response = await fetch("/api/member/experience");
+      if (response.ok) {
+        const json = await response.json();
+        setExperiences(json.data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching experience:", err);
+    } finally {
+      setIsExpLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchPortfolio();
-  }, []);
+    fetchExperiences();
+  }, [fetchPortfolio, fetchExperiences]);
 
-  const resetForm = () => {
-    setPillar("public_speaking");
-    setItemType("video");
-    setTitle("");
-    setDescription("");
-    setMediaUrl("");
-    setMediaSource("external");
-    setThumbnailUrl("");
-    setIsFeatured(false);
-    setIsPublic(true);
+  // Portfolio Actions
+  const handleOpenAddPortfolio = () => {
+    setEditingPortfolioItem(null);
+    setIsPortfolioDrawerOpen(true);
   };
 
-  const handleOpenAdd = () => {
-    setModalMode("add");
-    setEditingId(null);
-    resetForm();
-    setIsModalOpen(true);
+  const handleOpenEditPortfolio = (item: PortfolioItem) => {
+    setEditingPortfolioItem(item);
+    setIsPortfolioDrawerOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) {
-      toast.error("Judul wajib diisi!");
-      return;
-    }
-
-    const payload = {
-      pillar,
-      item_type: itemType,
-      title,
-      description: description || null,
-      media_url: mediaUrl || null,
-      media_source: mediaSource,
-      thumbnail_url: thumbnailUrl || null,
-      is_featured: isFeatured,
-      is_public: isPublic,
-    };
-
-    try {
-      const url = modalMode === "add" ? "/api/member/portfolio" : `/api/member/portfolio/${editingId}`;
-      const method = modalMode === "add" ? "POST" : "PATCH";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error || "Gagal menyimpan item.");
-      }
-
-      toast.success(modalMode === "add" ? "Item portofolio ditambahkan!" : "Item portofolio diperbarui!");
-      setIsModalOpen(false);
-      fetchPortfolio();
-    } catch (err: any) {
-      toast.error(err.message || "Terjadi kesalahan jaringan.");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus item portofolio ini?")) return;
+  const handleDeletePortfolio = async (id: string) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus karya ini?")) return;
 
     try {
       const res = await fetch(`/api/member/portfolio/${id}`, {
@@ -140,296 +117,487 @@ export default function PortfolioManager({ memberId }: PortfolioManagerProps) {
         throw new Error(json.error || "Gagal menghapus.");
       }
 
-      toast.success("Item portofolio berhasil dihapus.");
-      fetchPortfolio();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menghapus.");
+      toast.success("Karya berhasil dihapus.");
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
     }
   };
 
-  const filteredItems = items.filter((item) => item.pillar === activePillar);
+  const handleMovePortfolio = async (item: PortfolioItem, direction: "up" | "down") => {
+    const currentIndex = filteredItems.findIndex((i) => i.id === item.id);
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= filteredItems.length) return;
+
+    const targetItem = filteredItems[targetIndex];
+
+    let currentOrder = item.sort_order ?? currentIndex;
+    let targetOrder = targetItem.sort_order ?? targetIndex;
+
+    if (currentOrder === targetOrder) {
+      currentOrder = currentIndex;
+      targetOrder = targetIndex;
+    }
+
+    const newCurrentOrder = targetOrder;
+    const newTargetOrder = currentOrder;
+
+    // Optimistic update
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.id === item.id) return { ...i, sort_order: newCurrentOrder };
+        if (i.id === targetItem.id) return { ...i, sort_order: newTargetOrder };
+        return i;
+      })
+    );
+
+    try {
+      const [res1, res2] = await Promise.all([
+        fetch(`/api/member/portfolio/${item.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sort_order: newCurrentOrder }),
+        }),
+        fetch(`/api/member/portfolio/${targetItem.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sort_order: newTargetOrder }),
+        }),
+      ]);
+
+      if (!res1.ok || !res2.ok) {
+        throw new Error("Gagal menyimpan urutan karya.");
+      }
+      toast.success("Urutan karya berhasil diperbarui.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Gagal memperbarui urutan.");
+      fetchPortfolio();
+    }
+  };
+
+  // Experience Actions
+  const handleOpenAddExperience = () => {
+    setEditingExperience(null);
+    setIsExpDrawerOpen(true);
+  };
+
+  const handleOpenEditExperience = (exp: MemberExperience) => {
+    setEditingExperience(exp);
+    setIsExpDrawerOpen(true);
+  };
+
+  const handleDeleteExperience = async (id: string) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus pengalaman jam terbang ini?")) return;
+
+    try {
+      const res = await fetch(`/api/member/experience/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || "Gagal menghapus.");
+      }
+
+      toast.success("Jam terbang berhasil dihapus.");
+      setExperiences((prev) => prev.filter((e) => e.id !== id));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+    }
+  };
+
+  const filteredItems = items
+    .filter((item) => (activeFilter === "all" ? true : item.pillar === activeFilter))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   return (
     <div className="space-y-6">
-      {/* Pillar Tabs Selector */}
-      <div className="flex border-b border-zinc-200 dark:border-zinc-800 gap-1 overflow-x-auto pb-1">
-        {PILLARS.map((p) => (
+      {/* ═══ TOP SUB-SECTION SWITCHER (CAPSULE PILLS) ═══ */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#212121]/10 dark:border-neutral-800 pb-4 gap-3">
+        {/* Left: Tab Switcher Pills */}
+        <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 rounded-full w-full sm:w-auto shadow-2xs">
           <button
-            key={p.value}
-            onClick={() => setActivePillar(p.value)}
-            className={`px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all border border-b-0 rounded-none cursor-pointer ${activePillar === p.value
-              ? "bg-neutral-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 text-black dark:text-white font-bold"
-              : "border-transparent text-zinc-500 hover:text-black dark:hover:text-white"
+            type="button"
+            onClick={() => setActiveSection("portfolio")}
+            className={`flex-1 sm:flex-initial px-4 py-2 text-xs font-sans font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 rounded-full active:scale-95 ${activeSection === "portfolio"
+                ? "bg-[#212121] text-white dark:bg-white dark:text-[#212121] shadow-2xs"
+                : "text-neutral-600 dark:text-neutral-400 hover:text-[#212121] dark:hover:text-white"
               }`}
           >
-            {p.label}
+            <Sparkles size={13} />
+            <span>Karya ({items.length})</span>
           </button>
-        ))}
 
-        <button
-          onClick={handleOpenAdd}
-          className="ml-auto px-4 py-1.5 bg-black dark:bg-white text-white dark:text-black hover:bg-[#bc151b] dark:hover:bg-[#bc151b] dark:hover:text-white font-bold text-[10px] uppercase tracking-wider rounded-none flex items-center gap-1.5 cursor-pointer"
-        >
-          <Plus size={12} /> Tambah Item
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection("experience")}
+            className={`flex-1 sm:flex-initial px-4 py-2 text-xs font-sans font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 rounded-full active:scale-95 ${activeSection === "experience"
+                ? "bg-[#212121] text-white dark:bg-white dark:text-[#212121] shadow-2xs"
+                : "text-neutral-600 dark:text-neutral-400 hover:text-[#212121] dark:hover:text-white"
+              }`}
+          >
+            <Briefcase size={13} />
+            <span>Jam Terbang ({experiences.length})</span>
+          </button>
+        </div>
+
+        {/* Right: Public Talent Page Link */}
+        {username && (
+          <Link
+            href={`/talent/${username}`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#212121]/10 dark:border-white/10 bg-white dark:bg-[#151B18] hover:bg-[#F6F5FA] dark:hover:bg-neutral-800 text-[#212121] dark:text-neutral-200 text-xs font-sans font-semibold uppercase tracking-wider transition-all shadow-2xs hover:scale-105 active:scale-95 shrink-0"
+          >
+            <Eye size={13} />
+            <span>Lihat Profil Talent</span>
+            <ExternalLink size={11} className="text-neutral-400" />
+          </Link>
+        )}
       </div>
 
-      {/* Grid Portfolio */}
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <svg className="animate-spin h-6 w-6 text-zinc-400" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="border border-dashed border-zinc-300 dark:border-zinc-800 py-12 text-center text-xs text-zinc-500 dark:text-zinc-450 font-mono">
-          [ BELUM ADA KARYA DI PILAR INI. KLIK '+ TAMBAH ITEM' DI ATAS ]
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-          {filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 group relative flex flex-col justify-between"
-            >
-              {/* Thumbnail Display */}
-              <div className="relative aspect-video w-full bg-black overflow-hidden border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
-                {item.thumbnail_url ? (
-                  <img
-                    src={item.thumbnail_url}
-                    alt={item.title}
-                    className="h-full w-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="text-zinc-500 flex flex-col items-center gap-2">
-                    {item.item_type === "video" ? <Video size={28} /> : item.item_type === "image" ? <ImageIcon size={28} /> : <FileText size={28} />}
-                    <span className="text-[9px] uppercase font-mono tracking-wider">{item.item_type}</span>
-                  </div>
-                )}
-
-                {/* Feature & Visibility badges */}
-                <div className="absolute top-2 left-2 flex gap-1">
-                  {item.is_featured && (
-                    <span className="bg-amber-500 text-white font-sans text-[8px] uppercase font-bold tracking-wider px-1.5 py-0.5 border border-amber-600">
-                      Featured
-                    </span>
-                  )}
-                  {!item.is_public && (
-                    <span className="bg-zinc-800 text-zinc-400 font-sans text-[8px] uppercase tracking-wider px-1.5 py-0.5 border border-zinc-700 flex items-center gap-0.5">
-                      <Lock size={8} /> Private
-                    </span>
-                  )}
-                </div>
-
-                {/* External link button */}
-                {item.media_url && (
-                  <a
-                    href={item.media_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute bottom-2 right-2 p-1.5 bg-black/80 hover:bg-[#bc151b] text-white border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Buka Link Karya"
-                  >
-                    <ExternalLink size={12} />
-                  </a>
-                )}
-              </div>
-
-              {/* Card Meta & Actions */}
-              <div className="p-4 space-y-2 flex-grow flex flex-col justify-between">
-                <div>
-                  <h4 className="text-sm font-bold uppercase tracking-tight text-black dark:text-white line-clamp-1">
-                    {item.title}
-                  </h4>
-                  {item.description && (
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-450 line-clamp-2 leading-relaxed">
-                      {item.description}
-                    </p>
-                  )}
-                </div>
-
-                <div className="pt-2 flex justify-between items-center text-[10px] font-mono text-zinc-450 border-t border-zinc-100 dark:border-zinc-900 mt-2">
-                  <span>{item.media_source.toUpperCase()}</span>
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="text-zinc-400 hover:text-[#bc151b] transition-colors cursor-pointer"
-                    title="Hapus"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
+      {/* ═══════════════════════════════════════════════════════════
+          SECTION 1: PORTOFOLIO KARYA & SERTIFIKAT
+      ═══════════════════════════════════════════════════════════ */}
+      {activeSection === "portfolio" && (
+        <div className="space-y-4 animate-fade-in">
+          {/* Header Action & Description */}
+          <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#212121]/10 dark:border-white/10">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-[#212121] dark:text-white flex items-center justify-center font-bold text-xs font-mono">
+                3
+              </span>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#212121] dark:text-white">
+                Daftar Karya & Portofolio
+              </h2>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* Modal Tambah/Edit Item */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121212] border border-zinc-300 dark:border-zinc-800 text-black dark:text-white w-full max-w-xl p-6 md:p-8 rounded-none space-y-5 relative">
-            <h3 className="text-lg font-serif italic text-black dark:text-white">
-              {modalMode === "add" ? "Tambah Portofolio Karya" : "Edit Portofolio Karya"}
-            </h3>
-
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Pilar Selector */}
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    PILAR
-                  </label>
-                  <Select value={pillar} onValueChange={(val) => setPillar(val as Pillar)}>
-                    <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1 px-0 h-auto text-xs rounded-none focus:outline-none focus:ring-0">
-                      <SelectValue placeholder="Pilih Pilar" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none p-1">
-                      {PILLARS.map((p) => (
-                        <SelectItem key={p.value} value={p.value} className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Item Type Selector */}
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    TIPE KARYA
-                  </label>
-                  <Select value={itemType} onValueChange={(val) => setItemType(val as ItemType)}>
-                    <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1 px-0 h-auto text-xs rounded-none focus:outline-none focus:ring-0">
-                      <SelectValue placeholder="Pilih Tipe" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none p-1">
-                      {ITEM_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value} className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Title */}
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  JUDUL KARYA *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Misal: Presentasi Grand Final Speech Competition"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1 text-xs rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                />
-              </div>
-
-              {/* Media input conditional rendering */}
-              {itemType === "video" ? (
-                <VideoLinkInput
-                  value={mediaUrl}
-                  initialThumbnailUrl={thumbnailUrl}
-                  onUrlChange={(url, src, thumb) => {
-                    setMediaUrl(url);
-                    setMediaSource(src);
-                    setThumbnailUrl(thumb);
-                  }}
-                />
-              ) : itemType === "image" ? (
-                <div className="space-y-2">
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    UNGGAH GAMBAR PORTFOLIO *
-                  </label>
-                  <ImageUploader
-                    memberId={memberId}
-                    target="portfolio"
-                    initialImageUrl={mediaUrl}
-                    onUploadSuccess={(url) => {
-                      setMediaUrl(url);
-                      setMediaSource("storage");
-                      setThumbnailUrl(url); // thumbnail sama dengan media url untuk gambar
-                    }}
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    TAUTAN LINK KARYA (OPSIONAL)
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://medium.com/artikel-saya"
-                    value={mediaUrl}
-                    onChange={(e) => {
-                      setMediaUrl(e.target.value);
-                      setMediaSource("external");
-                    }}
-                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1 text-xs rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                  />
-                </div>
-              )}
-
-              {/* Description */}
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  DESKRIPSI SINGKAT
-                </label>
-                <textarea
-                  placeholder="Ceritakan proses pembuatan atau cerita dibalik karya ini..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-transparent border border-zinc-200 dark:border-zinc-800 p-2 text-xs rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors h-16 resize-none"
-                />
-              </div>
-
-              {/* Featured & Public toggles */}
-              <div className="flex gap-6 pt-1 text-[11px] font-mono uppercase tracking-wider text-zinc-400">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={isFeatured}
-                    onChange={(e) => setIsFeatured(e.target.checked)}
-                    className="w-3.5 h-3.5 border-zinc-300 dark:border-zinc-700 rounded-none bg-transparent cursor-pointer"
-                  />
-                  <span>Pin ke Unggulan (Featured)</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={isPublic}
-                    onChange={(e) => setIsPublic(e.target.checked)}
-                    className="w-3.5 h-3.5 border-zinc-300 dark:border-zinc-700 rounded-none bg-transparent cursor-pointer"
-                  />
-                  <span>Tampilkan Publik</span>
-                </label>
-              </div>
-
-              {/* Actions */}
-              <div className="pt-4 flex justify-end gap-3 text-[10px] font-bold uppercase tracking-wider">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-2 border border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 rounded-none hover:border-black dark:hover:border-white cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-8 py-2 bg-black dark:bg-white text-white dark:text-black hover:bg-[#bc151b] dark:hover:bg-[#bc151b] dark:hover:text-white rounded-none cursor-pointer"
-                >
-                  Simpan Karya
-                </button>
-              </div>
-            </form>
+            <button
+              type="button"
+              onClick={handleOpenAddPortfolio}
+              className="h-9 px-3.5 bg-[#212121] dark:bg-white text-white dark:text-[#212121] hover:bg-black dark:hover:bg-neutral-200 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all shrink-0 rounded-xl shadow-2xs"
+            >
+              <Plus size={14} />
+              <span>Tambah Karya</span>
+            </button>
           </div>
+
+          {/* Pillar Chip Filters (1-Tap Rounded Pills) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            {PILLARS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setActiveFilter(p.value)}
+                className={`px-3.5 py-1.5 text-xs font-sans font-medium uppercase tracking-wider transition-all border cursor-pointer shrink-0 rounded-full active:scale-95 ${activeFilter === p.value
+                    ? "bg-[#212121] dark:bg-white text-white dark:text-[#212121] border-[#212121] dark:border-white font-bold shadow-2xs"
+                    : "bg-white dark:bg-[#151B18] border-[#212121]/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-[#212121]/30 dark:hover:border-white/30"
+                  }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Grid Portfolio Content */}
+          {isPortfolioLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="rounded-2xl bg-neutral-100 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 overflow-hidden">
+                  <div className="aspect-video w-full bg-neutral-200 dark:bg-neutral-800" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 w-3/4 bg-neutral-200 dark:bg-neutral-800 rounded" />
+                    <div className="h-3 w-1/2 bg-neutral-200 dark:bg-neutral-800 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="border border-dashed border-[#212121]/20 dark:border-white/20 py-12 text-center space-y-2.5 font-sans p-6 rounded-2xl bg-white/50 dark:bg-[#151B18]/50">
+              <div className="text-xs text-[#212121] dark:text-white font-bold uppercase tracking-wider">
+                Belum Ada Karya Dalam Kategori Ini
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
+                Semua dokumentasi video dan foto yang Anda tambahkan akan otomatis tampil di halaman etalase publik kreator Anda.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenAddPortfolio}
+                className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#212121] dark:text-white hover:opacity-80 transition-opacity cursor-pointer pt-2"
+              >
+                <Plus size={14} /> + Tambah Karya Pertama
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredItems.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 group relative flex flex-col justify-between rounded-2xl overflow-hidden shadow-2xs hover:shadow-md transition-shadow"
+                >
+                  {/* Thumbnail Display */}
+                  <div className="relative aspect-video w-full bg-neutral-950 overflow-hidden border-b border-[#212121]/10 dark:border-white/10 flex items-center justify-center">
+                    {item.thumbnail_url ? (
+                      <img
+                        src={item.thumbnail_url}
+                        alt={item.title}
+                        className="h-full w-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : item.item_type === "achievement" ? (
+                      <div className="text-neutral-300 dark:text-neutral-400 flex flex-col items-center gap-1.5 p-4 text-center">
+                        <Award size={32} className="text-amber-500" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider font-mono">
+                          Sertifikat / Prestasi
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-neutral-500 flex flex-col items-center gap-2">
+                        {item.item_type === "video" ? (
+                          <Video size={28} />
+                        ) : item.item_type === "image" ? (
+                          <ImageIcon size={28} />
+                        ) : (
+                          <LinkIcon size={28} />
+                        )}
+                        <span className="text-[9px] uppercase font-mono tracking-wider">{item.item_type}</span>
+                      </div>
+                    )}
+
+                    {/* Badges */}
+                    <div className="absolute top-2 left-2 flex gap-1">
+                      {item.is_featured && (
+                        <span className="bg-amber-500 text-white font-sans text-[8px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full shadow-xs">
+                          ★ Unggulan
+                        </span>
+                      )}
+                      {!item.is_public && (
+                        <span className="bg-neutral-900/90 text-neutral-300 font-sans text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-0.5 border border-white/10">
+                          <Lock size={8} /> Privat
+                        </span>
+                      )}
+                    </div>
+
+                    {/* External Link */}
+                    {item.media_url && (
+                      <a
+                        href={item.media_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute bottom-2 right-2 p-1.5 bg-black/80 hover:bg-neutral-800 text-white rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm"
+                        title="Buka Link Karya"
+                      >
+                        <ExternalLink size={12} />
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Card Meta & Actions */}
+                  <div className="p-4 space-y-2 flex-grow flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-neutral-400 mb-1">
+                        <span>{item.pillar?.replace(/_/g, " ")}</span>
+                        <span>•</span>
+                        <span>{item.item_type}</span>
+                      </div>
+                      <h4 className="text-xs font-bold uppercase tracking-tight text-neutral-900 dark:text-white line-clamp-1">
+                        {item.title}
+                      </h4>
+                      {item.description && (
+                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 line-clamp-2 leading-relaxed mt-1 font-sans">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="pt-3 flex justify-between items-center text-[10px] font-mono text-neutral-400 border-t border-neutral-100 dark:border-neutral-800/80 mt-2">
+                      {/* Reorder Buttons */}
+                      <div className="flex items-center gap-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-full px-1.5 py-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleMovePortfolio(item, "up")}
+                          disabled={index === 0}
+                          className="p-1 text-neutral-500 hover:text-black dark:hover:text-white disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed rounded-full"
+                          title="Pindah ke Atas"
+                        >
+                          <ChevronUp size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMovePortfolio(item, "down")}
+                          disabled={index === filteredItems.length - 1}
+                          className="p-1 text-neutral-500 hover:text-black dark:hover:text-white disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed rounded-full"
+                          title="Pindah ke Bawah"
+                        >
+                          <ChevronDown size={12} />
+                        </button>
+                      </div>
+
+                      {/* Edit & Delete */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditPortfolio(item)}
+                          className="p-1.5 text-neutral-500 hover:text-black dark:hover:text-white bg-neutral-100 dark:bg-neutral-800 rounded-full hover:bg-neutral-200 transition-colors cursor-pointer"
+                          title="Edit Karya"
+                        >
+                          <Edit2 size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePortfolio(item.id)}
+                          className="p-1.5 text-neutral-500 hover:text-red-600 bg-neutral-100 dark:bg-neutral-800 rounded-full hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                          title="Hapus Karya"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          SECTION 2: JAM TERBANG & PENGALAMAN (EXPERIENCE TIMELINE)
+      ═══════════════════════════════════════════════════════════ */}
+      {activeSection === "experience" && (
+        <div className="space-y-4 animate-fade-in">
+          {/* Header Action & Description */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-sans text-sm uppercase tracking-wider font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-neutral-500" />
+                <span>Riwayat Jam Terbang & Event</span>
+              </h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                Portofolio pengalaman panggung nyata: Host / MC, Moderator, Speaker, atau Project Kreator.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleOpenAddExperience}
+              className="h-9 px-4 bg-[#212121] dark:bg-white text-white dark:text-[#212121] hover:opacity-90 font-bold text-xs font-sans uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all self-start sm:self-auto shrink-0 rounded-full shadow-2xs hover:scale-105 active:scale-95"
+            >
+              <Plus size={14} />
+              <span>Tambah Jam Terbang</span>
+            </button>
+          </div>
+
+          {/* Experience List Content */}
+          {isExpLoading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-24 p-5 rounded-2xl bg-neutral-100 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10" />
+              ))}
+            </div>
+          ) : experiences.length === 0 ? (
+            <div className="border border-dashed border-[#212121]/20 dark:border-white/20 py-12 text-center space-y-2.5 font-sans p-6 rounded-2xl bg-white/50 dark:bg-[#151B18]/50">
+              <div className="text-xs text-[#212121] dark:text-white font-bold uppercase tracking-wider">
+                Belum Ada Riwayat Jam Terbang
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
+                Catat setiap event, project MC, talkshow, dan kolaborasi untuk meningkatkan kredibilitas Anda di hadapan klien.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenAddExperience}
+                className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#212121] dark:text-white hover:opacity-80 transition-opacity cursor-pointer pt-2"
+              >
+                <Plus size={14} /> Tambah Pengalaman Pertama
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {experiences.map((exp) => (
+                <div
+                  key={exp.id}
+                  className="p-5 bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 rounded-2xl flex flex-col sm:flex-row sm:items-start justify-between gap-3 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors shadow-2xs"
+                >
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-sm font-bold uppercase tracking-tight text-[#212121] dark:text-white font-sans">
+                        {exp.role}
+                      </h4>
+                      {exp.is_current && (
+                        <span className="px-2.5 py-0.5 text-[9px] font-sans uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 font-bold rounded-full">
+                          Aktif Sekarang
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-600 dark:text-neutral-400 font-mono">
+                      <span className="flex items-center gap-1 font-semibold text-neutral-800 dark:text-neutral-200">
+                        <Building size={12} className="text-neutral-400" />
+                        {exp.institution}
+                      </span>
+                      {exp.location && (
+                        <span className="flex items-center gap-1">
+                          <MapPin size={12} className="text-neutral-400" />
+                          {exp.location}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1 text-[11px] text-neutral-500">
+                        <Calendar size={12} className="text-neutral-400" />
+                        {exp.start_date} — {exp.is_current ? "Sekarang" : exp.end_date || "Selesai"}
+                      </span>
+                    </div>
+
+                    {exp.description && (
+                      <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed pt-1 font-sans">
+                        {exp.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1.5 self-end sm:self-start shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-neutral-100 dark:border-neutral-900">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditExperience(exp)}
+                      className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 rounded-full transition-colors cursor-pointer"
+                      title="Edit Jam Terbang"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteExperience(exp.id)}
+                      className="p-2 text-neutral-500 hover:text-red-600 bg-neutral-100 dark:bg-neutral-800 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-full transition-colors cursor-pointer"
+                      title="Hapus Jam Terbang"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ DRAWERS ═══ */}
+      <PortfolioDrawer
+        isOpen={isPortfolioDrawerOpen}
+        onClose={() => setIsPortfolioDrawerOpen(false)}
+        memberId={memberId}
+        itemToEdit={editingPortfolioItem}
+        defaultPillar={activeFilter === "all" ? "public_speaking" : activeFilter}
+        onSuccess={() => {
+          fetchPortfolio();
+        }}
+      />
+
+      <ExperienceDrawer
+        isOpen={isExpDrawerOpen}
+        onClose={() => setIsExpDrawerOpen(false)}
+        experienceToEdit={editingExperience}
+        onSuccess={() => {
+          fetchExperiences();
+        }}
+      />
     </div>
   );
 }

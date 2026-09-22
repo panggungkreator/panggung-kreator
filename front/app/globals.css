@@ -167,13 +167,16 @@ body {
 /* Hide native browser scrollbar globally — Lenis provides its own virtual scrollbar */
 html,
 body {
-  -ms-overflow-style: none;   /* IE / Edge */
-  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;
+  /* IE / Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
-  display: none;              /* Chrome / Safari / Opera */
+  display: none;
+  /* Chrome / Safari / Opera */
 }
 
 /* Lenis smooth scroll helper classes */
@@ -222,7 +225,7 @@ html.lenis body {
 
 /* Dark Mode Override for Stabilo */
 .dark .highlight-stabilo {
-  background-image: linear-gradient(180deg, transparent 58%, rgba(253, 224, 71, 0.75) 58%, rgba(253, 224, 71, 0.75) 92%, transparent 92%);
+  background-image: linear-gradient(180deg, transparent 58%, rgba(116, 135, 87, 0.45) 58%, rgba(116, 135, 87, 0.45) 92%, transparent 92%);
   animation: draw-stabilo-dark 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   animation-delay: 0.2s;
 }
@@ -464,6 +467,7 @@ html:hover {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -475,6 +479,7 @@ html:hover {
     opacity: 0;
     transform: translate3d(20px, 0, 0);
   }
+
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
@@ -486,6 +491,7 @@ html:hover {
     opacity: 0;
     transform: translate3d(-20px, 0, 0);
   }
+
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);

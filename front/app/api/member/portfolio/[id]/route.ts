@@ -4,12 +4,18 @@ import { z } from 'zod'
 
 const portfolioUpdateSchema = z.object({
   pillar: z.enum(['public_speaking', 'content_creation', 'personal_branding']).optional(),
-  item_type: z.enum(['video', 'image', 'article', 'link', 'achievement']).optional(),
+  item_type: z.enum(['video', 'image', 'link', 'achievement']).optional(),
   title: z.string().min(2).max(150).optional(),
   description: z.string().max(500).optional().nullable(),
-  media_url: z.string().url().optional().nullable(),
+  media_url: z.string()
+    .regex(/^https?:\/\/.+/i, 'URL media harus diawali dengan http:// atau https://')
+    .optional()
+    .nullable(),
   media_source: z.enum(['youtube', 'instagram', 'tiktok', 'storage', 'external']).optional(),
-  thumbnail_url: z.string().optional().nullable(),
+  thumbnail_url: z.string()
+    .regex(/^https?:\/\/.+/i, 'URL thumbnail harus diawali dengan http:// atau https://')
+    .optional()
+    .nullable(),
   is_featured: z.boolean().optional(),
   is_public: z.boolean().optional(),
   sort_order: z.number().optional(),
@@ -62,8 +68,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ data })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal Server Error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
@@ -89,17 +96,31 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     // 1. Bersihkan file media dari Storage jika tipenya storage
     if (item.media_source === 'storage' && item.media_url) {
-      const path = item.media_url.split('/portfolio-images/')[1]
-      if (path) {
-        await supabase.storage.from('portfolio-images').remove([path])
+      if (item.media_url.includes('/member-assets/')) {
+        const path = item.media_url.split('/member-assets/')[1]?.split('?')[0]
+        if (path) {
+          await supabase.storage.from('member-assets').remove([path])
+        }
+      } else if (item.media_url.includes('/portfolio-images/')) {
+        const path = item.media_url.split('/portfolio-images/')[1]?.split('?')[0]
+        if (path) {
+          await supabase.storage.from('portfolio-images').remove([path])
+        }
       }
     }
 
     // 2. Bersihkan file thumbnail dari Storage jika ada
-    if (item.thumbnail_url?.includes('portfolio-thumbnails')) {
-      const thumbPath = item.thumbnail_url.split('/portfolio-thumbnails/')[1]
-      if (thumbPath) {
-        await supabase.storage.from('portfolio-thumbnails').remove([thumbPath])
+    if (item.thumbnail_url) {
+      if (item.thumbnail_url.includes('/member-assets/')) {
+        const thumbPath = item.thumbnail_url.split('/member-assets/')[1]?.split('?')[0]
+        if (thumbPath) {
+          await supabase.storage.from('member-assets').remove([thumbPath])
+        }
+      } else if (item.thumbnail_url.includes('/portfolio-thumbnails/')) {
+        const thumbPath = item.thumbnail_url.split('/portfolio-thumbnails/')[1]?.split('?')[0]
+        if (thumbPath) {
+          await supabase.storage.from('portfolio-thumbnails').remove([thumbPath])
+        }
       }
     }
 
@@ -115,7 +136,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     return NextResponse.json({ success: true })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal Server Error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

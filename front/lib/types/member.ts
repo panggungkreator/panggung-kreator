@@ -3,8 +3,23 @@ export type MembershipTier = 'free' | 'priority' | 'membership' | 'new_member'
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
 export type PrimaryInterest = 'public_speaking' | 'mc_host' | 'voice_over' | 'content_creator' | 'personal_branding' | 'live_host'
 export type Pillar = 'public_speaking' | 'content_creation' | 'personal_branding'
-export type ItemType = 'video' | 'image' | 'article' | 'link' | 'achievement'
+export type ItemType = 'video' | 'image' | 'link' | 'achievement'
 export type MediaSource = 'youtube' | 'instagram' | 'tiktok' | 'storage' | 'external'
+
+export interface MemberExperience {
+  id: string
+  member_id: string
+  role: string
+  institution: string
+  start_date: string
+  end_date: string | null
+  is_current: boolean
+  description: string | null
+  location: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
 
 export interface AiAnalysis {
   ringkasan: string;
@@ -95,16 +110,29 @@ export interface MemberProfile {
   username_changes_count?: number
   last_username_change?: string | null
   interests?: MemberInterests
+  experiences?: MemberExperience[]
   portfolio?: PortfolioItem[]
 }
 
 export interface AttendanceEvent {
+  id?: string
   title: string
   event_type: string
   event_date: string
   start_time: string
   end_time: string | null
   location: string
+  description?: string | null
+  capacity?: number | null
+}
+
+export interface GalleryAlbumSummary {
+  id: string
+  title: string
+  event_date: string
+  album_link: string | null
+  hero_image_url?: string | null
+  description?: string | null
 }
 
 export interface AttendanceRecord {

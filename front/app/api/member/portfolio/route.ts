@@ -4,19 +4,25 @@ import { z } from 'zod'
 
 const portfolioItemSchema = z.object({
   pillar: z.enum(['public_speaking', 'content_creation', 'personal_branding']),
-  item_type: z.enum(['video', 'image', 'article', 'link', 'achievement']),
+  item_type: z.enum(['video', 'image', 'link', 'achievement']),
   title: z.string().min(2).max(150),
   description: z.string().max(500).optional().nullable(),
-  media_url: z.string().url().optional().nullable(),
+  media_url: z.string()
+    .regex(/^https?:\/\/.+/i, 'URL media harus diawali dengan http:// atau https://')
+    .optional()
+    .nullable(),
   media_source: z.enum(['youtube', 'instagram', 'tiktok', 'storage', 'external']),
-  thumbnail_url: z.string().optional().nullable(),
+  thumbnail_url: z.string()
+    .regex(/^https?:\/\/.+/i, 'URL thumbnail harus diawali dengan http:// atau https://')
+    .optional()
+    .nullable(),
   is_featured: z.boolean().default(false),
   is_public: z.boolean().default(true),
   sort_order: z.number().default(0),
 })
 
 // GET: ambil portfolio milik sendiri
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -30,8 +36,9 @@ export async function GET(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ data })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal Server Error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
@@ -67,7 +74,8 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ data })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal Server Error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

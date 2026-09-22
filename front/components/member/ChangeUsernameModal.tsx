@@ -209,16 +209,16 @@ export default function ChangeUsernameModal({
       <form onSubmit={handleSubmit} className="space-y-4 pt-1">
         {/* PERINGATAN JIKA MASA JEDA AKTIF (DINAMIS HANYA SETELAH PERGANTIAN) */}
         {isCoolingDown && (
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded flex items-start gap-2.5 text-amber-800 dark:text-amber-300 text-xs leading-relaxed">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+          <div className="p-3.5 bg-[#EFF0A3]/30 dark:bg-[#EFF0A3]/10 border border-[#EFF0A3]/60 dark:border-[#EFF0A3]/30 rounded-xl flex items-start gap-2.5 text-[#212121] dark:text-[#EFF0A3] text-xs leading-relaxed">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-[#EFF0A3]" />
             <div>
               <p className="font-bold text-[11px] uppercase tracking-wider font-mono">
                 Masa Jeda Aktif
               </p>
-              <p className="text-[11px] mt-0.5">
+              <p className="text-[11px] mt-0.5 text-neutral-700 dark:text-neutral-300">
                 Anda baru saja mengganti username. Anda dapat mengganti username kembali dalam{" "}
-                <strong className="font-semibold">{daysRemaining} hari lagi</strong> (pada tanggal{" "}
-                <strong className="font-semibold underline">
+                <strong className="font-semibold text-black dark:text-white">{daysRemaining} hari lagi</strong> (pada tanggal{" "}
+                <strong className="font-semibold underline text-black dark:text-white">
                   {nextAllowedDate?.toLocaleDateString("id-ID", {
                     day: "numeric",
                     month: "long",
@@ -234,11 +234,11 @@ export default function ChangeUsernameModal({
 
         {/* INPUT USERNAME */}
         <div className="space-y-1.5">
-          <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-400 uppercase block">
-            USERNAME BARU *
+          <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+            Username Baru <span className="text-red-500">*</span>
           </label>
           <div className="relative flex items-center">
-            <span className="absolute left-3 text-zinc-400 font-mono text-sm select-none pointer-events-none">
+            <span className="absolute left-3 text-neutral-400 font-mono text-sm select-none pointer-events-none">
               @
             </span>
             <input
@@ -251,23 +251,23 @@ export default function ChangeUsernameModal({
               }}
               placeholder="username_anda"
               maxLength={30}
-              className={`w-full pl-8 pr-8 py-2 text-sm font-mono bg-transparent border-b rounded-none focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${validationError
-                ? "border-red-500 text-red-600 dark:text-red-400 focus:border-red-600"
+              className={`w-full pl-8 pr-8 py-2 text-sm font-mono bg-transparent border-b rounded-none focus:outline-none transition-colors text-[#212121] dark:text-white disabled:opacity-50 disabled:cursor-not-allowed ${validationError
+                ? "border-red-600 dark:border-red-500 focus:border-red-600"
                 : isAvailable && !isSameAsCurrent
-                  ? "border-emerald-500 text-black dark:text-white focus:border-emerald-600"
-                  : "border-zinc-300 dark:border-zinc-700 focus:border-black dark:focus:border-white text-black dark:text-white"
+                  ? "border-emerald-500 focus:border-emerald-600"
+                  : "border-neutral-300 dark:border-neutral-700 focus:border-[#212121] dark:focus:border-white"
                 }`}
             />
             {/* Status indicator icon di sebelah kanan input */}
             <div className="absolute right-2 flex items-center pointer-events-none">
               {isChecking && (
-                <Loader2 className="animate-spin w-4 h-4 text-zinc-400" />
+                <Loader2 className="animate-spin w-4 h-4 text-neutral-400" />
               )}
               {!isChecking && isAvailable && !isSameAsCurrent && (
                 <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               )}
               {!isChecking && validationError && (
-                <XCircle className="w-4 h-4 text-red-500" />
+                <XCircle className="w-4 h-4 text-red-600 dark:text-red-500" />
               )}
             </div>
           </div>
@@ -275,12 +275,12 @@ export default function ChangeUsernameModal({
           {/* AREA VALIDASI ERROR REALTIME DI BAWAH INPUT */}
           <div className="min-h-[18px]">
             {isChecking ? (
-              <p className="text-[10px] font-mono text-zinc-400 flex items-center gap-1.5">
+              <p className="text-[10px] font-mono text-neutral-400 flex items-center gap-1.5">
                 <Loader2 className="animate-spin w-3 h-3" />
                 <span>Memeriksa ketersediaan username...</span>
               </p>
             ) : validationError ? (
-              <p className="text-[10px] font-mono text-red-600 dark:text-red-400 flex items-center gap-1.5">
+              <p className="text-[11px] font-sans font-medium text-red-600 dark:text-red-500 flex items-center gap-1.5 mt-1">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>{validationError}</span>
               </p>
@@ -290,7 +290,7 @@ export default function ChangeUsernameModal({
                 <span>Username @{cleanInput} tersedia.</span>
               </p>
             ) : cleanInput && isSameAsCurrent ? (
-              <p className="text-[10px] font-mono text-zinc-400">
+              <p className="text-[10px] font-mono text-neutral-400">
                 Ini adalah username Anda saat ini.
               </p>
             ) : null}
@@ -298,12 +298,12 @@ export default function ChangeUsernameModal({
         </div>
 
         {/* BUTTON BAR */}
-        <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-end gap-3">
+        <div className="pt-4 border-t border-[#212121]/10 dark:border-white/10 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 text-xs font-mono uppercase tracking-wider text-zinc-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer border border-transparent"
+            className="px-4 py-2 text-xs font-mono uppercase tracking-wider text-neutral-500 hover:text-black dark:hover:text-white rounded-xl transition-colors cursor-pointer"
           >
             Batal
           </button>
@@ -318,7 +318,7 @@ export default function ChangeUsernameModal({
               !!validationError ||
               !isAvailable
             }
-            className="px-5 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 text-xs font-mono font-bold uppercase tracking-wider transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-neutral-900 dark:border-white"
+            className="px-5 py-2.5 bg-[#212121] dark:bg-white text-white dark:text-[#212121] hover:bg-black dark:hover:bg-neutral-200 text-xs font-mono font-bold uppercase tracking-wider rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
           >
             {isLoading ? (
               <>

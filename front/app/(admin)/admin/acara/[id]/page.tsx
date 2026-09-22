@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import AcaraDetailClient from "./AcaraDetailClient";
 import { checkPermission, getPermissionMap } from "@/lib/check-permission";
+import { isDedicatedAdmin } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -77,9 +78,7 @@ export default async function AcaraDetailPage({
       .eq("event_id", eventId),
     supabase
       .from("members")
-      .select("id, full_name, whatsapp_number")
-      .eq("role", "member")
-      .eq("payment_status", "paid")
+      .select("id, full_name, stage_name, username, email, whatsapp_number, role, payment_status")
       .order("full_name", { ascending: true }),
     supabase
       .from("admin_roles")
@@ -91,9 +90,21 @@ export default async function AcaraDetailPage({
   const rawMembers = membersResponse.data || [];
   const adminRoles = adminRolesResponse.data || [];
   
-  // Filter out any members who have admin roles
   const adminMemberIds = new Set(adminRoles.map((r: any) => r.member_id));
-  const members = rawMembers.filter((m: any) => !adminMemberIds.has(m.id));
+
+  // Sertakan semua member aktif/berbayar serta member yang diangkat menjadi admin, KECUALI adminpangkreas
+  const members = rawMembers
+    .filter((m: any) => {
+      if (isDedicatedAdmin(m.username) || isDedicatedAdmin(m.email)) return false;
+      return m.payment_status === "paid" || m.role === "admin" || adminMemberIds.has(m.id);
+    })
+    .map((m: any) => ({
+      id: m.id,
+      full_name: m.full_name || "Tanpa Nama",
+      stage_name: m.stage_name || "",
+      whatsapp_number: m.whatsapp_number || "",
+      role: (m.role === "admin" || adminMemberIds.has(m.id)) ? "admin" : "member",
+    }));
 
   if (!event) {
     return notFound();

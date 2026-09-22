@@ -18,72 +18,70 @@ export default function AttendanceStats({ stats }: AttendanceStatsProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-      {/* 1. KEHADIRAN */}
-      <div className="bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 p-4 rounded-none flex flex-col justify-between">
+      {/* 1. KEHADIRAN - HONEYDEW TINT */}
+      <div className="bg-[#CFDECA]/25 dark:bg-[#CFDECA]/10 border border-[#CFDECA]/50 dark:border-[#CFDECA]/20 p-5 rounded-2xl flex flex-col justify-between shadow-2xs space-y-4">
         <div>
-          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block">
-            [ KEHADIRAN ]
+          <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#212121] dark:bg-white text-white dark:text-[#212121] px-2.5 py-0.5 rounded-md mb-2">
+            KEHADIRAN
           </span>
-          <div className="flex items-baseline gap-2 mt-1.5">
-            <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white font-mono">
-              <span className="highlight-stabilo">
-                {stats.totalAttended}/{stats.totalEvents}
-              </span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl sm:text-4xl font-black font-mono text-[#212121] dark:text-white">
+              {stats.totalAttended}/{stats.totalEvents}
             </span>
-            <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400">
+            <span className="text-xs font-sans text-neutral-700 dark:text-neutral-300 font-semibold uppercase tracking-wider">
               ({stats.attendanceRate}%)
             </span>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-neutral-200 dark:bg-neutral-800 h-1.5 rounded-none overflow-hidden mt-3">
+        <div className="w-full bg-white/70 dark:bg-neutral-800 h-2 rounded-full overflow-hidden border border-black/5">
           <div
-            className="bg-neutral-900 dark:bg-white h-full transition-all duration-500"
+            className="bg-[#212121] dark:bg-white h-full rounded-full transition-all duration-500"
             style={{ width: `${Math.min(stats.attendanceRate, 100)}%` }}
           />
         </div>
       </div>
 
-      {/* 2. STREAK */}
-      <div className="bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 p-4 rounded-none flex flex-col justify-between">
+      {/* 2. STREAK - VANILLA TINT */}
+      <div className="bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 p-5 rounded-2xl flex flex-col justify-between shadow-2xs space-y-4">
         <div>
-          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block">
-            [ STREAK ]
+          <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#EFF0A3] text-[#302F1A] dark:bg-[#38371F] dark:text-[#EFF0A3] px-2.5 py-0.5 rounded-md mb-2">
+            STREAK KEHADIRAN
           </span>
-          <div className="mt-1.5">
-            <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white font-mono">
-              <span className="highlight-stabilo">{stats.currentStreak}</span>{" "}
-              <span className="text-sm font-sans font-normal text-neutral-700 dark:text-neutral-300">
-                Event
-              </span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl sm:text-4xl font-black font-mono text-[#212121] dark:text-white">
+              {stats.currentStreak}
+            </span>
+            <span className="text-xs font-sans text-neutral-700 dark:text-neutral-300 font-semibold uppercase tracking-wider">
+              Event Beruntun
             </span>
           </div>
         </div>
 
-        <div className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400 mt-3 pt-2 border-t border-neutral-200/60 dark:border-neutral-800/60">
-          Rekor: <span className="font-bold text-neutral-800 dark:text-neutral-200">{stats.longestStreak}</span> Event
+        <div className="text-xs font-mono text-neutral-500 dark:text-neutral-400 pt-3 border-t border-[#212121]/10 dark:border-white/10">
+          Rekor Tertinggi: <span className="font-bold text-[#212121] dark:text-white">{stats.longestStreak}</span> Event
         </div>
       </div>
 
-      {/* 3. EVENT TERAKHIR */}
-      <div className="bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 p-4 rounded-none flex flex-col justify-between">
+      {/* 3. EVENT TERAKHIR - SOFT SLATE TINT */}
+      <div className="bg-[#D8DFE9]/25 dark:bg-[#D8DFE9]/10 border border-[#D8DFE9]/50 dark:border-[#D8DFE9]/20 p-5 rounded-2xl flex flex-col justify-between shadow-2xs space-y-4">
         <div>
-          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest block">
-            [ EVENT TERAKHIR ]
+          <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider bg-[#212121] dark:bg-white text-white dark:text-[#212121] px-2.5 py-0.5 rounded-md mb-2">
+            EVENT TERAKHIR
           </span>
-          <div className="mt-1.5">
+          <div className="mt-1">
             <p
-              className="text-sm sm:text-base font-bold font-sans text-neutral-900 dark:text-white line-clamp-1"
+              className="text-sm sm:text-base font-bold font-sans tracking-tight text-[#212121] dark:text-white line-clamp-2"
               title={stats.lastAttendedEvent?.title || "-"}
             >
-              {stats.lastAttendedEvent?.title || "-"}
+              {stats.lastAttendedEvent?.title || "Belum ada acara dihadiri"}
             </p>
           </div>
         </div>
 
-        <div className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400 mt-3 pt-2 border-t border-neutral-200/60 dark:border-neutral-800/60">
-          {formattedLastDate || "Belum ada riwayat"}
+        <div className="text-xs font-mono text-neutral-600 dark:text-neutral-400 pt-3 border-t border-[#212121]/10 dark:border-white/10">
+          {formattedLastDate || "Belum ada catatan"}
         </div>
       </div>
     </div>

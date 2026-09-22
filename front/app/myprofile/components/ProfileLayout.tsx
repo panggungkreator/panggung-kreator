@@ -1,93 +1,89 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { MemberProfile } from "@/lib/types/member";
-import { Menu, X, Sun, Moon } from "lucide-react";
-import Link from "next/link";
+import { Menu, X } from "lucide-react";
 
 interface ProfileLayoutProps {
   member?: MemberProfile;
-  tabs: React.ReactNode;
-  sidebar: React.ReactNode;
+  header?: React.ReactNode;
+  tabs?: React.ReactNode;
+  sidebar?: React.ReactNode;
   statsCards?: React.ReactNode;
   children: React.ReactNode;
 }
 
 export default function ProfileLayout({
   member,
+  header,
   tabs,
   sidebar,
   statsCards,
   children,
 }: ProfileLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark");
-    setTheme(isDark ? "dark" : "light");
-  }, []);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
-    localStorage.setItem("theme", nextTheme);
-    if (nextTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  };
 
   return (
-    <div className="min-h-screen w-full bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 font-sans flex flex-col justify-between">
-      {/* TOP BAR ON MOBILE — ONLY HAMBURGER TOGGLE BUTTON ALIGNED RIGHT */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md h-14 px-4 flex items-center justify-end border-b border-neutral-200/60 dark:border-neutral-800/60">
+    <div className="min-h-screen w-full bg-[#F6F5FA] dark:bg-[#0E1210] text-[#212121] dark:text-[#F4F4F4] font-sans flex flex-col justify-between selection:bg-[#212121] selection:text-white dark:selection:bg-white dark:selection:text-black">
+
+      {/* 📱 MOBILE TOP BAR (HAMBURGER TOGGLE) */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#151B18]/80 backdrop-blur-xl h-16 px-5 flex items-center justify-between border-b border-black/5 dark:border-white/5">
+        <span className="text-sm font-sans font-bold tracking-wide text-[#212121] dark:text-white">
+          PORTAL MEMBER
+        </span>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-neutral-900 dark:text-white transition-transform active:scale-95 cursor-pointer flex items-center justify-center"
+          className="w-10 h-10 text-[#1C1C1C] dark:text-white transition-transform active:scale-95 flex items-center justify-center rounded-full bg-white dark:bg-[#1F2623] shadow-sm border border-black/5 dark:border-white/5 cursor-pointer"
           aria-label="Toggle Navigation Menu"
         >
-          <div className="relative w-6 h-6 flex items-center justify-center">
+          <div className="relative w-5 h-5 flex items-center justify-center">
             <Menu
-              className={`w-6 h-6 absolute transition-all duration-300 ease-in-out ${isMobileMenuOpen ? "opacity-0 rotate-90 scale-50" : "opacity-100 rotate-0 scale-100"
+              className={`w-5 h-5 absolute transition-all duration-300 ease-in-out ${isMobileMenuOpen ? "opacity-0 rotate-90 scale-50" : "opacity-100 rotate-0 scale-100"
                 }`}
             />
             <X
-              className={`w-6 h-6 absolute transition-all duration-300 ease-in-out ${isMobileMenuOpen ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-50"
-              }`}
+              className={`w-5 h-5 absolute transition-all duration-300 ease-in-out ${isMobileMenuOpen ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-50"
+                }`}
             />
           </div>
         </button>
       </header>
 
-      {/* MOBILE ANIMATED HAMBURGER MENU DRAWER — CONTENT COMES DIRECTLY FROM SIDEBAR PROP (PROFILE SIDEBAR) */}
+      {/* MOBILE HAMBURGER MENU DRAWER */}
       <div
-        className={`lg:hidden fixed top-14 left-0 right-0 bottom-0 z-50 bg-white dark:bg-[#0A0A0A] transition-all duration-300 ease-in-out overflow-y-auto ${isMobileMenuOpen
-          ? "opacity-100 py-6 px-6 shadow-2xl pointer-events-auto"
-          : "opacity-0 py-0 px-6 pointer-events-none translate-y-[-10px]"
+        className={`lg:hidden fixed top-16 left-0 right-0 bottom-0 z-40 bg-[#F6F5FA] dark:bg-[#0E1210] transition-all duration-300 ease-in-out overflow-y-auto ${isMobileMenuOpen
+          ? "opacity-100 py-6 px-5 shadow-2xl pointer-events-auto"
+          : "opacity-0 py-0 px-5 pointer-events-none translate-y-[-10px]"
           }`}
         onClick={() => setIsMobileMenuOpen(false)}
       >
-        <div className="w-full max-w-sm mx-auto pb-12" onClick={(e) => e.stopPropagation()}>
-          {sidebar}
+        <div className="w-full max-w-sm mx-auto pb-24 space-y-6" onClick={(e) => e.stopPropagation()}>
+          {header && <div className="w-full">{header}</div>}
+          {sidebar && <div className="w-full">{sidebar}</div>}
         </div>
       </div>
 
-      {/* MAIN CONTAINER — DESKTOP HAS NO TOP NAV OR HEADER (PT-8) */}
-      <div className="max-w-7xl w-full mx-auto pt-14 lg:pt-8 pb-24 lg:pb-16 px-4 sm:px-6 lg:px-8 flex-1">
-        {/* MAIN TWO-COLUMN SPLIT LAYOUT */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-start">
-          {/* LEFT COLUMN: IDENTITY SIDEBAR (DESKTOP ONLY WITH THIN AUTO-HIDE SCROLL) */}
-          <aside className="hidden lg:block lg:col-span-3 w-full sticky top-8 max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar pr-2">{sidebar}</aside>
+      {/* 💻 MAIN DESKTOP DOCK NAVIGATION (FIXED ON LEFT EDGE) */}
+      <div className="hidden lg:flex fixed left-6 xl:left-10 top-1/2 -translate-y-1/2 z-30">
+        {tabs}
+      </div>
 
-          {/* RIGHT COLUMN: TAB NAVIGATION & DATA DETAILS */}
-          <main className="lg:col-span-9 w-full space-y-6">
-            {statsCards && <div className="w-full">{statsCards}</div>}
-            {tabs && <div className="w-full">{tabs}</div>}
-            <div className="w-full overflow-x-clip">{children}</div>
-          </main>
-        </div>
+      {/* 💻 MAIN DESKTOP LAYOUT (CLEAN CENTERED MAIN CONTENT) */}
+      <div className="max-w-5xl w-full mx-auto pt-20 lg:pt-8 pb-28 lg:pb-12 px-4 sm:px-6 lg:px-8 flex-1 flex flex-col gap-6 lg:gap-8">
+
+        {/* TOP HEADER (Breadcrumb + Profile Dropdown) */}
+        {header && <div className="hidden lg:block w-full">{header}</div>}
+
+        {/* MAIN TAB CONTENT AREA */}
+        <main className="w-full min-w-0 flex flex-col gap-6 lg:gap-8 z-0">
+          {statsCards && <div className="w-full">{statsCards}</div>}
+          <div className="w-full overflow-x-clip">{children}</div>
+        </main>
+      </div>
+
+      {/* MOBILE FLOATING BOTTOM DOCK */}
+      <div className="lg:hidden">
+        {tabs}
       </div>
     </div>
   );

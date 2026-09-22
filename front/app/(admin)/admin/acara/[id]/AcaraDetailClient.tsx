@@ -65,6 +65,8 @@ interface MemberItem {
   id: string;
   full_name: string;
   whatsapp_number: string;
+  stage_name?: string;
+  role?: string;
 }
 
 interface AcaraDetailClientProps {
@@ -387,7 +389,9 @@ export default function AcaraDetailClient({
   const filteredComboboxMembers = useMemo(() => {
     return availableMembers.filter(m =>
       m.full_name.toLowerCase().includes(comboboxSearch.toLowerCase()) ||
-      (m.whatsapp_number && m.whatsapp_number.includes(comboboxSearch))
+      (m.stage_name && m.stage_name.toLowerCase().includes(comboboxSearch.toLowerCase())) ||
+      (m.whatsapp_number && m.whatsapp_number.includes(comboboxSearch)) ||
+      (m.role && m.role.toLowerCase().includes(comboboxSearch.toLowerCase()))
     );
   }, [availableMembers, comboboxSearch]);
 
@@ -1111,11 +1115,23 @@ export default function AcaraDetailClient({
                             <div className="flex items-center justify-center w-4 h-4 border border-border-default rounded bg-bg-well shrink-0">
                               {isSelected && <Check className="h-3 w-3 text-text-primary" />}
                             </div>
-                            <div className="flex-1 truncate">
-                              {member.full_name}{" "}
+                            <div className="flex-1 truncate flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-text-primary">
+                                {member.full_name}
+                              </span>
+                              {member.stage_name && (
+                                <span className="text-text-secondary text-[11px] font-normal">
+                                  ({member.stage_name})
+                                </span>
+                              )}
+                              {member.role === "admin" && (
+                                <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded">
+                                  Admin
+                                </span>
+                              )}
                               {member.whatsapp_number && (
                                 <span className="text-text-muted font-normal text-[10px]">
-                                  ({member.whatsapp_number})
+                                  • {member.whatsapp_number}
                                 </span>
                               )}
                             </div>

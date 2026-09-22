@@ -1,97 +1,43 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import ImageUploader from "./ImageUploader";
 import ChangePasswordModal from "./ChangePasswordModal";
 import ChangeUsernameModal from "./ChangeUsernameModal";
-import { MemberProfile, PrimaryInterest } from "@/lib/types/member";
+import ExperienceManager from "./ExperienceManager";
+import PortfolioManager from "./PortfolioManager";
+import AchievementsManager from "./AchievementsManager";
+import { MemberProfile } from "@/lib/types/member";
 import { createClient } from "@/lib/supabase/client";
 import { compressImageForTarget } from "@/lib/utils/image-compress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Lock, Check, User, Share2, Target, Sparkles, Edit3, ChevronRight } from "lucide-react";
-import { DateBirthLine } from "@/components/ui/style-line/DateBirthLine";
-import { MultiSelectLine } from "@/components/ui/style-line/MultiSelectLine";
-import { ScaleSelectorLine } from "@/components/ui/style-line/ScaleSelectorLine";
-import { RadioGroupLine } from "@/components/ui/style-line/RadioGroupLine";
-import { InputLine } from "@/components/ui/style-line/InputLine";
-import { TextareaLine } from "@/components/ui/style-line/TextareaLine";
 import {
-  PS_CHALLENGE_OPTIONS,
-  NERVOUS_TRIGGER_OPTIONS,
-  SKILLS_TO_MASTER_OPTIONS,
-  MONETIZATION_OPTIONS,
-  EXPERT_DESIRE_OPTIONS,
-  TIME_COMMITMENT_OPTIONS,
-} from "@/app/(form)/form/member-priority/constants";
+  Lock,
+  User,
+  Briefcase,
+  Sparkles,
+  Award,
+  ChevronRight,
+  Loader2,
+  Share2,
+  Check,
+  AlertCircle,
+  RotateCcw,
+} from "lucide-react";
+import { DateBirthLine } from "@/components/ui/style-line/DateBirthLine";
 
 interface ProfileFormProps {
   member: MemberProfile;
-  onSave: () => void;
+  onSave?: () => void;
 }
 
-const INTEREST_OPTIONS = [
-  { value: 'public_speaking', label: '🎤 Public Speaking', desc: 'Bicara didepan umum', color: '#10B981' },
-  { value: 'mc_host', label: '🎙️ MC / Host', desc: 'Memandu acara', color: '#3B82F6' },
-  { value: 'voice_over', label: '🔊 Voice Over', desc: 'Pengisi suara', color: '#EF4444' },
-  { value: 'content_creator', label: '🎬 Content Creator', desc: 'Pembuat konten', color: '#EC4899' },
-  { value: 'personal_branding', label: '✨ Personal Brand', desc: 'Branding diri', color: '#F59E0B' },
-  { value: 'live_host', label: '📱 Live Host', desc: 'Host streaming', color: '#8B5CF6' },
-];
-
-const EXPERIENCE_OPTIONS = [
-  { value: 'beginner', label: 'Pemula', desc: 'Baru mulai belajar & mencari tahu' },
-  { value: 'intermediate', label: 'Menengah', desc: 'Sudah punya pengalaman / pernah praktik' },
-  { value: 'advanced', label: 'Lanjutan', desc: 'Sudah aktif bekerja secara profesional' },
-];
-
-const OCCUPATION_OPTIONS = [
-  { value: "content_creator", label: "Content Creator" },
-  { value: "student", label: "Mahasiswa / Pelajar" },
-  { value: "employee", label: "Karyawan / Karyawati" },
-  { value: "founder", label: "Pengusaha / Founder" },
-  { value: "influencer", label: "Influencer" },
-  { value: "other", label: "Lainnya" },
-];
-
-const GOAL_OPTIONS = [
-  { value: 'self_learning', label: '🌱 Mengembangkan Diri & Belajar Skill Baru' },
-  { value: 'professional_career', label: '🎤 Membangun Karier Profesional / Public Speaker' },
-  { value: 'business', label: '📈 Mendukung Bisnis & Penjualan yang Sedang Berjalan' },
-  { value: 'social_media', label: '🎬 Membuat Konten Media Sosial & Personal Brand' },
-  { value: 'monetization', label: '💰 Mengakselerasi Monetisasi (Affiliate / Endorse / Digital)' },
-  { value: 'networking', label: '🤝 Membangun Jejaring & Kolaborasi Sesama Kreator' },
-];
-
-const TOPIC_PRESETS = [
-  "Bisnis & Pemasaran",
-  "Pengembangan Diri",
-  "Karir & Produktivitas",
-  "Keuangan & Investasi",
-  "Sains & Teknologi",
-  "Edukasi & Bahasa",
-  "Seni, Musik & Hiburan",
-  "Lifestyle & Daily Vlog",
-  "Kesehatan & Olahraga",
-  "Spiritualitas & Religi",
-];
-
-const LEARNING_PREFERENCE_OPTIONS = [
-  { value: "live_class", label: "💻 Live Interactive Class (Zoom/GMeet)" },
-  { value: "mentoring_1on1", label: "🎯 Mentoring & Feedback 1-on-1" },
-  { value: "practical_workshop", label: "🎤 Workshop & Latihan Praktik Direct" },
-  { value: "content_review", label: "🎬 Bedah Konten & Review Portofolio" },
-  { value: "community_sharing", label: "👥 Sharing Session & Diskusi Komunitas" },
-];
-
 export default function ProfileForm({ member, onSave }: ProfileFormProps) {
-  const [activeTab, setActiveTab] = useState<"bio" | "social" | "goals" | "persona">("bio");
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isChangeUsernameOpen, setIsChangeUsernameOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<"identitas" | "pengalaman" | "karya" | "prestasi">("identitas");
 
-  // --- FORM STATES ---
-  // Section A: Bio & Data Diri
+  // --- FORM STATES (IDENTITAS & SOSIAL) ---
   const [fullName, setFullName] = useState(member.full_name || "");
   const [stageName, setStageName] = useState(member.stage_name || "");
   const [username, setUsername] = useState(member.username || "");
@@ -102,14 +48,29 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
   const [address, setAddress] = useState(member.address || "");
   const [occupation, setOccupation] = useState(member.occupation || "");
   const [description, setDescription] = useState(member.description || "");
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (descriptionTextareaRef.current) {
+      descriptionTextareaRef.current.style.height = "auto";
+      descriptionTextareaRef.current.style.height = `${Math.max(84, descriptionTextareaRef.current.scrollHeight)}px`;
+    }
+  }, [description, activeSection]);
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url || "");
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [isAvatarRemoved, setIsAvatarRemoved] = useState(false);
+  const [subscribedNewsletter, setSubscribedNewsletter] = useState(member.subscribed_newsletter ?? true);
 
-  // Username change cooldown (jeda 14 hari setelah pergantian username)
+  // Sosial Media
+  const [instagramUsername, setInstagramUsername] = useState(member.social_media?.instagram || "");
+  const [tiktokUsername, setTiktokUsername] = useState(member.social_media?.tiktok || "");
+  const [youtubeUrl, setYoutubeUrl] = useState(member.social_media?.youtube || "");
+  const [linkedinUrl, setLinkedinUrl] = useState(member.social_media?.linkedin || "");
+  const [portfolioUrl, setPortfolioUrl] = useState(member.portfolio_url || "");
+
+  // Username change cooldown
   let isCoolingDown = false;
   let daysRemaining = 0;
-
   if (lastUsernameChange) {
     const lastChangeTime = new Date(lastUsernameChange).getTime();
     const diffDays = (Date.now() - lastChangeTime) / (1000 * 60 * 60 * 24);
@@ -119,86 +80,67 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
     }
   }
 
-  // Section B: Sosial Media & Tautan
-  const [instagramUsername, setInstagramUsername] = useState(member.social_media?.instagram || "");
-  const [tiktokUsername, setTiktokUsername] = useState(member.social_media?.tiktok || "");
-  const [youtubeUrl, setYoutubeUrl] = useState(member.social_media?.youtube || "");
-  const [linkedinUrl, setLinkedinUrl] = useState(member.social_media?.linkedin || "");
-  const [portfolioUrl, setPortfolioUrl] = useState(member.portfolio_url || "");
-
-  // Section C: Minat & Goals Lanjutan
-  const [selectedInterests, setSelectedInterests] = useState<string[]>(member.interests?.primary_interests || []);
-  const [experienceLevel, setExperienceLevel] = useState<string>(member.interests?.experience_level || "beginner");
-  const [goals, setGoals] = useState<string[]>(member.interests?.goals || []);
-  const [contentTopics, setContentTopics] = useState<string[]>(member.interests?.content_topics || []);
-  const [availability, setAvailability] = useState<string>(member.interests?.availability || "flexible");
-  const [learningPreference, setLearningPreference] = useState<string[]>(member.interests?.learning_preference || []);
-  const [subscribedNewsletter, setSubscribedNewsletter] = useState(member.subscribed_newsletter ?? true);
-
-  // Section D: Public Speaking & Persona
-  const initialStm = member.interests?.skills_to_master || "";
-  const isStmInOptions = SKILLS_TO_MASTER_OPTIONS.includes(initialStm);
-
-  const initialMi = member.interests?.monetization_interest || "";
-  const isMiInOptions = MONETIZATION_OPTIONS.includes(initialMi);
-
-  const [psChallenges, setPsChallenges] = useState<string[]>(member.interests?.ps_challenges || []);
-  const [confidenceScale, setConfidenceScale] = useState<number | null>(member.interests?.confidence_scale ?? 5);
-  const [nervousTrigger, setNervousTrigger] = useState<string>(member.interests?.nervous_trigger || "");
-  const [skillsToMaster, setSkillsToMaster] = useState<string>(
-    initialStm ? (isStmInOptions ? initialStm : "Lainnya") : ""
-  );
-  const [customSkillsToMaster, setCustomSkillsToMaster] = useState<string>(
-    initialStm && !isStmInOptions ? initialStm : ""
-  );
-  const [roleModel, setRoleModel] = useState<string>(member.interests?.role_model || "");
-  const [monetizationInterest, setMonetizationInterest] = useState<string>(
-    initialMi ? (isMiInOptions ? initialMi : "Lainnya") : ""
-  );
-  const [customMonetizationInterest, setCustomMonetizationInterest] = useState<string>(
-    initialMi && !isMiInOptions ? initialMi : ""
-  );
-  const [targetAudience, setTargetAudience] = useState<string>(member.interests?.target_audience || "");
-  const [expertDesire, setExpertDesire] = useState<string>(member.interests?.expert_desire || "");
-  const [careerObstacle, setCareerObstacle] = useState<string>(member.interests?.career_obstacle || "");
-  const [activeCommunities, setActiveCommunities] = useState<string>(member.interests?.active_communities || "");
-  const [timeCommitment, setTimeCommitment] = useState<string>(member.interests?.time_commitment || "");
-
-  const togglePsChallenge = (val: string) => {
-    setPsChallenges((prev) => {
-      if (prev.includes(val)) return prev.filter((item) => item !== val);
-      if (prev.length >= 3) return prev;
-      return [...prev, val];
-    });
-  };
-
-  const toggleInterest = (val: string) => {
-    setSelectedInterests((prev) =>
-      prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val]
+  // Check if form is dirty (has unsaved changes)
+  const isDirty = useMemo(() => {
+    return (
+      fullName !== (member.full_name || "") ||
+      stageName !== (member.stage_name || "") ||
+      whatsappNumber !== (member.whatsapp_number || "") ||
+      birthDate !== (member.birth_date || "") ||
+      address !== (member.address || "") ||
+      occupation !== (member.occupation || "") ||
+      description !== (member.description || "") ||
+      instagramUsername !== (member.social_media?.instagram || "") ||
+      tiktokUsername !== (member.social_media?.tiktok || "") ||
+      youtubeUrl !== (member.social_media?.youtube || "") ||
+      linkedinUrl !== (member.social_media?.linkedin || "") ||
+      portfolioUrl !== (member.portfolio_url || "") ||
+      subscribedNewsletter !== (member.subscribed_newsletter ?? true) ||
+      pendingAvatarFile !== null ||
+      isAvatarRemoved
     );
-  };
+  }, [
+    fullName,
+    stageName,
+    whatsappNumber,
+    birthDate,
+    address,
+    occupation,
+    description,
+    instagramUsername,
+    tiktokUsername,
+    youtubeUrl,
+    linkedinUrl,
+    portfolioUrl,
+    subscribedNewsletter,
+    pendingAvatarFile,
+    isAvatarRemoved,
+    member,
+  ]);
 
-  const toggleGoal = (val: string) => {
-    setGoals((prev) =>
-      prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val]
-    );
-  };
-
-  const toggleTopic = (val: string) => {
-    setContentTopics((prev) =>
-      prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val]
-    );
-  };
-
-  const togglePreference = (val: string) => {
-    setLearningPreference((prev) =>
-      prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val]
-    );
+  const handleResetForm = () => {
+    setFullName(member.full_name || "");
+    setStageName(member.stage_name || "");
+    setWhatsappNumber(member.whatsapp_number || "");
+    setBirthDate(member.birth_date || "");
+    setAddress(member.address || "");
+    setOccupation(member.occupation || "");
+    setDescription(member.description || "");
+    setAvatarUrl(member.avatar_url || "");
+    setPendingAvatarFile(null);
+    setIsAvatarRemoved(false);
+    setInstagramUsername(member.social_media?.instagram || "");
+    setTiktokUsername(member.social_media?.tiktok || "");
+    setYoutubeUrl(member.social_media?.youtube || "");
+    setLinkedinUrl(member.social_media?.linkedin || "");
+    setPortfolioUrl(member.portfolio_url || "");
+    setSubscribedNewsletter(member.subscribed_newsletter ?? true);
+    toast.info("Perubahan identitas dibatalkan.");
   };
 
   const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let cleaned = e.target.value.replace(/\D/g, "");
-    if (cleaned.length > 0 && cleaned[0] !== '0') cleaned = '0' + cleaned;
+    if (cleaned.length > 0 && cleaned[0] !== "0") cleaned = "0" + cleaned;
     cleaned = cleaned.slice(0, 13);
     const parts = [];
     if (cleaned.length > 0) parts.push(cleaned.slice(0, 4));
@@ -207,8 +149,23 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
     setWhatsappNumber(parts.join("-"));
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const scrollToSection = (id: string, sectionKey: typeof activeSection) => {
+    setActiveSection(sectionKey);
+    const el = document.getElementById(id);
+    if (el) {
+      const yOffset = -100;
+      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    }
+  };
+
+  const handleSaveProfile = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!fullName.trim() || !stageName.trim() || !whatsappNumber.trim()) {
+      toast.error("Nama Lengkap, Nama Panggung, dan No. WhatsApp wajib diisi.");
+      return;
+    }
+
     setIsLoading(true);
 
     const formatYoutubeUrl = (url: string): string => {
@@ -220,9 +177,6 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
       }
       if (trimmed.startsWith("@")) {
         return `https://youtube.com/${trimmed}`;
-      }
-      if (!trimmed.includes(".")) {
-        return `https://youtube.com/@${trimmed}`;
       }
       return `https://${trimmed}`;
     };
@@ -237,9 +191,6 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
       if (trimmed.startsWith("in/")) {
         return `https://linkedin.com/${trimmed}`;
       }
-      if (!trimmed.includes(".")) {
-        return `https://linkedin.com/in/${trimmed}`;
-      }
       return `https://${trimmed}`;
     };
 
@@ -250,18 +201,12 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
       return `https://${trimmed}`;
     };
 
-    const cleanYoutube = formatYoutubeUrl(youtubeUrl);
-    const cleanLinkedin = formatLinkedinUrl(linkedinUrl);
-    const cleanPortfolio = formatWebsiteUrl(portfolioUrl);
-
     let finalAvatarUrl: string | null = avatarUrl;
 
     try {
       const supabase = createClient();
 
-      // 1. Upload foto baru jika ada file yang dipilih di penampungan sementara
       if (pendingAvatarFile) {
-        // Hapus file avatar lama di Supabase Storage untuk member ini
         try {
           const { data: existingFiles } = await supabase.storage
             .from("member-avatars")
@@ -275,7 +220,6 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
           console.warn("Cleanup old avatar error:", cleanupErr);
         }
 
-        // Kompresi dan upload avatar baru
         const compressedFile = await compressImageForTarget(pendingAvatarFile, "avatar");
         const fileName = `avatar_${Date.now()}.webp`;
         const path = `${member.id}/${fileName}`;
@@ -297,7 +241,6 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
 
         finalAvatarUrl = `${publicUrl}?t=${Date.now()}`;
       } else if (isAvatarRemoved) {
-        // Jika user menghapus foto profilnya
         try {
           const { data: existingFiles } = await supabase.storage
             .from("member-avatars")
@@ -318,844 +261,459 @@ export default function ProfileForm({ member, onSave }: ProfileFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           profile: {
-            full_name: fullName,
-            stage_name: stageName,
-            whatsapp_number: whatsappNumber,
+            full_name: fullName.trim(),
+            stage_name: stageName.trim(),
+            whatsapp_number: whatsappNumber.trim(),
             birth_date: birthDate || null,
-            address: address || null,
-            occupation,
-            description,
+            address: address.trim() || null,
+            occupation: occupation.trim() || null,
+            description: description.trim() || null,
             avatar_url: finalAvatarUrl,
             social_media: {
-              instagram: instagramUsername || null,
-              tiktok: tiktokUsername || null,
-              youtube: cleanYoutube,
-              linkedin: cleanLinkedin,
+              instagram: instagramUsername.trim() || null,
+              tiktok: tiktokUsername.trim() || null,
+              youtube: formatYoutubeUrl(youtubeUrl),
+              linkedin: formatLinkedinUrl(linkedinUrl),
             },
-            portfolio_url: cleanPortfolio,
+            portfolio_url: formatWebsiteUrl(portfolioUrl),
             subscribed_newsletter: subscribedNewsletter,
           },
-          interests: {
-            primary_interests: selectedInterests,
-            experience_level: experienceLevel,
-            goals,
-            content_topics: contentTopics,
-            availability,
-            learning_preference: learningPreference,
-            ps_challenges: psChallenges,
-            confidence_scale: confidenceScale,
-            nervous_trigger: nervousTrigger || null,
-            skills_to_master: skillsToMaster === "Lainnya" ? (customSkillsToMaster || "Lainnya") : (skillsToMaster || null),
-            role_model: roleModel || null,
-            monetization_interest: monetizationInterest === "Lainnya" ? (customMonetizationInterest || "Lainnya") : (monetizationInterest || null),
-            target_audience: targetAudience || null,
-            expert_desire: expertDesire || null,
-            career_obstacle: careerObstacle || null,
-            active_communities: activeCommunities || null,
-            time_commitment: timeCommitment || null,
-          }
         }),
       });
 
       if (!response.ok) {
         const err = await response.json();
-        let message = "Gagal memperbarui profil.";
-
-        if (err.error) {
-          if (typeof err.error === "string") {
-            message = err.error;
-          } else if (typeof err.error === "object") {
-            const fieldErrors = err.error.fieldErrors || {};
-            const messages = Object.entries(fieldErrors)
-              .map(([field, msgs]: [string, any]) => {
-                const fieldName = field.replace(/_/g, " ").toUpperCase();
-                return `${fieldName}: ${msgs.join(", ")}`;
-              });
-
-            const formErrors = err.error.formErrors || [];
-            if (formErrors.length > 0) {
-              messages.push(...formErrors);
-            }
-
-            if (messages.length > 0) {
-              message = messages.join(" | ");
-            }
-          }
-        }
-        throw new Error(message);
+        throw new Error(err.error || "Gagal memperbarui data profil.");
       }
 
-      // Reset pending file
       setPendingAvatarFile(null);
       setIsAvatarRemoved(false);
-
       toast.success("Profil Anda berhasil diperbarui!");
-      onSave();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Terjadi kesalahan jaringan.");
+      if (onSave) onSave();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const editTabs: { key: "bio" | "social" | "goals"; label: string; icon: React.ElementType }[] = [
-    { key: "bio", label: "Bio & Diri", icon: User },
-    { key: "social", label: "Sosial & Portofolio", icon: Share2 },
-    { key: "goals", label: "Minat & Target", icon: Target },
+  const navSections = [
+    { key: "identitas" as const, id: "section-identitas", label: "Identitas", icon: User },
+    { key: "pengalaman" as const, id: "section-pengalaman", label: "Jam Terbang", icon: Briefcase },
+    { key: "karya" as const, id: "section-karya", label: "Karya", icon: Sparkles },
+    { key: "prestasi" as const, id: "section-prestasi", label: "Prestasi", icon: Award },
   ];
 
   return (
-    <>
-      <div className="bg-transparent sm:bg-white dark:sm:bg-[#121212] border-0 sm:border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none">
-        {/* ═══ DESKTOP TABS HEADER (hidden on mobile, visible on sm/md/lg) ═══ */}
-        <div className="hidden sm:flex border-b border-zinc-200 dark:border-zinc-800">
-          {editTabs.map((tab, idx) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
+    <div className="space-y-10 pb-20 relative">
+      {/* ═══ STICKY ANCHOR NAV (SCROLLSPY) ═══ */}
+      <div className="sticky top-14 sm:top-16 z-30 bg-white/95 dark:bg-[#151B18]/95 backdrop-blur-md border border-[#212121]/10 dark:border-white/10 rounded-2xl p-1.5 shadow-2xs">
+        <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
+          {navSections.map((sec, idx) => {
+            const Icon = sec.icon;
+            const isActive = activeSection === sec.key;
             return (
               <button
-                key={tab.key}
+                key={sec.key}
                 type="button"
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 py-3.5 px-4 text-xs font-mono uppercase tracking-wider border-r last:border-r-0 border-zinc-200 dark:border-zinc-800 transition-all cursor-pointer flex items-center justify-center gap-2 ${isActive
-                  ? "bg-neutral-100 dark:bg-zinc-900 font-bold border-b-2 border-black dark:border-white text-black dark:text-white"
-                  : "text-zinc-500 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-zinc-900/30"
-                  }`}
+                onClick={() => scrollToSection(sec.id, sec.key)}
+                className={`flex-1 min-w-[110px] py-2 px-3 text-[11px] font-mono uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 rounded-xl cursor-pointer ${
+                  isActive
+                    ? "bg-[#212121] dark:bg-white text-white dark:text-[#212121] font-bold shadow-2xs"
+                    : "text-neutral-500 hover:text-[#212121] dark:hover:text-white hover:bg-[#F6F5FA] dark:hover:bg-neutral-800"
+                }`}
               >
-                <Icon size={14} className={isActive ? "text-black dark:text-white" : "text-zinc-400"} />
-                <span>{`[ 0${idx + 1}. ${tab.label.toUpperCase()} ]`}</span>
+                <Icon size={13} />
+                <span>{`0${idx + 1}. ${sec.label}`}</span>
               </button>
             );
           })}
         </div>
+      </div>
 
-        <form onSubmit={handleSave} className="p-0 sm:p-6 md:p-8 space-y-5 sm:space-y-6">
-          {/* TAB 1: BIO & DATA DIRI */}
-          {activeTab === "bio" && (
-            <div className="space-y-5 sm:space-y-6 animate-fade-in">
-              {/* FOTO PROFIL */}
-              <div className="flex flex-col items-center justify-center text-center gap-2.5 sm:gap-3 py-2">
-                <div className="shrink-0">
-                  <ImageUploader
-                    memberId={member.id}
-                    target="avatar"
-                    mode="deferred"
-                    initialImageUrl={avatarUrl}
-                    onUploadSuccess={setAvatarUrl}
-                    onFileSelect={(file) => {
-                      setPendingAvatarFile(file);
-                      if (file === null) {
-                        setIsAvatarRemoved(true);
-                      } else {
-                        setIsAvatarRemoved(false);
-                      }
-                    }}
-                  />
-                </div>
-                <div className="space-y-1 max-w-sm">
-                  <span className="text-xs font-bold uppercase tracking-wider block text-neutral-900 dark:text-white">FOTO PROFIL</span>
-                  <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block leading-relaxed">
-                    Ukuran gambar harus kurang dari <strong className="font-semibold text-zinc-700 dark:text-zinc-300">2MB</strong> (JPG, PNG, atau WebP).
-                  </span>
-                </div>
-              </div>
+      {/* ═══ SECTION 1: IDENTITAS & DATA DIRI (#section-identitas) ═══ */}
+      <section
+        id="section-identitas"
+        className="bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-7 space-y-6 shadow-2xs"
+      >
+        <div className="flex items-center gap-2 pb-2 border-b border-[#212121]/10 dark:border-white/10">
+          <span className="w-6 h-6 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-[#212121] dark:text-white flex items-center justify-center font-bold text-xs font-mono">
+            1
+          </span>
+          <h2 className="text-sm font-bold text-[#212121] dark:text-white uppercase tracking-wider">
+            Informasi Utama Talent
+          </h2>
+        </div>
 
-              {/* READ-ONLY ACCOUNT & SECURITY PANEL */}
-              <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-xl sm:rounded-2xl overflow-hidden">
-                <div className="flex items-center gap-2 p-3.5 sm:p-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-neutral-50/70 dark:bg-zinc-900/40">
-                  <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-500 shrink-0" />
-                  <span className="text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider text-black dark:text-white">
-                    Data Akun & Keamanan
-                  </span>
-                </div>
+        {/* FOTO PROFIL */}
+        <div className="flex flex-col items-center justify-center text-center gap-3 py-4 border-b border-[#212121]/10 dark:border-white/10">
+          <div className="relative">
+            <ImageUploader
+              memberId={member.id}
+              target="avatar"
+              mode="deferred"
+              initialImageUrl={avatarUrl}
+              onUploadSuccess={setAvatarUrl}
+              onFileSelect={(file) => {
+                setPendingAvatarFile(file);
+                setIsAvatarRemoved(file === null);
+              }}
+            />
+          </div>
+          <div className="space-y-1 max-w-sm">
+            <span className="text-xs font-bold uppercase tracking-wider block text-neutral-900 dark:text-white">
+              Foto Profil Kreator
+            </span>
+            <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              Gunakan foto portrait resolusi tinggi berlatar bersih atau saat perform di panggung. Ukuran maks. 2MB (otomatis dikompresi ke WebP).
+            </p>
+          </div>
+        </div>
 
-                <div className="divide-y divide-zinc-200/80 dark:divide-zinc-800/80 text-xs px-3.5 sm:px-4">
-                  {/* EMAIL */}
-                  <div className="py-3 sm:py-3.5 flex items-center justify-between gap-4">
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] sm:text-[11px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
-                        EMAIL AKUN
-                      </span>
-                      <span className="text-[9px] text-zinc-400 dark:text-zinc-500 block">
-                        Dikelola oleh sistem otentikasi.
-                      </span>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-mono text-xs font-medium text-black dark:text-white break-all sm:truncate">
-                        {member.email || "-"}
-                      </p>
-                    </div>
-                  </div>
+        {/* DATA AKUN & KEAMANAN (EMAIL LOCKED, USERNAME MODAL) */}
+        <div className="border border-[#212121]/10 dark:border-white/10 bg-[#F6F5FA] dark:bg-[#1E2622] rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Lock className="w-3.5 h-3.5 text-neutral-400" />
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#212121] dark:text-white">
+              Kredensial Akun & Keamanan
+            </span>
+          </div>
 
-                  {/* USERNAME (FULL ROW BUTTON) */}
-                  <button
-                    type="button"
-                    onClick={() => setIsChangeUsernameOpen(true)}
-                    className="w-full py-3 sm:py-3.5 flex items-center justify-between gap-4 text-left group hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 -mx-1.5 px-1.5 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] sm:text-[11px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block group-hover:text-black dark:group-hover:text-white transition-colors">
-                        USERNAME
-                      </span>
-                      <span className="text-[9px] text-zinc-400 dark:text-zinc-500 block">
-                        {isCoolingDown
-                          ? `Jeda 14 hari aktif (${daysRemaining} hari lagi)`
-                          : `Ketuk untuk mengganti username`}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0 text-right">
-                      <span className="font-mono text-xs font-medium text-black dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        @{username || "-"}
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:text-black dark:group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                  </button>
-
-                  {/* MEMBERSHIP TIER */}
-                  <div className="py-3 sm:py-3.5 flex items-center justify-between gap-4">
-                    <span className="text-[10px] sm:text-[11px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
-                      MEMBERSHIP TIER
-                    </span>
-                    <div className="text-right shrink-0">
-                      <span className="inline-block px-2 py-0.5 text-[9px] sm:text-[10px] font-mono font-bold uppercase border border-neutral-900 dark:border-white bg-neutral-900 dark:bg-white text-white dark:text-neutral-900">
-                        {member.membership_tier?.toUpperCase() || "FREE"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* KODE REFERRAL */}
-                  <div className="py-3 sm:py-3.5 flex items-center justify-between gap-4">
-                    <span className="text-[10px] sm:text-[11px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
-                      KODE REFERRAL / AFILIASI
-                    </span>
-                    <div className="text-right shrink-0">
-                      <p className="font-mono text-xs font-bold text-black dark:text-white">
-                        {member.affiliate_code || "-"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    NAMA LENGKAP *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    NAMA PANGGUNG *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={stageName}
-                    onChange={(e) => setStageName(e.target.value)}
-                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    NO. WHATSAPP *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={whatsappNumber}
-                    onChange={handleWhatsappChange}
-                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    PROFESI UTAMA
-                  </label>
-                  <input
-                    type="text"
-                    value={occupation}
-                    onChange={(e) => setOccupation(e.target.value)}
-                    placeholder="Content Creator, Mahasiswa, Pengusaha..."
-                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <DateBirthLine
-                    label="TANGGAL LAHIR"
-                    value={birthDate}
-                    onChange={setBirthDate}
-                    placeholder="Pilih Tanggal Lahir"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  ALAMAT LENGKAP
-                </label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Alamat tempat tinggal / jalan, kecamatan, kabupaten..."
-                  className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  BIO / DESKRIPSI SINGKAT
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  maxLength={500}
-                  placeholder="Ceritakan sedikit tentang karya, pilar, dan kepribadianmu..."
-                  className="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 p-3 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors h-24 resize-none"
-                />
-                <span className="text-[9px] font-mono text-zinc-450 float-right mt-1">
-                  {description.length}/500 KARAKTER
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
+            {/* EMAIL (DISABLED + LOCKED) */}
+            <div className="p-3.5 bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 rounded-xl space-y-1 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
+                  Email Akun
+                </span>
+                <span className="text-[9px] font-mono text-neutral-400 flex items-center gap-1">
+                  <Lock size={10} /> Terkunci
                 </span>
               </div>
+              <p className="font-mono text-xs font-semibold text-[#212121] dark:text-neutral-200">
+                {member.email || "-"}
+              </p>
+              <span className="text-[9px] text-neutral-400 block pt-0.5">
+                Saat ini email tidak dapat diubah secara mandiri.
+              </span>
             </div>
-          )}
 
-          {/* TAB 2: SOSIAL & TAUTAN PORTFOLIO */}
-          {activeTab === "social" && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Instagram & TikTok */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    INSTAGRAM
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-0 top-1.5 text-xs text-zinc-400">@</span>
-                    <input
-                      type="text"
-                      value={instagramUsername}
-                      onChange={(e) => setInstagramUsername(e.target.value)}
-                      placeholder="username"
-                      className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 pl-4 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    TIKTOK
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-0 top-1.5 text-xs text-zinc-400">@</span>
-                    <input
-                      type="text"
-                      value={tiktokUsername}
-                      onChange={(e) => setTiktokUsername(e.target.value)}
-                      placeholder="username"
-                      className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 pl-4 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* YouTube & LinkedIn */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    YOUTUBE
-                  </label>
-                  <input
-                    type="text"
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                    placeholder="Channel / @handle"
-                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                    LINKEDIN
-                  </label>
-                  <input
-                    type="text"
-                    value={linkedinUrl}
-                    onChange={(e) => setLinkedinUrl(e.target.value)}
-                    placeholder="linkedin.com/in/username"
-                    className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Portfolio / Website */}
-              <div>
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block mb-1">
-                  TAUTAN WEBSITE / PORTFOLIO UTAMA
-                </label>
-                <input
-                  type="text"
-                  value={portfolioUrl}
-                  onChange={(e) => setPortfolioUrl(e.target.value)}
-                  placeholder="https://mywebsite.com"
-                  className="w-full bg-transparent border-b border-zinc-300 dark:border-zinc-700 py-1.5 text-sm rounded-none focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: MINAT & GOALS */}
-          {activeTab === "goals" && (
-            <div className="space-y-8 animate-fade-in">
-              {/* 01. Minat Utama */}
-              <div className="space-y-3">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                  01. PILIH MINAT & PILAR UTAMAMU * (Bisa pilih lebih dari 1)
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {INTEREST_OPTIONS.map((item) => {
-                    const isSelected = selectedInterests.includes(item.value);
-                    return (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => toggleInterest(item.value)}
-                        className={`relative flex items-center space-x-2 px-3 py-2.5 border text-[11px] uppercase font-mono tracking-wider transition-all outline-none rounded-none cursor-pointer ${isSelected
-                          ? "bg-[#0A0A0A] dark:bg-white text-white dark:text-black border-black dark:border-white font-bold"
-                          : "bg-transparent border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
-                          }`}
-                      >
-                        <span
-                          className="h-2 w-2 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="truncate">{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 02. Tingkat Pengalaman */}
-              <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                  02. TINGKAT PENGALAMAN & KEMATANGAN *
-                </label>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  {EXPERIENCE_OPTIONS.map((opt) => {
-                    const isSelected = experienceLevel === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setExperienceLevel(opt.value)}
-                        className={`flex-1 p-3.5 border text-left rounded-none transition-all cursor-pointer ${isSelected
-                          ? "border-black dark:border-white bg-[#0A0A0A]/5 dark:bg-white/5 font-bold"
-                          : "border-zinc-300 dark:border-zinc-800 hover:border-black dark:hover:border-white"
-                          }`}
-                      >
-                        <span className="text-xs font-mono uppercase block">{opt.label}</span>
-                        <span className="text-[10px] text-zinc-500 dark:text-zinc-450 leading-tight block mt-1">{opt.desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 03. Goal Utama */}
-              <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                  03. APA GOAL UTAMAMU BERGABUNG DI PANGGUNG KREATOR?
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {GOAL_OPTIONS.map((g) => {
-                    const isSelected = goals.includes(g.value);
-                    return (
-                      <button
-                        key={g.value}
-                        type="button"
-                        onClick={() => toggleGoal(g.value)}
-                        className={`flex items-center justify-between p-3 border text-left text-xs rounded-none transition-all cursor-pointer ${isSelected
-                          ? "border-black dark:border-white bg-neutral-100 dark:bg-zinc-800/50 font-bold"
-                          : "border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
-                          }`}
-                      >
-                        <span className="leading-snug">{g.label}</span>
-                        {isSelected && <Check size={14} className="flex-shrink-0 ml-2" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 04. Topik Konten Favorit */}
-              <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                  04. TOPIK KONTEN & PEMINATAN BAHASAN
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {TOPIC_PRESETS.map((topic) => {
-                    const isSelected = contentTopics.includes(topic);
-                    return (
-                      <button
-                        key={topic}
-                        type="button"
-                        onClick={() => toggleTopic(topic)}
-                        className={`px-3 py-1.5 border text-xs font-mono uppercase tracking-wider transition-all rounded-none cursor-pointer ${isSelected
-                          ? "bg-black dark:bg-white text-white dark:text-black border-black dark:border-white font-bold"
-                          : "bg-transparent border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-black dark:hover:border-white"
-                          }`}
-                      >
-                        {isSelected ? `✓ ${topic}` : topic}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 05. Preferensi Metode Belajar */}
-              <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                  05. PREFERENSI & METODE BELAJAR
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {LEARNING_PREFERENCE_OPTIONS.map((pref) => {
-                    const isSelected = learningPreference.includes(pref.value);
-                    return (
-                      <button
-                        key={pref.value}
-                        type="button"
-                        onClick={() => togglePreference(pref.value)}
-                        className={`flex items-center justify-between p-3 border text-left text-xs rounded-none transition-all cursor-pointer ${isSelected
-                          ? "border-black dark:border-white bg-neutral-100 dark:bg-zinc-800/50 font-bold"
-                          : "border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-black dark:hover:border-white"
-                          }`}
-                      >
-                        <span>{pref.label}</span>
-                        {isSelected && <Check size={14} className="flex-shrink-0 ml-2" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 06. Skill Fokus & Target Audiens */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                <RadioGroupLine
-                  id="skillsToMaster"
-                  label="SKILL FOKUS YANG INGIN DIKUASAI"
-                  options={SKILLS_TO_MASTER_OPTIONS}
-                  value={skillsToMaster}
-                  onValueChange={setSkillsToMaster}
-                  customValue={customSkillsToMaster}
-                  onCustomChange={setCustomSkillsToMaster}
-                  customPlaceholder="Tuliskan skill lainnya..."
-                  idPrefix="stm_t3"
-                />
-
-                <InputLine
-                  id="targetAudience"
-                  name="targetAudience"
-                  label="TARGET AUDIENS UTAMA KREATOR"
-                  placeholder="Contoh: Mahasiswa, Gen Z, Professional..."
-                  value={targetAudience}
-                  onChange={(e) => setTargetAudience(e.target.value)}
-                />
-              </div>
-
-              {/* 07. Jalur Monetisasi & Ketersediaan Waktu */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                <RadioGroupLine
-                  id="monetizationInterest"
-                  label="JALUR MONETISASI YANG DIMINATI"
-                  options={MONETIZATION_OPTIONS}
-                  value={monetizationInterest}
-                  onValueChange={setMonetizationInterest}
-                  customValue={customMonetizationInterest}
-                  onCustomChange={setCustomMonetizationInterest}
-                  customPlaceholder="Tuliskan jalur monetisasi..."
-                  idPrefix="mi_t3"
-                />
-
-                <div className="space-y-2">
-                  <label className="text-[11px] font-bold tracking-wider text-zinc-500 dark:text-zinc-450 uppercase block">
-                    KAPAN WAKTU LUANG TERBAIKMU UNTUK SESI KELAS?
-                  </label>
-                  <Select value={availability} onValueChange={setAvailability}>
-                    <SelectTrigger className="w-full bg-transparent border-0 border-b border-zinc-300 dark:border-zinc-700 py-1.5 px-0 h-auto text-xs font-normal rounded-none focus:outline-none focus:ring-0 focus:border-black dark:focus:border-white transition-colors">
-                      <SelectValue placeholder="Pilih Waktu" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-[#121212] border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-none p-1">
-                      <SelectItem value="morning" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Pagi Hari</SelectItem>
-                      <SelectItem value="afternoon" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Siang Hari</SelectItem>
-                      <SelectItem value="evening" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Sore Hari</SelectItem>
-                      <SelectItem value="night" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Malam Hari</SelectItem>
-                      <SelectItem value="flexible" className="text-xs hover:bg-neutral-100 dark:hover:bg-zinc-900 rounded-none cursor-pointer">Fleksibel (Kapan Saja)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: PUBLIC SPEAKING & PERSONA */}
-          {activeTab === "persona" && (
-            <div className="space-y-8 animate-fade-in">
-              {/* SUB-SEKSI 1: TANTANGAN & DIAGNOSIS PUBLIC SPEAKING */}
-              <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
-                <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
-                  [ 01. TANTANGAN & DIAGNOSIS PUBLIC SPEAKING ]
-                </span>
-
-                <MultiSelectLine
-                  id="psChallenges"
-                  label="APA KENDALA TERBESAR YANG KAMU RASAKAN SAAT HARUS BICARA DI DEPAN UMUM? (PILIH MAKSIMAL 3)"
-                  options={PS_CHALLENGE_OPTIONS}
-                  selected={psChallenges}
-                  onToggle={togglePsChallenge}
-                  maxSelect={3}
-                  showRemaining
-                />
-
-                <div className="pt-4">
-                  <ScaleSelectorLine
-                    id="confidenceScale"
-                    label="DALAM SKALA 1-10, SEBERAPA PERCAYA DIRI KAMU SAAT INI JIKA DIMINTA BICARA MENDADAK?"
-                    min={1}
-                    max={10}
-                    value={confidenceScale}
-                    onChange={setConfidenceScale}
-                    minLabel="1 (SANGAT RAGU)"
-                    maxLabel="10 (SANGAT YAKIN)"
-                  />
-                </div>
-
-                <div className="pt-4">
-                  <RadioGroupLine
-                    id="nervousTrigger"
-                    label="MANA YANG LEBIH BIKIN KAMU GEMETAR BAIK SEBELUM TAMPIL MAUPUN PADA SAAT TAMPIL?"
-                    options={NERVOUS_TRIGGER_OPTIONS}
-                    value={nervousTrigger}
-                    onValueChange={setNervousTrigger}
-                    idPrefix="nt_pf"
-                  />
-                </div>
-              </div>
-
-              {/* SUB-SEKSI 2: PERSONAL BRANDING & MONETISASI */}
-              <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
-                <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
-                  [ 02. PERSONAL BRANDING & MONETISASI ]
-                </span>
-
-                <RadioGroupLine
-                  id="skillsToMaster"
-                  label="SKILL APA YANG PALING INGIN KAMU KUASAI SAAT INI?"
-                  options={SKILLS_TO_MASTER_OPTIONS}
-                  value={skillsToMaster}
-                  onValueChange={setSkillsToMaster}
-                  customValue={customSkillsToMaster}
-                  onCustomChange={setCustomSkillsToMaster}
-                  customPlaceholder="Tuliskan skill lainnya..."
-                  idPrefix="stm_pf"
-                />
-
-                <div className="pt-4">
-                  <InputLine
-                    id="roleModel"
-                    name="roleModel"
-                    label="SIAPA SOSOK PUBLIC SPEAKER ATAU CONTENT CREATOR YANG JADI PANUTAN KAMU SAAT INI?"
-                    placeholder="Contoh: Raditya Dika, Merry Riana, GaryVee, dll."
-                    value={roleModel}
-                    onChange={(e) => setRoleModel(e.target.value)}
-                  />
-                </div>
-
-                <div className="pt-4">
-                  <RadioGroupLine
-                    id="monetizationInterest"
-                    label="JALUR MONETISASI APA YANG PALING KAMU MINATI?"
-                    options={MONETIZATION_OPTIONS}
-                    value={monetizationInterest}
-                    onValueChange={setMonetizationInterest}
-                    customValue={customMonetizationInterest}
-                    onCustomChange={setCustomMonetizationInterest}
-                    customPlaceholder="Tuliskan jalur monetisasi lainnya..."
-                    idPrefix="mi_pf"
-                  />
-                </div>
-              </div>
-
-              {/* SUB-SEKSI 3: EKSPLORASI TOPIK & AUDIENS */}
-              <div className="space-y-6 border-b border-zinc-200 dark:border-zinc-800 pb-8">
-                <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
-                  [ 03. EKSPLORASI TOPIK & AUDIENS ]
-                </span>
-
-                <InputLine
-                  id="targetAudience"
-                  name="targetAudience"
-                  label="SIAPA TARGET AUDIENS YANG PALING INGIN KAMU SAPA MELALUI KONTEN ATAU BICARAMU?"
-                  placeholder="Contoh: Mahasiswa tingkat akhir, Ibu rumah tangga berbisnis, Gen Z, dll."
-                  value={targetAudience}
-                  onChange={(e) => setTargetAudience(e.target.value)}
-                />
-
-                <div className="pt-4">
-                  <RadioGroupLine
-                    id="expertDesire"
-                    label="SEBERAPA BESAR KEINGINANMU UNTUK DIKENAL SEBAGAI 'AHLI' DI BIDANG TERSEBUT?"
-                    options={EXPERT_DESIRE_OPTIONS}
-                    value={expertDesire}
-                    onValueChange={setExpertDesire}
-                    idPrefix="ed_pf"
-                  />
-                </div>
-              </div>
-
-              {/* SUB-SEKSI 4: KOMITMEN & KOMUNITAS */}
-              <div className="space-y-6">
-                <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block">
-                  [ 04. KOMITMEN & KOMUNITAS ]
-                </span>
-
-                <TextareaLine
-                  id="activeCommunities"
-                  name="activeCommunities"
-                  label="KOMUNITAS APA SAJA YANG KAMU IKUTI SECARA AKTIF SELAIN DI PANGGUNG KREATOR?"
-                  rows={2}
-                  placeholder="Tuliskan nama komunitas..."
-                  value={activeCommunities}
-                  onChange={(e) => setActiveCommunities(e.target.value)}
-                />
-
-                <div className="pt-4">
-                  <TextareaLine
-                    id="careerObstacle"
-                    name="careerObstacle"
-                    label="APA KENDALA TERBESAR KAMU SAAT INI DALAM BERKARYA/MEMBANGUN KARIR TERMASUK MEWUJUDKAN IMPIAN?"
-                    hint="Contoh: Masih ragu menentukan niche yang tepat karena merasa banyak potensi di berbagai bidang, belum memiliki portofolio yang meyakinkan, dan belum terhubung dengan mentor atau komunitas yang sesuai."
-                    rows={2}
-                    placeholder="Ceritakan kendala terbesarmu saat ini..."
-                    value={careerObstacle}
-                    onChange={(e) => setCareerObstacle(e.target.value)}
-                  />
-                </div>
-
-                <div className="pt-4">
-                  <RadioGroupLine
-                    id="timeCommitment"
-                    label="KALAU PANGGUNG KREATOR MENGADAKAN SESI MENTORING ATAU SHARING INTENSIF BUAT BAHAS SEMUA KENDALA KAMU, SEBERAPA BESAR WAKTU YANG SIAP KAMU LUANGKAN?"
-                    options={TIME_COMMITMENT_OPTIONS}
-                    value={timeCommitment}
-                    onValueChange={setTimeCommitment}
-                    idPrefix="tc_pf"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* BOTTOM SAVE BAR */}
-          <div className="pt-4 sm:pt-5 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+            {/* USERNAME (INTERACTIVE BUTTON / COOLDOWN) */}
             <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full sm:w-auto px-8 sm:px-12 py-3 bg-[#0A0A0A] dark:bg-white text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold text-[11px] sm:text-[10px] uppercase tracking-widest rounded-none transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
+              type="button"
+              onClick={() => setIsChangeUsernameOpen(true)}
+              className="p-3.5 bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 rounded-xl space-y-1 text-left group hover:border-[#212121]/40 dark:hover:border-white/40 transition-colors cursor-pointer shadow-2xs"
             >
-              {isLoading ? (
-                <svg className="animate-spin h-3.5 w-3.5 text-current" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <>Simpan Perubahan &rarr;</>
-              )}
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider group-hover:text-black dark:group-hover:text-white transition-colors">
+                  Username
+                </span>
+                <ChevronRight size={13} className="text-neutral-400 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+              <p className="font-mono text-xs font-bold text-[#212121] dark:text-white">
+                @{username || "-"}
+              </p>
+              <span className="text-[9px] text-neutral-500 block pt-0.5">
+                {isCoolingDown
+                  ? `Jeda 14 hari aktif (${daysRemaining} hari lagi)`
+                  : "Ketuk untuk mengajukan ubah username"}
+              </span>
             </button>
           </div>
-        </form>
+        </div>
 
-        {/* CHANGE USERNAME MODAL */}
-        <ChangeUsernameModal
-          isOpen={isChangeUsernameOpen}
-          onClose={() => setIsChangeUsernameOpen(false)}
-          currentUsername={username}
-          usernameChangesCount={usernameChangesCount}
-          lastUsernameChange={lastUsernameChange}
-          onSuccess={(newU, newCount, newLast) => {
-            setUsername(newU);
-            setUsernameChangesCount(newCount);
-            setLastUsernameChange(newLast);
-          }}
-        />
+        {/* INPUT DATA DIRI UTAMA */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                Nama Lengkap <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Misal: Ahmad Zaki"
+                className="w-full h-10 px-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 transition-all"
+              />
+            </div>
 
-        {/* CHANGE PASSWORD MODAL */}
-        <ChangePasswordModal
-          isOpen={isChangePasswordOpen}
-          onClose={() => setIsChangePasswordOpen(false)}
-        />
-      </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                Nama Panggung <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={stageName}
+                onChange={(e) => setStageName(e.target.value)}
+                placeholder="Misal: Zaki Speaks"
+                className="w-full h-10 px-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 transition-all"
+              />
+            </div>
+          </div>
 
-      {/* ═══ MOBILE BOTTOM NAVIGATION BAR FOR EDIT PROFILE (nempel di paling bawah, identik halaman utama profil) ═══ */}
-      <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#0f0f11]/95 backdrop-blur-lg border-t border-neutral-200/90 dark:border-neutral-800 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] pb-[env(safe-area-inset-bottom)]">
-        <nav
-          aria-label="Navigasi Tab Edit Profil"
-          className="flex items-center justify-around px-2 py-2 max-w-lg mx-auto"
-        >
-          {editTabs.map((tab, idx) => {
-            const isActive = activeTab === tab.key;
-            const Icon = tab.icon;
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                No. WhatsApp <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                required
+                value={whatsappNumber}
+                onChange={handleWhatsappChange}
+                placeholder="0812-3456-7890"
+                className="w-full h-10 px-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 transition-all"
+              />
+            </div>
 
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  setActiveTab(tab.key);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className={`relative flex flex-col items-center justify-center flex-1 py-1.5 px-1 transition-colors duration-150 cursor-pointer active:scale-95 ${isActive
-                  ? "text-neutral-950 dark:text-white font-medium"
-                  : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                  }`}
-              >
-                <div className="relative">
-                  <Icon
-                    size={20}
-                    className={`transition-all duration-150 ${isActive
-                      ? "text-neutral-950 dark:text-white stroke-[2.2]"
-                      : "text-neutral-400 dark:text-neutral-500"
-                      }`}
-                  />
-                </div>
-                <span
-                  className={`text-[10px] tracking-tight mt-1 transition-colors duration-150 ${isActive
-                    ? "text-neutral-950 dark:text-white font-semibold"
-                    : "text-neutral-400 dark:text-neutral-500 font-normal"
-                    }`}
-                >
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-    </>
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                Profesi Utama (Opsional)
+              </label>
+              <input
+                type="text"
+                value={occupation}
+                onChange={(e) => setOccupation(e.target.value)}
+                placeholder="Misal: MC / Public Speaker / Content Creator"
+                className="w-full h-10 px-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                Tanggal Lahir (Opsional)
+              </label>
+              <DateBirthLine
+                value={birthDate}
+                onChange={setBirthDate}
+                placeholder="Pilih Tanggal Lahir"
+                variant="box"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                Domisili / Alamat Kota (Opsional)
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Misal: Jakarta Selatan, DKI Jakarta"
+                className="w-full h-10 px-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+              Bio / Deskripsi Singkat (Opsional)
+            </label>
+            <textarea
+              ref={descriptionTextareaRef}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={500}
+              placeholder="Ceritakan persona panggungmu, pengalaman singkat, atau nilai unik yang kamu tawarkan..."
+              className="w-full min-h-[84px] p-3 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 resize-none transition-[border-color,background-color] leading-relaxed overflow-hidden"
+            />
+            <span className="text-[9px] font-mono text-neutral-400 float-right mt-1">
+              {description.length}/500 KARAKTER
+            </span>
+          </div>
+        </div>
+
+        {/* SOSIAL MEDIA & JEJARING */}
+        <div className="space-y-4 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center gap-2">
+            <Share2 className="w-3.5 h-3.5 text-neutral-400" />
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-900 dark:text-white">
+              Tautan Jejaring Sosial & Portfolio Web
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                Instagram (Opsional)
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute left-3 text-xs text-neutral-400 font-mono">@</span>
+                <input
+                  type="text"
+                  value={instagramUsername}
+                  onChange={(e) => setInstagramUsername(e.target.value)}
+                  placeholder="username"
+                  className="w-full h-10 pl-8 pr-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 transition-all"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                TikTok (Opsional)
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute left-3 text-xs text-neutral-400 font-mono">@</span>
+                <input
+                  type="text"
+                  value={tiktokUsername}
+                  onChange={(e) => setTiktokUsername(e.target.value)}
+                  placeholder="username"
+                  className="w-full h-10 pl-8 pr-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                YouTube Channel / Handle (Opsional)
+              </label>
+              <input
+                type="text"
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder="youtube.com/@handle"
+                className="w-full h-10 px-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                LinkedIn (Opsional)
+              </label>
+              <input
+                type="text"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                placeholder="linkedin.com/in/username"
+                className="w-full h-10 px-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+              Website / Portofolio Eksternal (Opsional)
+            </label>
+            <input
+              type="text"
+              value={portfolioUrl}
+              onChange={(e) => setPortfolioUrl(e.target.value)}
+              placeholder="https://mywebsite.com"
+              className="w-full h-10 px-3.5 bg-[#F6F5FA]/60 dark:bg-neutral-900/60 border border-[#212121]/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-[#212121] dark:focus:border-white text-xs font-medium text-[#212121] dark:text-white placeholder:text-neutral-400 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Section 1 Direct Save Button */}
+        <div className="pt-4 border-t border-[#212121]/10 dark:border-white/10 flex justify-end gap-3">
+          <button
+            type="button"
+            disabled={!isDirty}
+            onClick={handleResetForm}
+            className="h-10 px-5 text-xs font-bold rounded-xl text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors flex items-center justify-center cursor-pointer disabled:opacity-40"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            disabled={isLoading || !isDirty}
+            onClick={() => handleSaveProfile()}
+            className="h-10 px-6 text-xs font-bold rounded-xl text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-2xs"
+          >
+            {isLoading ? (
+              <span className="animate-pulse flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Menyimpan...</span>
+              </span>
+            ) : (
+              <span>Simpan Identitas</span>
+            )}
+          </button>
+        </div>
+      </section>
+
+      {/* ═══ SECTION 2: JAM TERBANG & PENGALAMAN (#section-pengalaman) ═══ */}
+      <section
+        id="section-pengalaman"
+        className="rounded-2xl border border-[#212121]/10 dark:border-white/10 bg-white dark:bg-[#151B18] p-5 sm:p-7 space-y-4 shadow-2xs"
+      >
+        <ExperienceManager memberId={member.id} />
+      </section>
+
+      {/* ═══ SECTION 3: KARYA & PORTOFOLIO (#section-karya) ═══ */}
+      <section
+        id="section-karya"
+        className="rounded-2xl border border-[#212121]/10 dark:border-white/10 bg-white dark:bg-[#151B18] p-5 sm:p-7 space-y-4 shadow-2xs"
+      >
+        <PortfolioManager memberId={member.id} />
+      </section>
+
+      {/* ═══ SECTION 4: PRESTASI & SERTIFIKASI (#section-prestasi) ═══ */}
+      <section
+        id="section-prestasi"
+        className="rounded-2xl border border-[#212121]/10 dark:border-white/10 bg-white dark:bg-[#151B18] p-5 sm:p-7 space-y-4 shadow-2xs"
+      >
+        <AchievementsManager memberId={member.id} />
+      </section>
+
+      {/* ═══ STICKY SAVE BAR (FLOATING NOTIFICATION WHEN FORM IS DIRTY) ═══ */}
+      {isDirty && (
+        <div className="fixed bottom-4 inset-x-4 sm:max-w-2xl sm:mx-auto z-40 bg-[#212121] text-white dark:bg-white dark:text-[#212121] px-4 py-3 rounded-2xl border border-white/10 dark:border-black/10 shadow-2xl flex items-center justify-between gap-3 animate-slide-up backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-[#EFF0A3] shrink-0" />
+            <span className="text-[11px] font-mono font-medium">
+              Ada perubahan profil yang belum disimpan.
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-neutral-400 hover:text-white dark:hover:text-[#212121] rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <RotateCcw size={11} /> Batal
+            </button>
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => handleSaveProfile()}
+              className="px-4 py-1.5 bg-white text-[#212121] dark:bg-[#212121] dark:text-white font-bold text-[10px] font-mono uppercase tracking-wider rounded-xl hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+            >
+              {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check size={12} />}
+              <span>Simpan Sekarang</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODALS */}
+      <ChangeUsernameModal
+        isOpen={isChangeUsernameOpen}
+        onClose={() => setIsChangeUsernameOpen(false)}
+        currentUsername={username}
+        usernameChangesCount={usernameChangesCount}
+        lastUsernameChange={lastUsernameChange}
+        onSuccess={(newU, newCount, newLast) => {
+          setUsername(newU);
+          setUsernameChangesCount(newCount);
+          setLastUsernameChange(newLast);
+        }}
+      />
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MemberProfile, ReferralMember } from "@/lib/types/member";
@@ -9,15 +9,16 @@ import { toast } from "sonner";
 import { performCompleteSignOut } from "@/lib/utils/auth-client";
 import { clearStaleAuthStorage } from "@/lib/utils/url";
 import ProfileLayout from "./components/ProfileLayout";
+import ProfileTopHeader from "./components/ProfileTopHeader";
 import ProfileSidebar from "./components/ProfileSidebar";
 import ProfileOverviewContent from "./components/ProfileOverviewContent";
 import ProfileTabs, { ProfileTab } from "./components/ProfileTabs";
-import ProfileStatsCards from "./components/ProfileStatsCards";
 import AttendanceTracker from "./components/AttendanceTracker";
 import AffiliatePanel from "./components/AffiliatePanel";
 import { Loader2 } from "lucide-react";
 import { getReferredMembersAction, getMyCommissionLedgerAction } from "@/lib/actions/referral-actions";
 import { getTabVisibilitySettingsAction, TabVisibilitySettings } from "@/lib/actions/settings-actions";
+import TabSkeleton from "./components/TabSkeleton";
 import UnderConstruction from "./components/UnderConstruction";
 import { isDedicatedAdmin } from "@/lib/constants";
 
@@ -30,7 +31,17 @@ export default function MyProfilePage() {
   const [ledger, setLedger] = useState<any[]>([]);
   const [attendanceCount, setAttendanceCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
+  const [isTabSwitching, setIsTabSwitching] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProfileTab>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab && TAB_ORDER.includes(tab as ProfileTab)) {
+        return tab as ProfileTab;
+      }
+    }
+    return "overview";
+  });
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
   const [tabSettings, setTabSettings] = useState<TabVisibilitySettings>({
     tab_attendance_enabled: true,
@@ -38,12 +49,74 @@ export default function MyProfilePage() {
     tab_affiliate_enabled: true,
   });
 
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
   const handleTabChange = (newTab: ProfileTab) => {
     if (newTab === activeTab) return;
     const oldIndex = TAB_ORDER.indexOf(activeTab);
     const newIndex = TAB_ORDER.indexOf(newTab);
     setSlideDirection(newIndex >= oldIndex ? "right" : "left");
+
+    // Trigger smooth Skeleton loading state
+    setIsTabSwitching(true);
     setActiveTab(newTab);
+    setTimeout(() => {
+      setIsTabSwitching(false);
+    }, 280);
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", newTab);
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    // Don't hijack swipe inside inputs, buttons, or horizontal scroll areas
+    if (
+      target.closest("input, textarea, select, button") ||
+      target.closest(".overflow-x-auto, .overflow-x-scroll")
+    ) {
+      touchStartX.current = null;
+      touchStartY.current = null;
+      return;
+    }
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+
+    const deltaX = touchEndX - touchStartX.current;
+    const deltaY = touchEndY - touchStartY.current;
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    // Minimum swipe threshold
+    const minSwipeDistance = 45;
+
+    // Ensure horizontal gesture intent (not vertical scroll)
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+      const currentIndex = TAB_ORDER.indexOf(activeTab);
+      if (deltaX < 0) {
+        // Swiping Left -> Next Tab
+        if (currentIndex < TAB_ORDER.length - 1) {
+          handleTabChange(TAB_ORDER[currentIndex + 1]);
+        }
+      } else {
+        // Swiping Right -> Previous Tab
+        if (currentIndex > 0) {
+          handleTabChange(TAB_ORDER[currentIndex - 1]);
+        }
+      }
+    }
   };
 
   const fetchMemberData = useCallback(async () => {
@@ -155,10 +228,9 @@ export default function MyProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-900 dark:text-white font-sans gap-3">
-        <Loader2 className="animate-spin h-7 w-7 text-neutral-900 dark:text-white" />
-        <span className="text-xs font-mono uppercase tracking-widest text-neutral-500">
-          Memuat Profil...
+      <div className="fixed inset-0 bg-white dark:bg-[#2c2c2c] text-[#2c2c2c] dark:text-white z-[9999] flex items-center justify-center select-none">
+        <span className="font-sans text-[12px] uppercase tracking-[0.3em] font-black animate-pulse">
+          Memuat Profil ...
         </span>
       </div>
     );
@@ -176,80 +248,104 @@ export default function MyProfilePage() {
     affiliate: !tabSettings.tab_affiliate_enabled,
   };
 
+  const tabsNode = (
+    <ProfileTabs
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
+      isAffiliateActive={isAffiliateActive}
+      disabledTabs={disabledTabs}
+    />
+  );
+
   return (
     <ProfileLayout
       member={member}
-      tabs={
-        <ProfileTabs
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          isAffiliateActive={isAffiliateActive}
-          disabledTabs={disabledTabs}
+      header={
+        <ProfileTopHeader
+          member={member}
+          onSignout={handleSignout}
+          isLoggingOut={isLoggingOut}
         />
       }
+      tabs={tabsNode}
       sidebar={
-        <ProfileSidebar member={member} onSignout={handleSignout} isLoggingOut={isLoggingOut} />
+        <ProfileSidebar
+          member={member}
+          onSignout={handleSignout}
+          isLoggingOut={isLoggingOut}
+          showActions={false}
+        />
       }
     >
       <div
         key={activeTab}
-        className={
-          slideDirection === "right"
-            ? "animate-tab-slide-right w-full"
-            : "animate-tab-slide-left w-full"
-        }
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className={`w-full min-h-[50vh] ${slideDirection === "right"
+            ? "animate-tab-slide-right"
+            : "animate-tab-slide-left"
+          }`}
       >
-        {activeTab === "overview" && (
-          <ProfileOverviewContent
-            member={member}
-            totalAttended={attendanceCount}
-            totalReferrals={referrals.length}
-          />
-        )}
+        {isTabSwitching ? (
+          <TabSkeleton activeTab={activeTab} />
+        ) : (
+          <>
+            {activeTab === "overview" && (
+              <ProfileOverviewContent
+                member={member}
+                totalAttended={attendanceCount}
+                totalReferrals={referrals.length}
+              />
+            )}
 
-        {activeTab === "attendance" && (
-          disabledTabs.attendance ? (
-            <UnderConstruction
-              title="Absensi Event"
-              description="Fitur Absensi Event sedang dalam peningkatan performa sistem. Terima kasih atas kesabaran Anda."
-              onBackToOverview={() => handleTabChange("overview")}
-            />
-          ) : (
-            <AttendanceTracker memberId={member.id} />
-          )
-        )}
+            {activeTab === "attendance" && (
+              disabledTabs.attendance ? (
+                <UnderConstruction
+                  title="Absensi Event"
+                  description="Fitur Absensi Event sedang dalam peningkatan performa sistem. Terima kasih atas kesabaran Anda."
+                  onBackToOverview={() => handleTabChange("overview")}
+                />
+              ) : (
+                <AttendanceTracker memberId={member.id} />
+              )
+            )}
 
-        {activeTab === "portfolio" && (
-          disabledTabs.portfolio ? (
-            <UnderConstruction
-              title="Portofolio Kreator"
-              description="Fitur manajemen portofolio karya sedang dalam pengembangan."
-              onBackToOverview={() => handleTabChange("overview")}
-            />
-          ) : (
-            <div className="bg-transparent border-0 p-0 shadow-none">
-              <PortfolioManager memberId={member.id} />
-            </div>
-          )
-        )}
+            {activeTab === "portfolio" && (
+              disabledTabs.portfolio ? (
+                <UnderConstruction
+                  title="Portofolio Kreator"
+                  description="Fitur manajemen portofolio karya sedang dalam pengembangan."
+                  onBackToOverview={() => handleTabChange("overview")}
+                />
+              ) : (
+                <div className="bg-transparent border-0 p-0 shadow-none">
+                  <PortfolioManager
+                    memberId={member.id}
+                    username={member.username || undefined}
+                  />
+                </div>
+              )
+            )}
 
-        {activeTab === "affiliate" && (
-          disabledTabs.affiliate ? (
-            <UnderConstruction
-              title="Program Affiliate"
-              description="Panel Affiliate sedang menjalani penyesuaian sistem komisi. Silakan hubungi admin untuk info lebih lanjut."
-              onBackToOverview={() => handleTabChange("overview")}
-            />
-          ) : (
-            <AffiliatePanel
-              member={member}
-              referrals={referrals}
-              ledger={ledger}
-              onAffiliateGenerated={(newCode) => {
-                setMember((prev) => (prev ? { ...prev, affiliate_code: newCode } : prev));
-              }}
-            />
-          )
+            {activeTab === "affiliate" && (
+              disabledTabs.affiliate ? (
+                <UnderConstruction
+                  title="Program Affiliate"
+                  description="Panel Affiliate sedang menjalani penyesuaian sistem komisi. Silakan hubungi admin untuk info lebih lanjut."
+                  onBackToOverview={() => handleTabChange("overview")}
+                />
+              ) : (
+                <AffiliatePanel
+                  member={member}
+                  referrals={referrals}
+                  ledger={ledger}
+                  onAffiliateGenerated={(newCode) => {
+                    setMember((prev) => (prev ? { ...prev, affiliate_code: newCode } : prev));
+                  }}
+                />
+              )
+            )}
+          </>
         )}
       </div>
     </ProfileLayout>

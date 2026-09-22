@@ -47,12 +47,12 @@ export default function ProfileStatsCards({
         {statsList.map((stat, idx) => (
           <div
             key={idx}
-            className="flex flex-col space-y-1 pr-2 border-r last:border-r-0 border-neutral-200 dark:border-neutral-800/80"
+            className="flex flex-col space-y-1 pr-2 border-r last:border-r-0 border-neutral-200 dark:border-neutral-800"
           >
             <span className="text-[9px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
               [ {stat.label} ]
             </span>
-            <span className="text-sm md:text-base font-bold font-sans tracking-wide text-neutral-900 dark:text-white uppercase">
+            <span className="text-sm md:text-base font-bold font-mono tracking-tight text-neutral-900 dark:text-white uppercase">
               {stat.value}
             </span>
           </div>
