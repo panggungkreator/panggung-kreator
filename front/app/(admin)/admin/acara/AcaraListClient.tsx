@@ -22,7 +22,8 @@ import {
   RotateCcw,
   Sparkles,
   ArrowLeft,
-  Pencil
+  Pencil,
+  ImageIcon
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -32,6 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdminPagination from "@/components/admin/AdminPagination";
+import { EventGalleryModal } from "@/components/admin/EventGalleryModal";
 
 interface AttendeeItem {
   name: string;
@@ -89,6 +91,7 @@ export default function AcaraListClient({
 }: AcaraListClientProps) {
   const [events, setEvents] = useState<EventItem[]>(initialEvents);
   const [eventToDelete, setEventToDelete] = useState<EventItem | null>(null);
+  const [selectedGalleryEvent, setSelectedGalleryEvent] = useState<EventItem | null>(null);
   const [publishModal, setPublishModal] = useState<{
     isOpen: boolean;
     eventId: string;
@@ -544,6 +547,14 @@ export default function AcaraListClient({
                           </Link>
                           <button
                             type="button"
+                            onClick={() => setSelectedGalleryEvent(evt)}
+                            className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-well border border-border-default/60 rounded-lg transition-colors cursor-pointer"
+                            title="Update Galeri & Dokumentasi"
+                          >
+                            <ImageIcon size={14} />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setEventToDelete(evt)}
                             className="p-1.5 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg cursor-pointer transition-colors"
                             title="Hapus Acara"
@@ -616,6 +627,7 @@ export default function AcaraListClient({
                         formatTime={formatTime}
                         onTogglePublish={handleTogglePublish}
                         onDelete={setEventToDelete}
+                        onOpenGallery={setSelectedGalleryEvent}
                       />
                     ))}
                   </div>
@@ -652,6 +664,7 @@ export default function AcaraListClient({
                       formatTime={formatTime}
                       onTogglePublish={handleTogglePublish}
                       onDelete={setEventToDelete}
+                      onOpenGallery={setSelectedGalleryEvent}
                     />
                   ))}
                 </div>
@@ -876,6 +889,15 @@ export default function AcaraListClient({
         isLoading={publishModal.isLoading}
         onConfirm={handleConfirmTogglePublish}
       />
+
+      {/* Event Gallery Modal */}
+      {selectedGalleryEvent && (
+        <EventGalleryModal
+          isOpen={Boolean(selectedGalleryEvent)}
+          onClose={() => setSelectedGalleryEvent(null)}
+          event={selectedGalleryEvent}
+        />
+      )}
     </div>
   );
 }
@@ -890,12 +912,14 @@ function EventCard({
   formatTime,
   onTogglePublish,
   onDelete,
+  onOpenGallery,
 }: {
   event: EventItem;
   formatDate: (str: string) => string;
   formatTime: (str: string) => string;
   onTogglePublish: (id: string, current: boolean, title: string) => void;
   onDelete: (evt: EventItem) => void;
+  onOpenGallery: (evt: EventItem) => void;
 }) {
   const router = useRouter();
   const typeInfo = getEventTypeInfo(event.event_type);
@@ -1005,6 +1029,14 @@ function EventCard({
                 <Eye className="w-3.5 h-3.5" />
                 <span>Lihat Detail</span>
               </Link>
+              <button
+                type="button"
+                onClick={() => onOpenGallery(event)}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-well transition-colors text-left cursor-pointer"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>Update Galeri</span>
+              </button>
               <button
                 type="button"
                 onClick={() => onTogglePublish(event.id, event.is_published, event.title)}

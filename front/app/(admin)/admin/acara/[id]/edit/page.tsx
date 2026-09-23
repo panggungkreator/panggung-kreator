@@ -65,5 +65,27 @@ export default async function AcaraEditPage({
     return notFound();
   }
 
-  return <AcaraEditForm event={event} venues={venues} initialEventTypes={eventTypes} />;
+  // Fetch associated gallery album
+  let galleryAlbum = null;
+  try {
+    const { data: gData } = await supabase
+      .from("gallery_albums")
+      .select("*")
+      .or(`event_id.eq.${eventId},title.eq.${event.title}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    galleryAlbum = gData || null;
+  } catch (gErr) {
+    console.warn("Notice: Gagal mengambil data galeri untuk acara:", gErr);
+  }
+
+  return (
+    <AcaraEditForm
+      event={event}
+      venues={venues}
+      initialEventTypes={eventTypes}
+      initialGalleryAlbum={galleryAlbum}
+    />
+  );
 }

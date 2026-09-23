@@ -136,9 +136,25 @@ export default async function AcaraDetailPage({
     is_published: event.is_published ?? false,
   };
 
+  // Fetch associated gallery album
+  let gallery = null;
+  try {
+    const { data: gData } = await supabase
+      .from("gallery_albums")
+      .select("id, hero_image_url, album_link, is_published, description")
+      .or(`event_id.eq.${eventId},title.eq.${event.title}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    gallery = gData || null;
+  } catch (gErr) {
+    console.warn("Notice: Gagal mengambil data galeri untuk acara:", gErr);
+  }
+
   return (
     <AcaraDetailClient
       event={formattedEvent}
+      gallery={gallery}
       initialAttendances={formattedAttendances}
       members={members}
       permMap={permMap}

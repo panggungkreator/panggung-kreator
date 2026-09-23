@@ -27,7 +27,9 @@ import {
   ExternalLink,
   Sparkles,
   ListOrdered,
-  Pencil
+  Pencil,
+  ImageIcon,
+  CheckCircle2,
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -36,6 +38,7 @@ import { manualAttendanceAddAction } from "@/lib/actions/attendance-actions";
 import { Modal } from "@/components/ui/Modal";
 import { ModalConfirmation } from "@/components/ui/Modal-Confirmation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { EventGalleryModal } from "@/components/admin/EventGalleryModal";
 
 interface EventDetail {
   id: string;
@@ -48,6 +51,14 @@ interface EventDetail {
   location: string;
   capacity: number;
   is_published: boolean;
+}
+
+interface GalleryDetail {
+  id: string;
+  hero_image_url: string | null;
+  album_link: string | null;
+  is_published: boolean;
+  description: string | null;
 }
 
 interface AttendanceRecord {
@@ -71,6 +82,7 @@ interface MemberItem {
 
 interface AcaraDetailClientProps {
   event: EventDetail;
+  gallery?: GalleryDetail | null;
   initialAttendances: AttendanceRecord[];
   members: MemberItem[];
   permMap: Record<string, string[]>;
@@ -88,6 +100,7 @@ const EVENT_TYPE_MAP: Record<string, { label: string; dotColor: string }> = {
 
 export default function AcaraDetailClient({
   event,
+  gallery,
   initialAttendances,
   members,
   permMap,
@@ -108,6 +121,12 @@ export default function AcaraDetailClient({
   const [success, setSuccess] = useState("");
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [currentGallery, setCurrentGallery] = useState<GalleryDetail | null | undefined>(gallery);
+  const [isGalleryModalOpen, setIsGalleryModalOpen] = useState(false);
+
+  useEffect(() => {
+    setCurrentGallery(gallery);
+  }, [gallery]);
 
 
 
@@ -423,13 +442,23 @@ export default function AcaraDetailClient({
         </div>
 
         {canEdit && (
-          <Link
-            href={`/admin/acara/${event.id}/edit`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-border-default hover:border-text-primary bg-bg-card hover:bg-bg-well text-xs font-semibold text-text-primary transition-colors cursor-pointer shrink-0 shadow-xs"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            <span>Edit Acara</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsGalleryModalOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-border-default hover:border-text-primary bg-bg-card hover:bg-bg-well text-xs font-semibold text-text-primary transition-colors cursor-pointer shrink-0 shadow-xs"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Galeri</span>
+            </button>
+            <Link
+              href={`/admin/acara/${event.id}/edit`}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-border-default hover:border-text-primary bg-bg-card hover:bg-bg-well text-xs font-semibold text-text-primary transition-colors cursor-pointer shrink-0 shadow-xs"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span>Edit Acara</span>
+            </Link>
+          </div>
         )}
       </div>
 
@@ -463,6 +492,18 @@ export default function AcaraDetailClient({
                 <p className="text-[10px] text-text-muted uppercase font-medium mt-0.5">{event.event_type.replace("_", " ")}</p>
               </div>
             </div>
+
+            {/* Info 3: Presensi */}
+            <div className="flex items-start gap-3 pl-6">
+              <div className="p-2 rounded-lg bg-bg-well text-text-primary border border-border-default/50 shrink-0">
+                <Users className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Presensi</p>
+                <p className="text-xs font-bold text-text-primary mt-0.5 font-mono">{stats.present} Hadir / {stats.total} Terdaftar</p>
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">{stats.percentage}% Kehadiran</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -490,6 +531,16 @@ export default function AcaraDetailClient({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 Live Auto-Reload
               </span>
+
+              <button
+                type="button"
+                onClick={() => setIsGalleryModalOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold bg-bg-card hover:bg-bg-well text-text-primary rounded-lg border border-border-default transition-colors cursor-pointer shrink-0 shadow-xs"
+                title="Kelola Dokumentasi & Galeri Kegiatan"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>Galeri {currentGallery?.is_published ? "(Live)" : (currentGallery?.hero_image_url || currentGallery?.album_link) ? "(Draft)" : ""}</span>
+              </button>
 
               {canCreate && (
                 <button
@@ -778,6 +829,16 @@ export default function AcaraDetailClient({
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsGalleryModalOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold bg-bg-card hover:bg-bg-well text-text-primary rounded-lg border border-border-default transition-colors cursor-pointer shrink-0 shadow-xs"
+                title="Kelola Dokumentasi & Galeri Kegiatan"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>Galeri</span>
+              </button>
+
               {canCreate && (
                 <button
                   type="button"
@@ -988,6 +1049,19 @@ export default function AcaraDetailClient({
             title="Ekspor CSV"
           >
             <FileDown className="w-4 h-4" />
+          </button>
+
+          {/* Tombol Galeri & Dokumentasi Kegiatan */}
+          <button
+            type="button"
+            onClick={() => setIsGalleryModalOpen(true)}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer relative"
+            title="Galeri & Dokumentasi Kegiatan"
+          >
+            <ImageIcon className="w-4 h-4 text-amber-400" />
+            {currentGallery?.is_published && (
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            )}
           </button>
 
           {/* Tombol Tambah Peserta Absen */}
@@ -1272,6 +1346,16 @@ export default function AcaraDetailClient({
         onConfirm={confirmModal.onConfirm}
         isLoading={confirmModal.isLoading}
         type={confirmModal.type}
+      />
+
+      {/* Event Gallery Modal */}
+      <EventGalleryModal
+        isOpen={isGalleryModalOpen}
+        onClose={() => setIsGalleryModalOpen(false)}
+        event={event}
+        initialGallery={currentGallery}
+        canEdit={canEdit}
+        onSaved={(g) => setCurrentGallery(g as GalleryDetail)}
       />
     </div>
   );

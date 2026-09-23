@@ -19,12 +19,18 @@ import {
   Pencil,
   Tag,
   VectorSquare,
-  Bookmark
+  Bookmark,
+  ImageIcon,
+  Upload,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { TimePicker } from "@/components/ui/TimePicker";
 import { updateEventAction, EventTypeItem } from "@/lib/actions/event-actions";
+import { saveGalleryAlbumAction } from "@/lib/actions/gallery-actions";
+import { createClient } from "@/lib/supabase/client";
+import { compressImage } from "@/lib/file-compress";
 
 interface VenueItem {
   id: string;
@@ -48,16 +54,26 @@ interface EventData {
   is_published: boolean;
 }
 
+interface GalleryAlbumData {
+  id: string;
+  hero_image_url?: string | null;
+  album_link?: string | null;
+  description?: string | null;
+  is_published?: boolean;
+}
+
 interface AcaraEditFormProps {
   event: EventData;
   venues: VenueItem[];
   initialEventTypes?: EventTypeItem[];
+  initialGalleryAlbum?: GalleryAlbumData | null;
 }
 
 export default function AcaraEditForm({
   event,
   venues,
   initialEventTypes = [],
+  initialGalleryAlbum,
 }: AcaraEditFormProps) {
   const router = useRouter();
 
@@ -86,6 +102,44 @@ export default function AcaraEditForm({
   const [location, setLocation] = useState(event.location || "");
   const [capacity, setCapacity] = useState(event.capacity || 50);
   const [isPublished, setIsPublished] = useState(event.is_published ?? true);
+
+  // Gallery Form States
+  const [initialHeroImageUrl] = useState(initialGalleryAlbum?.hero_image_url || "");
+  const [galleryHeroImageFile, setGalleryHeroImageFile] = useState<File | null>(null);
+  const [galleryPreviewUrl, setGalleryPreviewUrl] = useState(initialGalleryAlbum?.hero_image_url || "");
+  const [galleryDriveLink, setGalleryDriveLink] = useState(initialGalleryAlbum?.album_link || "");
+  const [isGalleryPublished, setIsGalleryPublished] = useState(
+    initialGalleryAlbum ? (initialGalleryAlbum.is_published ?? false) : false
+  );
+
+  const handleGalleryImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Hanya file gambar yang diizinkan!");
+        return;
+      }
+      setGalleryHeroImageFile(file);
+      setGalleryPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveGalleryImage = () => {
+    setGalleryHeroImageFile(null);
+    setGalleryPreviewUrl("");
+  };
+
+  const getStoragePathFromUrl = (url: string, bucketName: string): string | null => {
+    try {
+      const parts = url.split(`/public/${bucketName}/`);
+      if (parts.length > 1) {
+        return decodeURIComponent(parts[1]);
+      }
+    } catch (e) {
+      console.error("Failed to parse storage path from url:", e);
+    }
+    return null;
+  };
 
   // Dynamic Venue Combobox states
   const [isVenueDropdownOpen, setIsVenueDropdownOpen] = useState(false);
@@ -204,6 +258,7 @@ export default function AcaraEditForm({
     setIsSubmitting(true);
 
     try {
+      // 1. Update Event
       const res = await updateEventAction(event.id, {
         title: title.trim(),
         description: description.trim(),
@@ -220,7 +275,78 @@ export default function AcaraEditForm({
         throw new Error(res.error || "Gagal menyimpan perubahan acara.");
       }
 
-      toast.success("Perubahan acara berhasil disimpan!");
+      // 2. Upload new gallery thumbnail if selected
+      let finalHeroImageUrl = galleryPreviewUrl;
+      const supabase = createClient();
+
+      if (galleryHeroImageFile) {
+        try {
+          let compressedFile = await compressImage(galleryHeroImageFile);
+          if (compressedFile.size > 2 * 1024 * 1024) {
+            compressedFile = await compressImage(compressedFile, 1200, 1200, 0.6);
+          }
+
+          const fileExt = compressedFile.name.split(".").pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+          const filePath = `${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("gallery")
+            .upload(filePath, compressedFile, {
+              cacheControl: "3600",
+              upsert: false,
+              contentType: compressedFile.type || "image/jpeg",
+            });
+
+          if (uploadError) throw uploadError;
+
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("gallery").getPublicUrl(filePath);
+
+          finalHeroImageUrl = publicUrl;
+        } catch (uploadErr: any) {
+          console.error("Gallery image upload error:", uploadErr);
+          throw new Error("Gagal mengunggah foto sampul galeri: " + (uploadErr.message || uploadErr));
+        }
+      } else if (!galleryPreviewUrl) {
+        finalHeroImageUrl = "";
+      }
+
+      // 3. Save / update gallery album
+      const cleanCategory =
+        eventType
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "") || "lainnya";
+
+      const galRes = await saveGalleryAlbumAction(
+        {
+          event_id: event.id,
+          title: title.trim(),
+          category: cleanCategory,
+          event_date: eventDate,
+          hero_image_url: finalHeroImageUrl.trim() || null,
+          album_link: galleryDriveLink.trim() || null,
+          description: description.trim() || null,
+          is_published: isGalleryPublished,
+        },
+        initialGalleryAlbum?.id
+      );
+
+      if (!galRes.success) {
+        console.warn("Notice: Gagal memperbarui galeri album:", galRes.error);
+      }
+
+      // 4. Clean up old image if replaced
+      if (initialHeroImageUrl && initialHeroImageUrl !== finalHeroImageUrl) {
+        const oldPath = getStoragePathFromUrl(initialHeroImageUrl, "gallery");
+        if (oldPath) {
+          await supabase.storage.from("gallery").remove([oldPath]);
+        }
+      }
+
+      toast.success("Perubahan acara dan galeri berhasil disimpan!");
       router.push(`/admin/acara/${event.id}`);
       router.refresh();
     } catch (err: any) {
@@ -682,6 +808,85 @@ export default function AcaraEditForm({
               />
               <span>Publish acara langsung (Terlihat di web publik)</span>
             </label>
+          </div>
+
+          {/* ═══ SEKSI DOKUMENTASI & GALERI KEGIATAN ═══ */}
+          <div id="galeri" className="pt-6 border-t border-border-default/60 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-bg-well text-text-primary border border-border-default/60 shrink-0">
+                <ImageIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">
+                  Dokumentasi & Galeri Kegiatan
+                </h3>
+                <p className="text-[11px] text-text-secondary mt-0.5">
+                  Foto sampul, tautan Google Drive, dan publikasi ke halaman galeri komunitas.
+                </p>
+              </div>
+            </div>
+
+            {/* Upload Foto Sampul */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold text-text-secondary">
+                Foto Sampul / Banner Galeri
+              </label>
+
+              {galleryPreviewUrl ? (
+                <div className="relative rounded-2xl overflow-hidden border border-border-default aspect-video max-w-md bg-bg-well">
+                  <img src={galleryPreviewUrl} alt="Preview Sampul" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={handleRemoveGalleryImage}
+                    className="absolute top-2.5 right-2.5 p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors cursor-pointer"
+                    title="Hapus Foto"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <label className="border-2 border-dashed border-border-default bg-bg-well/40 hover:bg-bg-well/70 rounded-2xl p-6 flex flex-col items-center justify-center space-y-2 cursor-pointer transition-all max-w-md">
+                  <ImageIcon className="w-8 h-8 text-text-muted" />
+                  <p className="text-xs font-bold text-text-primary">
+                    Pilih Foto Sampul Dokumentasi
+                  </p>
+                  <p className="text-[10px] text-text-muted">Maksimal 5MB (JPG, PNG, WEBP)</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleGalleryImageChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Link Google Drive */}
+            <div>
+              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
+                Tautan Google Drive (Folder Dokumentasi Lengkap)
+              </label>
+              <input
+                type="url"
+                value={galleryDriveLink}
+                onChange={(e) => setGalleryDriveLink(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/..."
+                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
+              />
+            </div>
+
+            {/* Checklist Publikasi Galeri (Sesuai Permintaan Gambar User) */}
+            <div className="pt-2 border-t border-border-default/40">
+              <label className="flex items-center gap-2.5 text-xs text-text-primary font-semibold cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isGalleryPublished}
+                  onChange={(e) => setIsGalleryPublished(e.target.checked)}
+                  className="w-4 h-4 rounded border-border-default bg-bg-well text-blue-600 focus:ring-0 focus:ring-offset-0 transition-colors cursor-pointer"
+                />
+                <span>Publikasikan album ini langsung ke halaman Galeri Komunitas</span>
+              </label>
+            </div>
           </div>
 
           {/* Buttons */}
