@@ -6,14 +6,15 @@ import { createClient } from "@/lib/supabase/client";
 import { MemberProfile } from "@/lib/types/member";
 import { Search, MapPin, Award, User, Sparkles } from "lucide-react";
 import Logo from "@/components/ui/Logo";
+import { SelectLine } from "@/components/ui/SelectLine";
 
 const INTERESTS = [
   { value: 'public_speaking', label: 'Public Speaking' },
-  { value: 'mc_host',         label: 'MC / Host' },
-  { value: 'voice_over',      label: 'Voice Over' },
+  { value: 'mc_host', label: 'MC / Host' },
+  { value: 'voice_over', label: 'Voice Over' },
   { value: 'content_creator', label: 'Content Creator' },
   { value: 'personal_branding', label: 'Personal Branding' },
-  { value: 'live_host',       label: 'Live Host' },
+  { value: 'live_host', label: 'Live Host' },
 ];
 
 export default function TalentShowcasePage() {
@@ -26,7 +27,7 @@ export default function TalentShowcasePage() {
     setIsLoading(true);
     try {
       const supabase = createClient();
-      
+
       // Query member dengan detail kuesioner interest-nya
       let query = supabase
         .from("members")
@@ -67,7 +68,7 @@ export default function TalentShowcasePage() {
   return (
     <div className="min-h-screen w-full bg-[#FAF9F6] dark:bg-[#0A0A0A] text-black dark:text-white font-sans selection:bg-black selection:text-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl w-full mx-auto space-y-8">
-        
+
         {/* HEADER BRANDING */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b-2 border-black dark:border-zinc-800 pb-6 gap-4">
           <h1 className="text-3xl lg:text-4xl font-serif italic tracking-tight leading-none text-black dark:text-white">
@@ -76,9 +77,6 @@ export default function TalentShowcasePage() {
               Showcase & Directory
             </span>
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-450 font-mono uppercase tracking-wider">
-            [ MENAMPILKAN KREATOR TERBAIK INDONESIA ]
-          </p>
         </div>
 
         {/* SEARCH & FILTERS BAR */}
@@ -97,18 +95,15 @@ export default function TalentShowcasePage() {
           </div>
 
           <div className="relative">
-            <select
+            <SelectLine
               value={selectedInterest}
-              onChange={(e) => setSelectedInterest(e.target.value)}
-              className="w-full bg-transparent border-b border-zinc-200 dark:border-zinc-800 py-1.5 text-xs rounded-none focus:outline-none focus:border-black dark:focus:border-white text-zinc-500 dark:text-zinc-400 cursor-pointer appearance-none"
-            >
-              <option value="">Semua Bidang Minat</option>
-              {INTERESTS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              onValueChange={setSelectedInterest}
+              placeholder="Semua Bidang Minat"
+              options={[
+                { value: "", label: "Semua Bidang Minat" },
+                ...INTERESTS,
+              ]}
+            />
           </div>
         </div>
 
@@ -145,7 +140,7 @@ export default function TalentShowcasePage() {
                       <User size={64} />
                     </div>
                   )}
-                  
+
                   {talent.membership_tier !== "free" && (
                     <div className="absolute top-2 right-2 bg-amber-500 text-white font-sans text-[7px] uppercase font-bold tracking-wider px-1.5 py-0.5 border border-amber-600">
                       Pro
@@ -159,7 +154,7 @@ export default function TalentShowcasePage() {
                     <h3 className="text-sm font-bold uppercase tracking-tight text-black dark:text-white line-clamp-1">
                       {talent.stage_name || talent.full_name}
                     </h3>
-                    
+
                     {talent.occupation && talent.occupation !== "other" && (
                       <span className="text-[10px] text-zinc-500 dark:text-zinc-450 block uppercase tracking-wider font-mono">
                         {talent.occupation.replace('_', ' ')}
