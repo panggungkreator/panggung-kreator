@@ -40,6 +40,14 @@ interface AttendeeItem {
   avatar: string | null;
 }
 
+interface EventGalleryItem {
+  id?: string;
+  hero_image_url: string | null;
+  album_link: string | null;
+  is_published: boolean;
+  description: string | null;
+}
+
 interface EventItem {
   id: string;
   title: string;
@@ -55,6 +63,7 @@ interface EventItem {
   present_count: number;
   total_registered: number;
   attendees?: AttendeeItem[];
+  gallery?: EventGalleryItem | null;
 }
 
 interface AcaraListClientProps {
@@ -548,10 +557,13 @@ export default function AcaraListClient({
                           <button
                             type="button"
                             onClick={() => setSelectedGalleryEvent(evt)}
-                            className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-well border border-border-default/60 rounded-lg transition-colors cursor-pointer"
-                            title="Update Galeri & Dokumentasi"
+                            className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-well border border-border-default/60 rounded-lg transition-colors cursor-pointer relative"
+                            title={evt.gallery?.hero_image_url || evt.gallery?.album_link ? "Lihat/Edit Galeri Kegiatan" : "Tambah Galeri Kegiatan"}
                           >
-                            <ImageIcon size={14} />
+                            <ImageIcon size={14} className={evt.gallery?.hero_image_url || evt.gallery?.album_link ? "text-amber-600 dark:text-amber-400" : ""} />
+                            {evt.gallery?.is_published && (
+                              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            )}
                           </button>
                           <button
                             type="button"
@@ -896,6 +908,19 @@ export default function AcaraListClient({
           isOpen={Boolean(selectedGalleryEvent)}
           onClose={() => setSelectedGalleryEvent(null)}
           event={selectedGalleryEvent}
+          initialGallery={selectedGalleryEvent.gallery}
+          onSaved={(updated) => {
+            setEvents((prev) =>
+              prev.map((item) =>
+                item.id === selectedGalleryEvent.id
+                  ? { ...item, gallery: updated as any }
+                  : item
+              )
+            );
+            setSelectedGalleryEvent((prev) =>
+              prev ? { ...prev, gallery: updated as any } : null
+            );
+          }}
         />
       )}
     </div>

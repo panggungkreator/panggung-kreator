@@ -48,6 +48,39 @@ export async function saveGalleryAlbumAction(
     };
   }
 
+  let targetId = id;
+  if (!targetId && data.event_id) {
+    try {
+      const { data: existingByEvent } = await supabase
+        .from("gallery_albums")
+        .select("id")
+        .eq("event_id", data.event_id)
+        .maybeSingle();
+      if (existingByEvent?.id) {
+        targetId = existingByEvent.id;
+      }
+    } catch {
+      // event_id column might not be present yet
+    }
+  }
+
+  if (!targetId && data.title) {
+    try {
+      const { data: existingByTitle } = await supabase
+        .from("gallery_albums")
+        .select("id")
+        .ilike("title", data.title.trim())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existingByTitle?.id) {
+        targetId = existingByTitle.id;
+      }
+    } catch {
+      // continue
+    }
+  }
+
   const baseSlug =
     data.slug?.trim() ||
     data.title
@@ -56,7 +89,7 @@ export async function saveGalleryAlbumAction(
       .replace(/(^-|-$)/g, "");
 
   // Jika edit, pastikan slug tidak bentrok dengan album lain
-  const generatedSlug = id ? `${baseSlug}-${id.slice(0, 6)}` : baseSlug;
+  const generatedSlug = targetId ? `${baseSlug}-${targetId.slice(0, 6)}` : baseSlug;
 
   const payload: Record<string, any> = {
     title: data.title.trim(),
@@ -76,11 +109,11 @@ export async function saveGalleryAlbumAction(
   }
 
   const { error } = await syncDualOperation(async (client) => {
-    if (id) {
+    if (targetId) {
       let { error: err } = await client
         .from("gallery_albums")
         .update(payload)
-        .eq("id", id);
+        .eq("id", targetId);
 
       // 1. Fallback jika kolom event_id belum ada di database
       if (
@@ -93,7 +126,7 @@ export async function saveGalleryAlbumAction(
         const res = await client
           .from("gallery_albums")
           .update(fallbackPayload)
-          .eq("id", id);
+          .eq("id", targetId);
         err = res.error;
       }
 
@@ -107,7 +140,7 @@ export async function saveGalleryAlbumAction(
         const res = await client
           .from("gallery_albums")
           .update(retryPayload)
-          .eq("id", id);
+          .eq("id", targetId);
         err = res.error;
       }
 

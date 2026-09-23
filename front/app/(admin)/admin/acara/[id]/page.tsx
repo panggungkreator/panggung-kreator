@@ -142,11 +142,21 @@ export default async function AcaraDetailPage({
     const { data: gData } = await supabase
       .from("gallery_albums")
       .select("id, hero_image_url, album_link, is_published, description")
-      .or(`event_id.eq.${eventId},title.eq.${event.title}`)
-      .order("created_at", { ascending: false })
-      .limit(1)
+      .eq("event_id", eventId)
       .maybeSingle();
-    gallery = gData || null;
+
+    if (gData) {
+      gallery = gData;
+    } else if (event?.title) {
+      const { data: titleGData } = await supabase
+        .from("gallery_albums")
+        .select("id, hero_image_url, album_link, is_published, description")
+        .ilike("title", event.title.trim())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      gallery = titleGData || null;
+    }
   } catch (gErr) {
     console.warn("Notice: Gagal mengambil data galeri untuk acara:", gErr);
   }

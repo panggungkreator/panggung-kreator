@@ -72,6 +72,7 @@ export function EventGalleryModal({
     initialGallery?.is_published ?? false
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [formError, setFormError] = useState("");
 
   // Sync state on open or initialGallery change
@@ -90,24 +91,57 @@ export function EventGalleryModal({
         initialGallery?.hero_image_url || initialGallery?.album_link
       );
       setMode(hasData ? "view" : "edit");
-    } else if (event?.id) {
-      setIsLoading(true);
+      setIsFetching(false);
+    } else if (event?.id || event?.title) {
+      setIsFetching(true);
       const supabase = createClient();
-      supabase
-        .from("gallery_albums")
-        .select("id, hero_image_url, album_link, is_published, description, event_id")
-        .eq("event_id", event.id)
-        .maybeSingle()
-        .then((res: { data: GalleryData | null; error: unknown }) => {
-          setIsLoading(false);
-          const data = res.data;
-          const error = res.error;
-          if (data && !error) {
-            setGallery(data);
-            setPreviewUrl(data.hero_image_url || "");
-            setDriveLink(data.album_link || "");
-            setIsPublished(data.is_published ?? false);
-            const hasData = Boolean(data.hero_image_url || data.album_link);
+
+      (async () => {
+        try {
+          let albumData: (GalleryData & { title?: string }) | null = null;
+
+          // 1. Primary: Cari berdasarkan event_id
+          if (event?.id) {
+            try {
+              const { data: byEventId, error: errEvent } = await supabase
+                .from("gallery_albums")
+                .select("id, hero_image_url, album_link, is_published, description, event_id, title")
+                .eq("event_id", event.id)
+                .maybeSingle();
+
+              if (byEventId && !errEvent) {
+                albumData = byEventId;
+              }
+            } catch {
+              // Jika kolom event_id belum dieksekusi, lanjut ke fallback
+            }
+          }
+
+          // 2. Fallback: Cari berdasarkan judul acara
+          if (!albumData && event?.title?.trim()) {
+            try {
+              const { data: byTitle, error: errTitle } = await supabase
+                .from("gallery_albums")
+                .select("id, hero_image_url, album_link, is_published, description, title")
+                .ilike("title", event.title.trim())
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (byTitle && !errTitle) {
+                albumData = byTitle;
+              }
+            } catch {
+              // Ignore
+            }
+          }
+
+          if (albumData) {
+            setGallery(albumData);
+            setPreviewUrl(albumData.hero_image_url || "");
+            setDriveLink(albumData.album_link || "");
+            setIsPublished(albumData.is_published ?? false);
+            const hasData = Boolean(albumData.hero_image_url || albumData.album_link);
             setMode(hasData ? "view" : "edit");
           } else {
             setGallery(null);
@@ -116,9 +150,19 @@ export function EventGalleryModal({
             setIsPublished(false);
             setMode("edit");
           }
-        });
+        } catch (err) {
+          console.error("Failed to load gallery for event:", err);
+          setGallery(null);
+          setPreviewUrl("");
+          setDriveLink("");
+          setIsPublished(false);
+          setMode("edit");
+        } finally {
+          setIsFetching(false);
+        }
+      })();
     }
-  }, [isOpen, initialGallery, event?.id]);
+  }, [isOpen, initialGallery, event?.id, event?.title]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -232,7 +276,7 @@ export function EventGalleryModal({
       }
 
       const updatedData: GalleryData = {
-        id: gallery?.id,
+        id: (res as any)?.data?.id || gallery?.id,
         event_id: event.id,
         hero_image_url: finalHeroImageUrl.trim() || null,
         album_link: driveLink.trim() || null,
@@ -240,6 +284,7 @@ export function EventGalleryModal({
       };
 
       setGallery(updatedData);
+      setHeroImageFile(null);
       toast.success("Dokumentasi galeri berhasil disimpan!");
       if (onSaved) onSaved(updatedData);
       setMode("view");
@@ -260,15 +305,17 @@ export function EventGalleryModal({
       maxWidth="max-w-lg"
       icon={<ImageIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
       title={
-        mode === "view"
+        isFetching
+          ? "Memuat Galeri..."
+          : mode === "view"
           ? "Dokumentasi & Galeri"
-          : hasExistingData
+          : hasExistingData || gallery?.id
           ? "Edit Dokumentasi & Galeri"
           : "Tambah Dokumentasi & Galeri"
       }
       subtitle={`Acara: ${event.title}`}
       headerRight={
-        mode === "view" && canEdit ? (
+        !isFetching && mode === "view" && canEdit ? (
           <button
             type="button"
             onClick={() => setMode("edit")}
@@ -280,7 +327,12 @@ export function EventGalleryModal({
         ) : null
       }
     >
-      {mode === "view" ? (
+      {isFetching ? (
+        <div className="py-16 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+          <p className="text-xs text-text-muted">Memuat data galeri kegiatan...</p>
+        </div>
+      ) : mode === "view" ? (
         /* ═══ VIEW (READONLY) MODE ═══ */
         <div className="space-y-4 py-1">
           {/* Foto Sampul */}

@@ -71,11 +71,21 @@ export default async function AcaraEditPage({
     const { data: gData } = await supabase
       .from("gallery_albums")
       .select("*")
-      .or(`event_id.eq.${eventId},title.eq.${event.title}`)
-      .order("created_at", { ascending: false })
-      .limit(1)
+      .eq("event_id", eventId)
       .maybeSingle();
-    galleryAlbum = gData || null;
+
+    if (gData) {
+      galleryAlbum = gData;
+    } else if (event?.title) {
+      const { data: titleGData } = await supabase
+        .from("gallery_albums")
+        .select("*")
+        .ilike("title", event.title.trim())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      galleryAlbum = titleGData || null;
+    }
   } catch (gErr) {
     console.warn("Notice: Gagal mengambil data galeri untuk acara:", gErr);
   }
