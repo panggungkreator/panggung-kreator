@@ -10,10 +10,10 @@ interface AttendanceStatsProps {
 export default function AttendanceStats({ stats }: AttendanceStatsProps) {
   const formattedLastDate = stats.lastAttendedEvent?.event_date
     ? new Date(stats.lastAttendedEvent.event_date).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
     : null;
 
   return (
@@ -59,7 +59,7 @@ export default function AttendanceStats({ stats }: AttendanceStatsProps) {
           </div>
         </div>
 
-        <div className="text-xs font-mono text-neutral-500 dark:text-neutral-400 pt-3 border-t border-[#212121]/10 dark:border-white/10">
+        <div className="text-[11px] text-neutral-500 dark:text-neutral-400 pt-3 border-t border-[#212121]/10 dark:border-white/10 tracking-wider">
           Rekor Tertinggi: <span className="font-bold text-[#212121] dark:text-white">{stats.longestStreak}</span> Event
         </div>
       </div>
@@ -80,7 +80,7 @@ export default function AttendanceStats({ stats }: AttendanceStatsProps) {
           </div>
         </div>
 
-        <div className="text-xs font-mono text-neutral-600 dark:text-neutral-400 pt-3 border-t border-[#212121]/10 dark:border-white/10">
+        <div className="text-[11px] text-neutral-600 dark:text-neutral-400 pt-3 border-t border-[#212121]/10 dark:border-white/10">
           {formattedLastDate || "Belum ada catatan"}
         </div>
       </div>
