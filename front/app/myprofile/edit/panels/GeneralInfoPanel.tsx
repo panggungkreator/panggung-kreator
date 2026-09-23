@@ -281,7 +281,7 @@ export default function GeneralInfoPanel({
               }}
             />
           </div>
-          <div className="space-y-1 max-w-sm">
+          <div className="space-y-1 max-w-sm mt-4">
             <span className="text-xs font-bold uppercase tracking-wider block text-text-primary">
               Foto Profil Kreator
             </span>

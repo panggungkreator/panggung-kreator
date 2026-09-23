@@ -105,10 +105,10 @@ export async function POST(req: NextRequest) {
     const profileData = profileResult?.data || {}
     const interestsData = interestsResult?.data || {}
 
-    // Ambil data member saat ini untuk audit/affiliate/username
+    // Ambil data member saat ini untuk audit/affiliate/username/avatar
     const { data: currentMember, error: fetchError } = await supabase
       .from('members')
-      .select('username, username_changes_count, last_username_change, affiliate_code, referred_by')
+      .select('avatar_url, username, username_changes_count, last_username_change, affiliate_code, referred_by')
       .eq('id', user.id)
       .single()
 
@@ -263,6 +263,18 @@ export async function POST(req: NextRequest) {
       }
 
       return NextResponse.json({ error: memberError.message }, { status: 500 })
+    }
+
+    // Bersihkan avatar lama jika diupdate / diganti baru guna mencegah storage bloat
+    if (
+      profileData.avatar_url !== undefined &&
+      currentMember?.avatar_url &&
+      currentMember.avatar_url !== profileData.avatar_url
+    ) {
+      const { deleteStorageFile } = await import('@/lib/supabase/storage-cleanup')
+      deleteStorageFile(supabase, currentMember.avatar_url).catch((err) =>
+        console.warn('[API /member/profile] Cleanup old avatar warning:', err)
+      )
     }
 
     // Upsert member_interests

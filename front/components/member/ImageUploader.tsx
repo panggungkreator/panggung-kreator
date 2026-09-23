@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { compressImageForTarget } from "@/lib/utils/image-compress";
 import { createClient } from "@/lib/supabase/client";
+import { deleteStorageFile } from "@/lib/supabase/storage-cleanup";
 import { Upload, X, Camera } from "lucide-react";
 
 interface ImageUploaderProps {
@@ -83,8 +84,17 @@ export default function ImageUploader({
       } = supabase.storage.from(bucketName).getPublicUrl(path);
 
       const freshUrl = `${publicUrl}?t=${Date.now()}`;
+      const oldUrl = imageUrl;
+
       setImageUrl(freshUrl);
       onUploadSuccess(freshUrl);
+
+      // Otomatis hapus file lama dari Supabase storage untuk mencegah orphan files
+      if (oldUrl && oldUrl !== freshUrl) {
+        deleteStorageFile(supabase, oldUrl).catch((delErr) =>
+          console.warn("[ImageUploader] Cleanup old image error:", delErr)
+        );
+      }
     } catch (err: any) {
       console.error("Storage upload error:", err);
       setError(err.message || "Gagal mengunggah gambar.");
@@ -94,11 +104,20 @@ export default function ImageUploader({
   };
 
   const handleRemove = () => {
+    const oldUrl = imageUrl;
     setImageUrl(null);
     if (onFileSelect) {
       onFileSelect(null);
     }
     onUploadSuccess("");
+
+    // Otomatis hapus file yang dihapus dari Supabase storage
+    if (oldUrl) {
+      const supabase = createClient();
+      deleteStorageFile(supabase, oldUrl).catch((delErr) =>
+        console.warn("[ImageUploader] Remove image error:", delErr)
+      );
+    }
   };
 
   return (
@@ -110,9 +129,8 @@ export default function ImageUploader({
             <img
               src={imageUrl}
               alt="Uploaded content"
-              className={`object-cover border border-zinc-200 dark:border-zinc-800 transition-all group-hover:brightness-90 ${
-                target === "avatar" ? "h-24 w-24 sm:h-28 sm:w-28 rounded-full" : "h-32 w-48 rounded-none"
-              }`}
+              className={`object-cover border border-zinc-200 dark:border-zinc-800 transition-all group-hover:brightness-90 ${target === "avatar" ? "h-36 w-36 sm:h-36 sm:w-36 rounded-full" : "h-32 w-48 rounded-none"
+                }`}
             />
 
             {/* Overlay hint kamera saat di-hover untuk avatar */}
@@ -165,9 +183,8 @@ export default function ImageUploader({
         </div>
       ) : (
         <label
-          className={`flex flex-col items-center justify-center border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/30 hover:border-black dark:hover:border-white transition-colors cursor-pointer relative ${
-            target === "avatar" ? "h-24 w-24 sm:h-28 sm:w-28 rounded-full" : "h-32 w-48 rounded-none"
-          }`}
+          className={`flex flex-col items-center justify-center border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/30 hover:border-black dark:hover:border-white transition-colors cursor-pointer relative ${target === "avatar" ? "h-24 w-24 sm:h-28 sm:w-28 rounded-full" : "h-32 w-48 rounded-none"
+            }`}
         >
           <div className="flex flex-col items-center space-y-1 text-zinc-400">
             {isUploading ? (

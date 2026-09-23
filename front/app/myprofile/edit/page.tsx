@@ -39,8 +39,9 @@ export default function EditProfilePage() {
       const tabParam = params.get("tab");
       const subParam = params.get("sub") as ShowcaseSubTab;
       if (tabParam === "pengalaman" || subParam === "experience") return "experience";
-      if (tabParam === "prestasi" || subParam === "achievement") return "achievement";
-      if (subParam && ["experience", "achievement"].includes(subParam)) {
+      if (tabParam === "portofolio" || subParam === "portfolio") return "portfolio";
+      if (tabParam === "prestasi" || subParam === "achievement") return "portfolio";
+      if (subParam && ["experience", "portfolio"].includes(subParam)) {
         return subParam;
       }
     }
@@ -67,6 +68,22 @@ export default function EditProfilePage() {
 
   // Modal confirm tab switch when dirty
   const [pendingTab, setPendingTab] = useState<ProfileEditTabId | null>(null);
+
+  // Floating back button visibility on scroll
+  const [showFloatingBack, setShowFloatingBack] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 80) {
+        setShowFloatingBack(true);
+      } else {
+        setShowFloatingBack(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Unsaved changes tracking per tab
   const [isGeneralDirty, setIsGeneralDirty] = useState(false);
@@ -224,8 +241,26 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-bg-app text-text-primary font-sans">
-      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 space-y-8 animate-fade-in">
+    <div className="min-h-screen w-full bg-bg-app text-text-primary font-sans relative">
+      {/* 🔙 FLOATING BACK BUTTON ON TOP LEFT WHEN SCROLLED */}
+      <div
+        className={`fixed top-4 left-4 z-50 transition-all duration-300 ${
+          showFloatingBack
+            ? "opacity-100 translate-y-0 pointer-events-auto"
+            : "opacity-0 -translate-y-4 pointer-events-none"
+        }`}
+      >
+        <Link
+          href="/myprofile"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#1C1C1C]/90 backdrop-blur-md border border-black/10 dark:border-white/10 shadow-lg text-text-primary hover:scale-105 active:scale-95 transition-all text-xs font-semibold cursor-pointer"
+          title="Kembali ke Profil"
+        >
+          <ArrowLeft size={14} className="shrink-0" />
+          <span className="font-sans">Kembali</span>
+        </Link>
+      </div>
+
+      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-44 sm:pb-36 space-y-8 animate-fade-in">
         {/* SKELETON LOADING STATE */}
         {isLoading ? (
           <ProfileEditSkeleton />
@@ -256,9 +291,9 @@ export default function EditProfilePage() {
                 </div>
               </div>
 
-              {/* PREVIEW PUBLIK (Hanya muncul saat tab Portofolio & Rekam Jejak aktif dan diizinkan) */}
+              {/* PREVIEW PUBLIK (Hanya muncul di desktop saat tab Portofolio & Rekam Jejak aktif dan diizinkan) */}
               {activeTab === "portofolio" && member?.username && !disabledTabs.portofolio && (
-                <div className="flex items-center self-start sm:self-center shrink-0">
+                <div className="hidden sm:flex items-center self-start sm:self-center shrink-0">
                   <Link
                     href={`/talent/${member.username}`}
                     target="_blank"
@@ -318,6 +353,7 @@ export default function EditProfilePage() {
                     <ShowcasePanel
                       member={member}
                       initialSubTab={showcaseSubTab}
+                      previewUrl={!disabledTabs.portofolio && member.username ? `/talent/${member.username}` : undefined}
                     />
                   )
                 )}

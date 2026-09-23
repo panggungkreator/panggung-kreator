@@ -259,7 +259,6 @@ export default function AchievementsManager({ memberId }: AchievementsManagerPro
         onClose={() => setIsDrawerOpen(false)}
         memberId={memberId}
         itemToEdit={editingItem}
-        defaultPillar="personal_branding"
         onSuccess={() => {
           fetchAchievements();
         }}

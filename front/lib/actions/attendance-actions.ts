@@ -401,3 +401,32 @@ export async function manualAttendanceAddAction(eventId: string, memberIds: stri
     return { success: false, error: error.message || "Gagal mendaftarkan peserta." };
   }
 }
+
+export async function getMemberPublicAttendanceAction(memberId: string) {
+  try {
+    const serviceClient = createServiceRoleClient();
+    const { data: records, error } = await serviceClient
+      .from("attendances")
+      .select(`
+        id, event_id, member_id, is_present, scan_method, scanned_at, created_at,
+        event:events(id, title, description, event_type, event_date, start_time, end_time, location, capacity)
+      `)
+      .eq("member_id", memberId)
+      .eq("is_present", true)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching public member attendance:", error);
+      return { totalAttended: 0, attendanceRecords: [] };
+    }
+
+    return {
+      totalAttended: records ? records.length : 0,
+      attendanceRecords: (records as any) || [],
+    };
+  } catch (err) {
+    console.error("Error in getMemberPublicAttendanceAction:", err);
+    return { totalAttended: 0, attendanceRecords: [] };
+  }
+}
+

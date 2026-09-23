@@ -1,14 +1,30 @@
 "use client";
 
 import React, { useState } from "react";
-import { MemberProfile } from "@/lib/types/member";
-import { QrCode, Copy, Check, Link2, Globe, MapPin, Mail, Phone, Calendar } from "lucide-react";
+import Link from "next/link";
+import { MemberProfile, AttendanceRecord } from "@/lib/types/member";
+import {
+  QrCode,
+  Copy,
+  Check,
+  Link2,
+  Globe,
+  MapPin,
+  Mail,
+  Phone,
+  Calendar,
+  Clock,
+  Pencil,
+} from "lucide-react";
 import { toast } from "sonner";
+import { Modal } from "@/components/ui/Modal";
 
 interface ProfileOverviewContentProps {
   member: MemberProfile;
   totalAttended: number;
   totalReferrals: number;
+  attendanceRecords?: AttendanceRecord[];
+  isOwner?: boolean;
 }
 
 // Clean Monochrome Brand Icons
@@ -78,9 +94,27 @@ const INTEREST_MAP: Record<string, string> = {
 export default function ProfileOverviewContent({
   member,
   totalAttended,
+  totalReferrals = 0,
+  attendanceRecords = [],
+  isOwner = true,
 }: ProfileOverviewContentProps) {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<{
+    number: number;
+    record: AttendanceRecord | null;
+  } | null>(null);
+
+  // Ambil data acara terakhir yang diikuti
+  const sortedRecords = attendanceRecords && attendanceRecords.length > 0
+    ? [...attendanceRecords].sort((a, b) => {
+      const dateA = new Date(a.event?.event_date || a.created_at).getTime();
+      const dateB = new Date(b.event?.event_date || b.created_at).getTime();
+      return dateB - dateA;
+    })
+    : [];
+  const latestAttendedRecord = sortedRecords.length > 0 ? sortedRecords[0] : null;
+  const latestEvent = latestAttendedRecord?.event || null;
 
   const handleCopyCode = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -93,11 +127,15 @@ export default function ProfileOverviewContent({
 
   const handleCopyLink = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (!member.affiliate_code) return;
-    const link = `${window.location.origin}/akademi/checkout?ref=${member.affiliate_code}`;
+    const link = isOwner && member.affiliate_code
+      ? `${window.location.origin}/akademi/checkout?ref=${member.affiliate_code}`
+      : typeof window !== "undefined"
+      ? (member.username ? `${window.location.origin}/talent/${member.username}` : window.location.href)
+      : "";
+    if (!link) return;
     navigator.clipboard.writeText(link);
     setCopiedLink(true);
-    toast.success("Link pendaftaran referral berhasil disalin!");
+    toast.success(isOwner && member.affiliate_code ? "Link pendaftaran referral berhasil disalin!" : "Link profil kreator berhasil disalin!");
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
@@ -206,8 +244,164 @@ export default function ProfileOverviewContent({
   return (
     <div className="bg-transparent border-0 p-0 space-y-8 shadow-none w-full animate-fade-in text-[#212121] dark:text-[#F4F4F4] font-sans">
 
-      {/* 🌟 HERO TALENT PROFILE (CLEAN MINIMALIST MONOCHROME & SMOOTH PALETTE) */}
-      <div className="w-full flex flex-col md:flex-row items-start gap-6 sm:gap-8 pb-8 border-b border-[#212121]/10 dark:border-white/10">
+      {/* 📱 MOBILE HERO TALENT PROFILE (IMAGE OVERLAY SHEET CARD - MATCHING REFERENCE DESIGN) */}
+      <div className="md:hidden flex flex-col pb-8 border-b border-[#212121]/10 dark:border-white/10">
+        {/* Full-width tall portrait photo canvas (Sticky Parallax Behind Sheet) */}
+        <div className="sticky top-16 sm:top-20 z-0 w-full aspect-[4/5] max-h-[460px] bg-neutral-900 text-white overflow-hidden rounded-3xl shadow-sm relative">
+          {/* Floating Edit Profil Button on Top Left with Pencil Logo */}
+          {isOwner && (
+            <Link
+              href="/myprofile/edit"
+              className="absolute top-4 left-4 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md border border-white/20 text-xs font-semibold shadow-md transition-all active:scale-95"
+              title="Edit Profil"
+            >
+              <Pencil size={13} className="shrink-0" />
+              <span>Edit Profil</span>
+            </Link>
+          )}
+
+          {member.avatar_url ? (
+            <img
+              src={member.avatar_url}
+              alt={member.full_name || member.stage_name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-tr from-[#1A1A1A] via-[#212121] to-[#2E2E2E] text-white p-6 select-none">
+              <span className="text-6xl font-bold font-sans tracking-tight opacity-90">{initials}</span>
+              <span className="text-[9px] font-mono tracking-widest text-neutral-400 uppercase mt-3">[ TALENT CANVAS ]</span>
+            </div>
+          )}
+        </div>
+
+        {/* Overlapping Sheet Card */}
+        <div className="-mt-16 sm:-mt-20 relative z-10 w-full bg-[#F6F5FA] dark:bg-[#0E1210] text-[#212121] dark:text-[#F4F4F4] rounded-t-[28px] sm:rounded-t-[32px] rounded-b-none pt-5 px-0 pb-0 border-0 shadow-none flex flex-col items-center text-center">
+          {/* Top Handle / Drag Indicator */}
+          <div className="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-700 mx-auto mb-5" />
+
+          {/* Name */}
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#212121] dark:text-white capitalize">
+            {nameToDisplay}
+          </h1>
+
+          {/* Stage name or username & occupation */}
+          {(member.stage_name || member.username || member.occupation) && (
+            <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-medium">
+              {member.stage_name && (
+                <span className="font-semibold text-neutral-700 dark:text-neutral-300">
+                  {member.stage_name}
+                </span>
+              )}
+              <span>•</span>
+              {member.occupation && (
+                <>
+                  <span className="capitalize">{member.occupation.replace(/_/g, " ")}</span>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Bio Description */}
+          <p className="text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans mt-4 max-w-sm sm:max-w-md">
+            {member.description || "Belum ada bio singkat. Lengkapi profilmu di menu Edit Profil."}
+          </p>
+
+          {/* Additional details: City, Social Media & Referral */}
+          {(socialLinks.length > 0 || member.city || member.affiliate_code) && (
+            <div className="w-full pt-4 mt-4 border-t border-[#212121]/10 dark:border-white/10 flex flex-col items-center gap-3">
+              {member.city && (
+                <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400 text-xs font-mono text-[11px]">
+                  <MapPin size={12} className="shrink-0 text-neutral-400" />
+                  <span>{member.city}</span>
+                </div>
+              )}
+
+              {/* Social Media Links with Account Names */}
+              {socialLinks.length > 0 && (
+                <div className="flex flex-wrap items-center justify-center gap-2 max-w-sm">
+                  {socialLinks.map((item, idx) => {
+                    const Icon = item.icon;
+                    return (
+                      <a
+                        key={idx}
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-[#151B18] border border-[#212121]/10 dark:border-white/10 text-neutral-800 dark:text-neutral-200 hover:text-black dark:hover:text-white hover:border-black/20 dark:hover:border-white/30 text-xs font-medium transition-all shadow-2xs hover:scale-105 active:scale-95"
+                        title={item.label}
+                      >
+                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="font-mono text-[11px] truncate max-w-[130px]">{item.text}</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Revamped Mobile Affiliate Card */}
+              {member.affiliate_code && (
+                <div className="w-full max-w-md mt-1 p-4 rounded-2xl bg-white/80 dark:bg-[#151B18]/80 backdrop-blur-sm border border-[#212121]/10 dark:border-white/10 shadow-2xs space-y-3 text-left">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-[10px] font-bold font-mono tracking-wider text-neutral-600 dark:text-neutral-300 uppercase">
+                        Program Affiliate
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                      Aktif
+                    </span>
+                  </div>
+
+                  {/* Kode Referral Box */}
+                  <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-neutral-100/90 dark:bg-neutral-900/60 border border-neutral-200/70 dark:border-neutral-800 transition-all">
+                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">Kode Referral</span>
+                    {copiedCode ? (
+                      <span className="font-mono font-bold text-xs tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in duration-150">
+                        <Check size={13} className="stroke-[2.5]" />
+                        Kode tersalin
+                      </span>
+                    ) : (
+                      <span className="font-mono font-bold text-xs tracking-wider text-neutral-900 dark:text-neutral-100 selection:bg-[#eff0a3]">
+                        {member.affiliate_code}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Action Buttons Row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyCode}
+                      className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-[#eff0a3] text-[#1E301B] dark:bg-[#eff0a3] dark:text-[#1E301B] text-xs font-bold hover:brightness-95 active:scale-[0.98] transition-all cursor-pointer shadow-2xs"
+                      title="Salin Kode Referral"
+                    >
+                      {copiedCode ? <Check size={14} className="text-emerald-800" /> : <Copy size={14} />}
+                      <span>{copiedCode ? "Tersalin" : "Salin Kode"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-[#212121] dark:bg-white text-white dark:text-[#212121] text-xs font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-2xs"
+                      title="Salin Link Referral"
+                    >
+                      {copiedLink ? <Check size={14} /> : <Link2 size={14} />}
+                      <span>{copiedLink ? "Tersalin" : "Salin Link"}</span>
+                    </button>
+                  </div>
+
+                  <p className="text-[10px] text-neutral-400 dark:text-neutral-500 text-center leading-tight">
+                    Ajak teman bergabung & dapatkan komisi dari setiap sesi pendaftaran.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 🌟 DESKTOP HERO TALENT PROFILE (CLEAN MINIMALIST MONOCHROME & SMOOTH PALETTE) */}
+      <div className="hidden md:flex md:flex-row items-start gap-6 sm:gap-8 pb-8 border-b border-[#212121]/10 dark:border-white/10">
 
         {/* LEFT: TALL PORTRAIT RECTANGLE PHOTO / CANVAS */}
         <div className="w-full sm:w-[220px] md:w-[240px] lg:w-[260px] aspect-[3/4] min-h-[320px] md:min-h-[360px] bg-[#212121] text-white relative overflow-hidden flex items-center justify-center shrink-0 rounded-2xl shadow-sm">
@@ -313,9 +507,9 @@ export default function ProfileOverviewContent({
               })}
             </div>
 
-            {/* Referral Code Copy */}
-            {member.affiliate_code && (
-              <div className="flex items-center gap-2">
+            {/* Referral Code Copy & Share Profile */}
+            <div className="flex items-center gap-2">
+              {member.affiliate_code && (
                 <button
                   type="button"
                   onClick={handleCopyCode}
@@ -325,17 +519,17 @@ export default function ProfileOverviewContent({
                   {copiedCode ? <Check size={12} className="text-emerald-700 dark:text-emerald-300" /> : <Copy size={12} />}
                   <span>{member.affiliate_code}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#212121] dark:bg-white text-white dark:text-[#212121] text-xs font-sans font-bold hover:opacity-90 transition-opacity shadow-2xs cursor-pointer active:scale-95"
-                  title="Salin Link Referral"
-                >
-                  {copiedLink ? <Check size={12} /> : <Link2 size={12} />}
-                  <span>Bagikan</span>
-                </button>
-              </div>
-            )}
+              )}
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#212121] dark:bg-white text-white dark:text-[#212121] text-xs font-sans font-bold hover:opacity-90 transition-opacity shadow-2xs cursor-pointer active:scale-95"
+                title="Salin Link Profil"
+              >
+                {copiedLink ? <Check size={12} /> : <Link2 size={12} />}
+                <span>Bagikan</span>
+              </button>
+            </div>
           </div>
 
         </div>
@@ -371,11 +565,29 @@ export default function ProfileOverviewContent({
 
             <div className="pt-3 border-t border-[#212121]/10 dark:border-white/10 space-y-1">
               <span className="text-[10px] uppercase tracking-wider font-mono text-neutral-500 dark:text-neutral-400 font-bold block">
-                TINGKAT KOMITMEN
+                ACARA TERAKHIR DIIKUTI
               </span>
-              <p className="font-bold text-[#212121] dark:text-white text-xs leading-relaxed">
-                {interests?.time_commitment || "2 Minggu Sekali"}
-              </p>
+              {latestEvent ? (
+                <div>
+                  <p className="font-bold text-[#212121] dark:text-white text-xs leading-snug line-clamp-2">
+                    {latestEvent.title}
+                  </p>
+                  <p className="text-[10px] font-mono text-neutral-600 dark:text-neutral-400 mt-1 flex items-center gap-1.5">
+                    <Calendar size={11} className="shrink-0" />
+                    <span>
+                      {new Date(latestEvent.event_date).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 italic">
+                  Belum ada acara yang diikuti
+                </p>
+              )}
             </div>
           </div>
 
@@ -387,7 +599,7 @@ export default function ProfileOverviewContent({
                   RIWAYAT SESI MANGGUNG (16 SESI)
                 </span>
                 <p className="text-xs text-neutral-600 dark:text-neutral-300 font-medium leading-relaxed">
-                  Visualisasi kehadiran sesi berkala panggung & komunitas.
+                  Visualisasi kehadiran sesi berkala panggung & komunitas. Klik nomor untuk detail.
                 </p>
               </div>
 
@@ -405,19 +617,23 @@ export default function ProfileOverviewContent({
               {Array.from({ length: 16 }).map((_, idx) => {
                 const isAttended = idx < totalAttended;
                 const sessionNum = idx + 1;
+                const sessionRecord = attendanceRecords && attendanceRecords[idx] ? attendanceRecords[idx] : null;
+
                 return (
-                  <div
+                  <button
                     key={idx}
-                    title={`Sesi #${sessionNum}: ${isAttended ? "Hadir di Acara" : "Belum / Terlewat"}`}
-                    className={`aspect-square rounded-md sm:rounded-lg flex flex-col items-center justify-center transition-all cursor-default group relative ${isAttended
-                        ? "bg-[#EFF0A3] dark:bg-[#EFF0A3] text-[#212121] font-bold shadow-2xs scale-100 border border-[#212121]/10"
-                        : "bg-neutral-100 dark:bg-neutral-800/80 text-neutral-400 dark:text-neutral-600 hover:border-neutral-400"
+                    type="button"
+                    onClick={() => setSelectedSession({ number: sessionNum, record: sessionRecord })}
+                    title={`Sesi #${sessionNum}: Klik untuk melihat detail acara`}
+                    className={`aspect-square rounded-md sm:rounded-lg flex flex-col items-center justify-center transition-all cursor-pointer group relative active:scale-90 hover:scale-105 ${isAttended
+                      ? "bg-[#EFF0A3] dark:bg-[#EFF0A3] text-[#212121] font-bold shadow-2xs scale-100 border border-[#212121]/15 hover:ring-2 hover:ring-[#EFF0A3]/60"
+                      : "bg-neutral-100 dark:bg-neutral-800/80 text-neutral-400 dark:text-neutral-600 border border-transparent hover:border-neutral-300 dark:hover:border-neutral-700"
                       }`}
                   >
                     <span className="text-[8px] sm:text-[9px] font-mono">
                       {sessionNum}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -656,6 +872,98 @@ export default function ProfileOverviewContent({
           </div>
         </div>
       </div>
+
+      {/* 🎟️ POPUP DETAIL SESI PANGGUNG */}
+      <Modal
+        isOpen={!!selectedSession}
+        onClose={() => setSelectedSession(null)}
+        title={selectedSession ? `Sesi #${selectedSession.number}` : ""}
+        subtitle="Riwayat Sesi Panggung & Komunitas"
+        maxWidth="max-w-sm"
+      >
+        {selectedSession && (
+          <div className="space-y-4 pt-1 text-left">
+            {selectedSession.record ? (
+              <>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Hadir di Acara</span>
+                </div>
+
+                <div className="space-y-3 bg-neutral-50 dark:bg-neutral-900/60 p-4 rounded-2xl border border-neutral-200/70 dark:border-neutral-800">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-bold block mb-1">
+                      Nama Acara
+                    </span>
+                    <h4 className="text-sm font-bold text-neutral-900 dark:text-white leading-snug">
+                      {selectedSession.record.event?.title || "Sesi Panggung Kreator"}
+                    </h4>
+                  </div>
+
+                  {selectedSession.record.event?.event_date && (
+                    <div>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-bold block mb-1">
+                        Tanggal Pelaksanaan
+                      </span>
+                      <div className="flex items-center gap-2 text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                        <Calendar size={13} className="text-neutral-500 shrink-0" />
+                        <span>
+                          {new Date(selectedSession.record.event.event_date).toLocaleDateString("id-ID", {
+                            weekday: "long",
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedSession.record.event?.start_time && (
+                    <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
+                      <Clock size={13} className="text-neutral-400 shrink-0" />
+                      <span>
+                        {selectedSession.record.event.start_time.slice(0, 5)} WIB
+                        {selectedSession.record.event.end_time ? ` - ${selectedSession.record.event.end_time.slice(0, 5)} WIB` : ""}
+                      </span>
+                    </div>
+                  )}
+
+                  {selectedSession.record.event?.location && (
+                    <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
+                      <MapPin size={13} className="text-neutral-400 shrink-0" />
+                      <span>{selectedSession.record.event.location}</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-xs font-medium">
+                  <span className="w-2 h-2 rounded-full bg-neutral-400" />
+                  <span>Belum Diikuti</span>
+                </div>
+
+                <div className="bg-neutral-50 dark:bg-neutral-900/60 p-4 rounded-2xl border border-neutral-200/70 dark:border-neutral-800 text-center py-4">
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                    Kamu belum tercatat hadir pada Sesi #{selectedSession.number}. Tetap ikuti sesi komunitas dan panggung kreator selanjutnya!
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedSession(null)}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer text-center"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

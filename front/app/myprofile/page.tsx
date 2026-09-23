@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { MemberProfile, ReferralMember } from "@/lib/types/member";
+import { MemberProfile, ReferralMember, AttendanceRecord } from "@/lib/types/member";
 import PortfolioManager from "@/components/member/PortfolioManager";
 import { toast } from "sonner";
 import { performCompleteSignOut } from "@/lib/utils/auth-client";
@@ -30,6 +30,7 @@ export default function MyProfilePage() {
   const [referrals, setReferrals] = useState<ReferralMember[]>([]);
   const [ledger, setLedger] = useState<any[]>([]);
   const [attendanceCount, setAttendanceCount] = useState(0);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTabSwitching, setIsTabSwitching] = useState(false);
   const [activeTab, setActiveTab] = useState<ProfileTab>(() => {
@@ -150,12 +151,16 @@ export default function MyProfilePage() {
           .eq("id", user.id)
           .single(),
 
-        // 2. Total attended count
+        // 2. Attended records with event details
         supabase
           .from("attendances")
-          .select("id", { count: "exact", head: true })
+          .select(`
+            id, event_id, member_id, is_present, scan_method, scanned_at, created_at,
+            event:events(id, title, description, event_type, event_date, start_time, end_time, location, capacity)
+          `)
           .eq("member_id", user.id)
-          .eq("is_present", true),
+          .eq("is_present", true)
+          .order("created_at", { ascending: true }),
 
         // 3. Referred members list via Server Action (bypasses RLS restrictions)
         getReferredMembersAction(),
@@ -196,8 +201,10 @@ export default function MyProfilePage() {
         }
       }
 
+      const records = (attendanceCountRes.data as unknown as AttendanceRecord[]) || [];
       setMember(profileData as MemberProfile);
-      setAttendanceCount(attendanceCountRes.count ?? 0);
+      setAttendanceRecords(records);
+      setAttendanceCount(records.length);
       setReferrals((referralRes as any)?.data || []);
       setLedger((ledgerRes.data as any[]) || []);
       if (tabVisRes) setTabSettings(tabVisRes);
@@ -273,7 +280,7 @@ export default function MyProfilePage() {
           member={member}
           onSignout={handleSignout}
           isLoggingOut={isLoggingOut}
-          showActions={false}
+          showActions={true}
         />
       }
     >
@@ -295,6 +302,7 @@ export default function MyProfilePage() {
                 member={member}
                 totalAttended={attendanceCount}
                 totalReferrals={referrals.length}
+                attendanceRecords={attendanceRecords}
               />
             )}
 

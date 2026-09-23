@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   MemberProfile,
   PortfolioItem,
@@ -29,6 +30,7 @@ import {
   Building,
   MapPin,
   Calendar,
+  Eye,
 } from "lucide-react";
 
 export type ShowcaseSubTab = "portfolio" | "experience" | "achievement";
@@ -36,6 +38,7 @@ export type ShowcaseSubTab = "portfolio" | "experience" | "achievement";
 interface ShowcasePanelProps {
   member: MemberProfile;
   initialSubTab?: ShowcaseSubTab;
+  previewUrl?: string;
 }
 
 const PILLARS: { value: Pillar | "all"; label: string }[] = [
@@ -48,15 +51,16 @@ const PILLARS: { value: Pillar | "all"; label: string }[] = [
 export default function ShowcasePanel({
   member,
   initialSubTab = "experience",
+  previewUrl,
 }: ShowcasePanelProps) {
   const [activeSubTab, setActiveSubTab] = useState<ShowcaseSubTab>(
-    initialSubTab === "portfolio" ? "experience" : initialSubTab
+    initialSubTab === "achievement" ? "portfolio" : initialSubTab
   );
 
   // Sync with initialSubTab if it changes from parent URL
   useEffect(() => {
     if (initialSubTab) {
-      setActiveSubTab(initialSubTab === "portfolio" ? "experience" : initialSubTab);
+      setActiveSubTab(initialSubTab === "achievement" ? "portfolio" : initialSubTab);
     }
   }, [initialSubTab]);
 
@@ -109,13 +113,12 @@ export default function ShowcasePanel({
     fetchExperienceData();
   }, [fetchPortfolioData, fetchExperienceData]);
 
-  // Separate regular portfolio items from achievements
+  // All portfolio items (including video, image, achievement, link)
   const portfolioItems = allItems
-    .filter((item) => item.item_type !== "achievement")
     .filter((item) => (activePillarFilter === "all" ? true : item.pillar === activePillarFilter))
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
-  const rawPortfolioCount = allItems.filter((item) => item.item_type !== "achievement").length;
+  const rawPortfolioCount = allItems.length;
 
   const achievementItems = allItems
     .filter((item) => item.item_type === "achievement")
@@ -123,7 +126,7 @@ export default function ShowcasePanel({
 
   // ── Delete Handlers ────────────────────────────────────────────────────────
   const handleDeleteItem = async (id: string, isAch = false) => {
-    const label = isAch ? "prestasi/sertifikat" : "karya";
+    const label = isAch ? "prestasi/sertifikat" : "portofolio";
     if (!confirm(`Apakah Anda yakin ingin menghapus ${label} ini?`)) return;
 
     try {
@@ -235,7 +238,6 @@ export default function ShowcasePanel({
 
   // ── Tab Config ─────────────────────────────────────────────────────────────
   const SUB_TABS = [
-    // Note: Tab "Portofolio" (Karya) di-hide sementara sesuai permintaan user
     {
       id: "experience" as ShowcaseSubTab,
       label: "Jam Terbang",
@@ -248,14 +250,14 @@ export default function ShowcasePanel({
       },
     },
     {
-      id: "achievement" as ShowcaseSubTab,
-      label: "Prestasi",
-      fullName: "Prestasi & Penghargaan",
-      icon: Award,
+      id: "portfolio" as ShowcaseSubTab,
+      label: "Portofolio",
+      fullName: "Portofolio Karya & Rekam Jejak",
+      icon: Sparkles,
       actionLabel: "Tambah",
       onAdd: () => {
         setEditingPortfolioItem(null);
-        setIsAchievementDrawerOpen(true);
+        setIsPortfolioDrawerOpen(true);
       },
     },
   ];
@@ -291,8 +293,8 @@ export default function ShowcasePanel({
           })}
         </div>
 
-        {/* Top Right Action (Contextual Add CTA) */}
-        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+        {/* Top Right Action (Contextual Add CTA - Desktop only) */}
+        <div className="hidden sm:flex items-center gap-2 self-start sm:self-auto shrink-0">
           <button
             type="button"
             onClick={currentTabObj.onAdd}
@@ -326,19 +328,19 @@ export default function ShowcasePanel({
                 ))}
               </div>
             ) : portfolioItems.length === 0 ? (
-              <div className="text-center space-y-2.5 p-6 rounded-2xl ">
+              <div className="border border-dashed border-border-default py-12 text-center space-y-2.5 p-6 rounded-2xl bg-bg-well/30">
                 <div className="text-xs text-text-primary font-bold uppercase tracking-wider">
-                  Belum Ada Karya Dalam Kategori Ini
+                  Belum Ada Portofolio
                 </div>
                 <p className="text-xs text-text-secondary max-w-sm mx-auto">
-                  Dokumentasikan video, foto showcase, atau portofolio terbaik Anda agar tampil di etalase profil talent.
+                  Dokumentasikan video, foto showcase, sertifikat prestasi, atau portofolio terbaik Anda agar tampil di etalase profil talent.
                 </p>
                 <button
                   type="button"
                   onClick={currentTabObj.onAdd}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-text-primary hover:opacity-80 transition-opacity cursor-pointer pt-2"
                 >
-                  <Plus size={14} /> Tambah Karya Pertama
+                  <Plus size={14} /> Tambah Portofolio Pertama
                 </button>
               </div>
             ) : (
@@ -720,8 +722,6 @@ export default function ShowcasePanel({
         }}
         memberId={member.id}
         itemToEdit={editingPortfolioItem}
-        defaultPillar="public_speaking"
-        initialItemType={"video" as ItemType}
         onSuccess={(_saved) => {
           fetchPortfolioData();
         }}
@@ -736,8 +736,6 @@ export default function ShowcasePanel({
         }}
         memberId={member.id}
         itemToEdit={editingPortfolioItem}
-        defaultPillar="public_speaking"
-        initialItemType={"achievement" as ItemType}
         onSuccess={(_saved) => {
           fetchPortfolioData();
         }}
@@ -755,6 +753,33 @@ export default function ShowcasePanel({
           fetchExperienceData();
         }}
       />
+
+      {/* 📱 MOBILE VERTICAL FLOATING ACTIONS (+ TAMBAH & PREVIEW PUBLIK) */}
+      <div className="sm:hidden fixed bottom-32 right-4 z-40 flex flex-col items-center gap-3 pointer-events-auto">
+        {/* 1. Floating Preview Publik (Icon Only) */}
+        {previewUrl && (
+          <Link
+            href={previewUrl}
+            target="_blank"
+            aria-label="Preview Halaman Publik Talent"
+            className="w-12 h-12 rounded-full bg-white/95 dark:bg-[#1C1C1C]/95 backdrop-blur-md border border-black/10 dark:border-white/10 shadow-lg text-text-primary flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+            title="Lihat Halaman Publik Talent"
+          >
+            <Eye size={20} className="text-text-secondary group-hover:text-text-primary transition-colors" />
+          </Link>
+        )}
+
+        {/* 2. Floating + Tambah Button (Icon Only, Enlarged) */}
+        <button
+          type="button"
+          onClick={currentTabObj.onAdd}
+          aria-label={`Tambah ${currentTabObj.label}`}
+          className="w-14 h-14 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          title={`Tambah ${currentTabObj.label}`}
+        >
+          <Plus size={26} className="stroke-[2.5]" />
+        </button>
+      </div>
     </div>
   );
 }

@@ -40,6 +40,7 @@ export function Modal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
+        onOpenAutoFocus={(e) => e.preventDefault()}
         className={cn(
           "w-full bg-white dark:bg-zinc-950 border-0 sm:border border-zinc-200 dark:border-zinc-800 shadow-xl p-5 sm:p-6 text-zinc-900 dark:text-zinc-100 overflow-y-auto max-h-[90vh] no-scrollbar rounded-none sm:rounded-3xl",
           maxWidth,

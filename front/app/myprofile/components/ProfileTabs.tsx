@@ -73,7 +73,7 @@ export default function ProfileTabs({
       <div className="lg:hidden fixed bottom-6 inset-x-0 z-40 pointer-events-none flex justify-center px-4">
         <nav
           aria-label="Navigasi Tab Mobile"
-          className="pointer-events-auto bg-[#1C1C1C] dark:bg-[#18181B] border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center justify-between gap-1 w-full max-w-xs text-white"
+          className="pointer-events-auto bg-[#1C1C1C] dark:bg-[#18181B] border border-white/10 shadow-2xl rounded-full px-4 py-2 flex items-center justify-between gap-1.5 w-full max-w-[340px] sm:max-w-sm text-white"
         >
           {visibleTabs.map((tab) => {
             const isActive = activeTab === tab.key;
@@ -89,14 +89,14 @@ export default function ProfileTabs({
                 aria-label={tab.label}
                 title={tab.label}
                 className={`relative flex items-center justify-center rounded-full transition-all duration-200 cursor-pointer active:scale-90 flex-1 ${isActive
-                  ? "h-9 bg-white text-[#1C1C1C] shadow-sm px-3"
+                  ? "h-11 bg-white text-[#1C1C1C] shadow-md px-3.5"
                   : isDisabled
-                    ? "opacity-30 cursor-not-allowed h-8 text-neutral-500"
-                    : "h-8 text-neutral-400 hover:text-white bg-transparent"
+                    ? "opacity-30 cursor-not-allowed h-10 text-neutral-500"
+                    : "h-10 text-neutral-400 hover:text-white bg-transparent"
                   }`}
               >
                 <Icon
-                  size={isActive ? 16 : 17}
+                  size={isActive ? 19 : 20}
                   className={`transition-all duration-150 ${isActive ? "stroke-[2.2]" : "stroke-[1.6]"
                     }`}
                 />

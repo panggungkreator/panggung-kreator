@@ -584,7 +584,6 @@ export default function PortfolioManager({ memberId, username }: PortfolioManage
         onClose={() => setIsPortfolioDrawerOpen(false)}
         memberId={memberId}
         itemToEdit={editingPortfolioItem}
-        defaultPillar={activeFilter === "all" ? "public_speaking" : activeFilter}
         onSuccess={() => {
           fetchPortfolio();
         }}

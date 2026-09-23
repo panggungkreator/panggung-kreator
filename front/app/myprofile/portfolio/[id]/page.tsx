@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MemberProfile, PortfolioItem } from "@/lib/types/member";
 import PortfolioForm from "@/components/member/PortfolioForm";
@@ -12,12 +12,13 @@ import { Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface EditPortfolioPageProps {
-  params: Promise<{ id: string }> | { id: string };
+  params?: Promise<{ id: string }> | { id: string };
 }
 
 export default function EditPortfolioPage({ params }: EditPortfolioPageProps) {
-  const resolvedParams = use(Promise.resolve(params));
-  const portfolioId = resolvedParams.id;
+  const routeParams = useParams();
+  const rawId = routeParams?.id;
+  const portfolioId = (Array.isArray(rawId) ? rawId[0] : (rawId as string)) || "";
 
   const router = useRouter();
   const [member, setMember] = useState<MemberProfile | null>(null);

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { deleteStorageFiles } from '@/lib/supabase/storage-cleanup'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -21,7 +22,7 @@ const portfolioUpdateSchema = z.object({
   sort_order: z.number().optional(),
 })
 
-// PATCH: update item
+// PATCH: update item + otomatis hapus file storage lama yang digantikan
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -37,10 +38,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const updateData = { ...result.data }
 
-    // Cek kepemilikan item
+    // Cek kepemilikan item & ambil informasi file lama
     const { data: existingItem, error: checkError } = await supabase
       .from('portfolio_items')
-      .select('id')
+      .select('id, media_url, thumbnail_url, media_source')
       .eq('id', id)
       .eq('member_id', user.id)
       .single()
@@ -67,6 +68,49 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // ── AUTOMATIC STORAGE CLEANUP ON REPLACE/UPDATE ─────────────────────────────
+    // Hapus file Supabase Storage lama yang digantikan / dihilangkan guna mencegah bloat
+    try {
+      const urlsToDelete: string[] = []
+
+      // A. Cek perubahan media_url lama
+      if (existingItem.media_source === 'storage' && existingItem.media_url) {
+        const oldUrls = existingItem.media_url.split(',').map((u: string) => u.trim()).filter(Boolean)
+        const newUrls = (updateData.media_url || '').split(',').map((u: string) => u.trim()).filter(Boolean)
+
+        // Jika sumber media berganti bukan storage (misal jadi youtube/link)
+        if (updateData.media_source && updateData.media_source !== 'storage') {
+          urlsToDelete.push(...oldUrls)
+        } else if (updateData.media_url !== undefined) {
+          // Kumpulkan file storage lama yang sudah tidak tercantum pada media_url baru
+          for (const oldU of oldUrls) {
+            if (!newUrls.includes(oldU)) {
+              urlsToDelete.push(oldU)
+            }
+          }
+        }
+      }
+
+      // B. Cek perubahan thumbnail_url lama
+      if (
+        existingItem.thumbnail_url &&
+        updateData.thumbnail_url !== undefined &&
+        updateData.thumbnail_url !== existingItem.thumbnail_url
+      ) {
+        const isStillInNewMedia = (updateData.media_url || '').includes(existingItem.thumbnail_url)
+        if (!isStillInNewMedia) {
+          urlsToDelete.push(existingItem.thumbnail_url)
+        }
+      }
+
+      if (urlsToDelete.length > 0) {
+        await deleteStorageFiles(supabase, urlsToDelete)
+      }
+    } catch (cleanupErr) {
+      console.warn('[PATCH /portfolio/:id] Cleanup orphan storage files warning:', cleanupErr)
+    }
+
     return NextResponse.json({ data })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal Server Error'
@@ -74,7 +118,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
-// DELETE: hapus item + cleanup storage jika menggunakan storage
+// DELETE: hapus item + cleanup storage otomatis jika menggunakan storage
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -94,37 +138,20 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Portfolio item not found' }, { status: 404 })
     }
 
-    // 1. Bersihkan file media dari Storage jika tipenya storage
+    // 1. Bersihkan file media & thumbnail dari Storage jika ada
+    const urlsToClean: string[] = []
     if (item.media_source === 'storage' && item.media_url) {
-      if (item.media_url.includes('/member-assets/')) {
-        const path = item.media_url.split('/member-assets/')[1]?.split('?')[0]
-        if (path) {
-          await supabase.storage.from('member-assets').remove([path])
-        }
-      } else if (item.media_url.includes('/portfolio-images/')) {
-        const path = item.media_url.split('/portfolio-images/')[1]?.split('?')[0]
-        if (path) {
-          await supabase.storage.from('portfolio-images').remove([path])
-        }
-      }
+      urlsToClean.push(item.media_url)
     }
-
-    // 2. Bersihkan file thumbnail dari Storage jika ada
     if (item.thumbnail_url) {
-      if (item.thumbnail_url.includes('/member-assets/')) {
-        const thumbPath = item.thumbnail_url.split('/member-assets/')[1]?.split('?')[0]
-        if (thumbPath) {
-          await supabase.storage.from('member-assets').remove([thumbPath])
-        }
-      } else if (item.thumbnail_url.includes('/portfolio-thumbnails/')) {
-        const thumbPath = item.thumbnail_url.split('/portfolio-thumbnails/')[1]?.split('?')[0]
-        if (thumbPath) {
-          await supabase.storage.from('portfolio-thumbnails').remove([thumbPath])
-        }
-      }
+      urlsToClean.push(item.thumbnail_url)
     }
 
-    // 3. Hapus item dari database
+    if (urlsToClean.length > 0) {
+      await deleteStorageFiles(supabase, urlsToClean)
+    }
+
+    // 2. Hapus item dari database
     const { error: deleteError } = await supabase
       .from('portfolio_items')
       .delete()

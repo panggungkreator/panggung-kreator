@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { MemberProfile } from "@/lib/types/member";
 import { Menu, X } from "lucide-react";
+import Logo from "@/components/ui/Logo";
 
 interface ProfileLayoutProps {
   member?: MemberProfile;
@@ -28,9 +29,7 @@ export default function ProfileLayout({
 
       {/* 📱 MOBILE TOP BAR (HAMBURGER TOGGLE) */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#151B18]/80 backdrop-blur-xl h-16 px-5 flex items-center justify-between border-b border-black/5 dark:border-white/5">
-        <span className="text-sm font-sans font-bold tracking-wide text-[#212121] dark:text-white">
-          PORTAL MEMBER
-        </span>
+        <Logo size="sm" isLink={true} />
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="w-10 h-10 text-[#1C1C1C] dark:text-white transition-transform active:scale-95 flex items-center justify-center rounded-full bg-white dark:bg-[#1F2623] shadow-sm border border-black/5 dark:border-white/5 cursor-pointer"
@@ -52,13 +51,12 @@ export default function ProfileLayout({
       {/* MOBILE HAMBURGER MENU DRAWER */}
       <div
         className={`lg:hidden fixed top-16 left-0 right-0 bottom-0 z-40 bg-[#F6F5FA] dark:bg-[#0E1210] transition-all duration-300 ease-in-out overflow-y-auto ${isMobileMenuOpen
-          ? "opacity-100 py-6 px-5 shadow-2xl pointer-events-auto"
-          : "opacity-0 py-0 px-5 pointer-events-none translate-y-[-10px]"
+          ? "opacity-100 py-6 px-4 sm:px-6 shadow-2xl pointer-events-auto"
+          : "opacity-0 py-0 px-4 sm:px-6 pointer-events-none translate-y-[-10px]"
           }`}
         onClick={() => setIsMobileMenuOpen(false)}
       >
-        <div className="w-full max-w-sm mx-auto pb-24 space-y-6" onClick={(e) => e.stopPropagation()}>
-          {header && <div className="w-full">{header}</div>}
+        <div className="w-full max-w-lg mx-auto pb-24 space-y-6" onClick={(e) => e.stopPropagation()}>
           {sidebar && <div className="w-full">{sidebar}</div>}
         </div>
       </div>
@@ -82,7 +80,7 @@ export default function ProfileLayout({
       </div>
 
       {/* MOBILE FLOATING BOTTOM DOCK */}
-      <div className="lg:hidden">
+      <div className={`lg:hidden transition-all duration-200 ${isMobileMenuOpen ? "hidden" : "block"}`}>
         {tabs}
       </div>
     </div>

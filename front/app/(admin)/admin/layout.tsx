@@ -612,9 +612,6 @@ export default function AdminLayout({
                       <User size={13} className="text-text-secondary group-hover:text-text-primary" />
                       <span>Area Member</span>
                     </div>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-well border border-border-default/70 font-mono text-text-muted group-hover:text-text-primary">
-                      Member &rarr;
-                    </span>
                   </a>
                 )}
                 {isSuperAdmin && (

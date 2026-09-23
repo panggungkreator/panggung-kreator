@@ -4,9 +4,11 @@ import React, { useState, useEffect } from "react";
 import { MemberExperience } from "@/lib/types/member";
 import { Modal } from "@/components/ui/Modal";
 import { DateBirthLine } from "@/components/ui/style-line/DateBirthLine";
-import { cn } from "@/lib/utils";
+import { useModalValidation, FieldError } from "@/hooks/useModalValidation";
 import { toast } from "sonner";
 import { Briefcase, Building, MapPin, Loader2 } from "lucide-react";
+
+type ExperienceFields = "role" | "institution" | "startDate" | "endDate";
 
 interface ExperienceDrawerProps {
   isOpen: boolean;
@@ -30,8 +32,18 @@ export default function ExperienceDrawer({
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const {
+    errors,
+    validate,
+    clearError,
+    resetErrors,
+    getInputClassName,
+    createChangeHandler,
+  } = useModalValidation<ExperienceFields>();
+
   useEffect(() => {
     if (isOpen) {
+      resetErrors();
       if (experienceToEdit) {
         setRole(experienceToEdit.role || "");
         setInstitution(experienceToEdit.institution || "");
@@ -50,21 +62,27 @@ export default function ExperienceDrawer({
         setDescription("");
       }
     }
-  }, [isOpen, experienceToEdit]);
+  }, [isOpen, experienceToEdit, resetErrors]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!role.trim() || !institution.trim() || !startDate.trim()) {
-      toast.error("Lengkapi Peran, Nama Instansi/Acara, dan Waktu Mulai.");
-      return;
-    }
 
-    if (!isCurrent && endDate && startDate && endDate < startDate) {
-      toast.error("Tanggal selesai tidak boleh lebih dulu dari tanggal mulai.");
-      return;
-    }
+    const isValid = validate({
+      role: { value: role, required: "Peran / posisi wajib diisi." },
+      institution: { value: institution, required: "Nama acara / instansi wajib diisi." },
+      startDate: { value: startDate, required: "Tanggal mulai wajib dipilih." },
+      endDate: {
+        value: endDate,
+        custom: (val) =>
+          !isCurrent && val && startDate && val < startDate
+            ? "Tanggal selesai tidak boleh lebih awal dari tanggal mulai."
+            : null,
+      },
+    });
+
+    if (!isValid) return;
 
     setIsLoading(true);
     try {
@@ -143,7 +161,7 @@ export default function ExperienceDrawer({
         </div>
       }
     >
-      <form id="experience-form" onSubmit={handleSubmit} className="space-y-4 pt-1">
+      <form id="experience-form" noValidate onSubmit={handleSubmit} className="space-y-4 pt-1">
         {/* Role / Posisi */}
         <div>
           <label className="block text-xs font-medium text-text-secondary mb-1.5">
@@ -151,12 +169,12 @@ export default function ExperienceDrawer({
           </label>
           <input
             type="text"
-            required
             value={role}
-            onChange={(e) => setRole(e.target.value)}
+            onChange={createChangeHandler("role", setRole)}
             placeholder="Misal: Master of Ceremony, Moderator, Keynote Speaker..."
-            className="w-full bg-bg-well/60 border border-border-default px-3.5 py-2 text-xs sm:text-sm rounded-xl text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+            className={getInputClassName("role")}
           />
+          <FieldError error={errors.role} />
         </div>
 
         {/* Institution / Event / Company */}
@@ -168,13 +186,16 @@ export default function ExperienceDrawer({
             <Building className="absolute left-3 top-2.5 w-4 h-4 text-text-tertiary" />
             <input
               type="text"
-              required
               value={institution}
-              onChange={(e) => setInstitution(e.target.value)}
+              onChange={createChangeHandler("institution", setInstitution)}
               placeholder="Misal: Youth Innovation Summit 2024 / Kemendikbud..."
-              className="w-full bg-bg-well/60 border border-border-default py-2 pl-9 pr-3.5 text-xs sm:text-sm rounded-xl text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+              className={getInputClassName(
+                "institution",
+                "w-full bg-bg-well/60 border py-2 pl-9 pr-3.5 text-xs sm:text-sm rounded-xl text-text-primary placeholder:text-text-tertiary focus:outline-none transition-colors"
+              )}
             />
           </div>
+          <FieldError error={errors.institution} />
         </div>
 
         {/* Location */}
@@ -209,10 +230,12 @@ export default function ExperienceDrawer({
                 value={startDate}
                 onChange={(val) => {
                   setStartDate(val);
+                  clearError("startDate");
                   if (endDate && val > endDate) {
                     setEndDate(val);
                   }
                 }}
+                error={errors.startDate}
                 placeholder="Pilih Tanggal Mulai"
                 title="PILIH TANGGAL MULAI"
                 variant="box"
@@ -229,10 +252,12 @@ export default function ExperienceDrawer({
                 value={isCurrent ? "" : endDate}
                 onChange={(val) => {
                   setEndDate(val);
+                  clearError("endDate");
                   if (startDate && val < startDate) {
                     setStartDate(val);
                   }
                 }}
+                error={errors.endDate}
                 placeholder={isCurrent ? "Sedang Berlangsung" : "Pilih Tanggal Selesai"}
                 title="PILIH TANGGAL SELESAI"
                 variant="box"
