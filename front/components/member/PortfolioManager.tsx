@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { PortfolioItem, MemberExperience, Pillar } from "@/lib/types/member";
 import PortfolioDrawer from "./PortfolioDrawer";
@@ -43,7 +44,12 @@ const PILLARS: { value: Pillar | "all"; label: string }[] = [
 
 export default function PortfolioManager({ memberId, username }: PortfolioManagerProps) {
   void memberId;
+  const [isMounted, setIsMounted] = useState(false);
   const [activeSection, setActiveSection] = useState<SubSection>("portfolio");
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Portfolio State
   const [items, setItems] = useState<PortfolioItem[]>([]);
@@ -206,12 +212,17 @@ export default function PortfolioManager({ memberId, username }: PortfolioManage
     }
   };
 
-  const filteredItems = items
-    .filter((item) => (activeFilter === "all" ? true : item.pillar === activeFilter))
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const filteredItems = [...items].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* ═══ JUDUL DIATAS FILTER KARYA DAN JAM TERBANG TANPA BORDER BOTTOM ═══ */}
+      <div className="flex items-center gap-2">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-[#212121] dark:text-white">
+          Daftar Portofolio & Jam Terbang
+        </h2>
+      </div>
+
       {/* ═══ TOP SUB-SECTION SWITCHER (CAPSULE PILLS) ═══ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#212121]/10 dark:border-neutral-800 pb-4 gap-3">
         {/* Left: Tab Switcher Pills */}
@@ -220,39 +231,51 @@ export default function PortfolioManager({ memberId, username }: PortfolioManage
             type="button"
             onClick={() => setActiveSection("portfolio")}
             className={`flex-1 sm:flex-initial px-4 py-2 text-xs font-sans font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 rounded-full active:scale-95 ${activeSection === "portfolio"
-                ? "bg-[#212121] text-white dark:bg-white dark:text-[#212121] shadow-2xs"
-                : "text-neutral-600 dark:text-neutral-400 hover:text-[#212121] dark:hover:text-white"
+              ? "bg-[#212121] text-white dark:bg-white dark:text-[#212121] shadow-2xs"
+              : "text-neutral-600 dark:text-neutral-400 hover:text-[#212121] dark:hover:text-white"
               }`}
           >
-            <Sparkles size={13} />
-            <span>Karya ({items.length})</span>
+            <span>Portofolio</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveSection("experience")}
             className={`flex-1 sm:flex-initial px-4 py-2 text-xs font-sans font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 rounded-full active:scale-95 ${activeSection === "experience"
-                ? "bg-[#212121] text-white dark:bg-white dark:text-[#212121] shadow-2xs"
-                : "text-neutral-600 dark:text-neutral-400 hover:text-[#212121] dark:hover:text-white"
+              ? "bg-[#212121] text-white dark:bg-white dark:text-[#212121] shadow-2xs"
+              : "text-neutral-600 dark:text-neutral-400 hover:text-[#212121] dark:hover:text-white"
               }`}
           >
-            <Briefcase size={13} />
-            <span>Jam Terbang ({experiences.length})</span>
+            <span>Jam Terbang</span>
           </button>
         </div>
 
-        {/* Right: Public Talent Page Link */}
-        {username && (
+        {/* Right: Public Talent Page Link & Tambah Button (Desktop) */}
+        <div className="hidden sm:flex items-center gap-2">
+          {username && (
+            <Link
+              href={`/talent/${username}`}
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#212121]/10 dark:border-white/10 bg-white dark:bg-[#151B18] hover:bg-[#F6F5FA] dark:hover:bg-neutral-800 text-[#212121] dark:text-neutral-200 text-xs font-sans font-semibold uppercase tracking-wider transition-all shadow-2xs hover:scale-105 active:scale-95 shrink-0"
+            >
+              <Eye size={13} />
+              <span>Lihat Profil Talent</span>
+              <ExternalLink size={11} className="text-neutral-400" />
+            </Link>
+          )}
+
           <Link
-            href={`/talent/${username}`}
-            target="_blank"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#212121]/10 dark:border-white/10 bg-white dark:bg-[#151B18] hover:bg-[#F6F5FA] dark:hover:bg-neutral-800 text-[#212121] dark:text-neutral-200 text-xs font-sans font-semibold uppercase tracking-wider transition-all shadow-2xs hover:scale-105 active:scale-95 shrink-0"
+            href={
+              activeSection === "portfolio"
+                ? "/myprofile/edit?tab=portofolio&sub=portfolio&action=add"
+                : "/myprofile/edit?tab=portofolio&sub=experience&action=add"
+            }
+            className="h-9 px-3.5 bg-[#212121] dark:bg-white text-white dark:text-[#212121] hover:bg-black dark:hover:bg-neutral-200 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all shrink-0 rounded-xl shadow-2xs"
           >
-            <Eye size={13} />
-            <span>Lihat Profil Talent</span>
-            <ExternalLink size={11} className="text-neutral-400" />
+            <Plus size={14} />
+            <span>Tambah</span>
           </Link>
-        )}
+        </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════
@@ -260,44 +283,6 @@ export default function PortfolioManager({ memberId, username }: PortfolioManage
       ═══════════════════════════════════════════════════════════ */}
       {activeSection === "portfolio" && (
         <div className="space-y-4 animate-fade-in">
-          {/* Header Action & Description */}
-          <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#212121]/10 dark:border-white/10">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-[#212121] dark:text-white flex items-center justify-center font-bold text-xs font-mono">
-                3
-              </span>
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#212121] dark:text-white">
-                Daftar Karya & Portofolio
-              </h2>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleOpenAddPortfolio}
-              className="h-9 px-3.5 bg-[#212121] dark:bg-white text-white dark:text-[#212121] hover:bg-black dark:hover:bg-neutral-200 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all shrink-0 rounded-xl shadow-2xs"
-            >
-              <Plus size={14} />
-              <span>Tambah Karya</span>
-            </button>
-          </div>
-
-          {/* Pillar Chip Filters (1-Tap Rounded Pills) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            {PILLARS.map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                onClick={() => setActiveFilter(p.value)}
-                className={`px-3.5 py-1.5 text-xs font-sans font-medium uppercase tracking-wider transition-all border cursor-pointer shrink-0 rounded-full active:scale-95 ${activeFilter === p.value
-                    ? "bg-[#212121] dark:bg-white text-white dark:text-[#212121] border-[#212121] dark:border-white font-bold shadow-2xs"
-                    : "bg-white dark:bg-[#151B18] border-[#212121]/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-[#212121]/30 dark:hover:border-white/30"
-                  }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
           {/* Grid Portfolio Content */}
           {isPortfolioLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
@@ -314,18 +299,17 @@ export default function PortfolioManager({ memberId, username }: PortfolioManage
           ) : filteredItems.length === 0 ? (
             <div className="border border-dashed border-[#212121]/20 dark:border-white/20 py-12 text-center space-y-2.5 font-sans p-6 rounded-2xl bg-white/50 dark:bg-[#151B18]/50">
               <div className="text-xs text-[#212121] dark:text-white font-bold uppercase tracking-wider">
-                Belum Ada Karya Dalam Kategori Ini
+                Belum Ada Karya
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
                 Semua dokumentasi video dan foto yang Anda tambahkan akan otomatis tampil di halaman etalase publik kreator Anda.
               </p>
-              <button
-                type="button"
-                onClick={handleOpenAddPortfolio}
+              <Link
+                href="/myprofile/edit?tab=portofolio&sub=portfolio&action=add"
                 className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#212121] dark:text-white hover:opacity-80 transition-opacity cursor-pointer pt-2"
               >
-                <Plus size={14} /> + Tambah Karya Pertama
-              </button>
+                <Plus size={14} /> Tambah Karya Pertama
+              </Link>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -464,27 +448,6 @@ export default function PortfolioManager({ memberId, username }: PortfolioManage
       ═══════════════════════════════════════════════════════════ */}
       {activeSection === "experience" && (
         <div className="space-y-4 animate-fade-in">
-          {/* Header Action & Description */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="font-sans text-sm uppercase tracking-wider font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-neutral-500" />
-                <span>Riwayat Jam Terbang & Event</span>
-              </h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                Portofolio pengalaman panggung nyata: Host / MC, Moderator, Speaker, atau Project Kreator.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleOpenAddExperience}
-              className="h-9 px-4 bg-[#212121] dark:bg-white text-white dark:text-[#212121] hover:opacity-90 font-bold text-xs font-sans uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all self-start sm:self-auto shrink-0 rounded-full shadow-2xs hover:scale-105 active:scale-95"
-            >
-              <Plus size={14} />
-              <span>Tambah Jam Terbang</span>
-            </button>
-          </div>
 
           {/* Experience List Content */}
           {isExpLoading ? (
@@ -501,13 +464,12 @@ export default function PortfolioManager({ memberId, username }: PortfolioManage
               <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
                 Catat setiap event, project MC, talkshow, dan kolaborasi untuk meningkatkan kredibilitas Anda di hadapan klien.
               </p>
-              <button
-                type="button"
-                onClick={handleOpenAddExperience}
+              <Link
+                href="/myprofile/edit?tab=portofolio&sub=experience&action=add"
                 className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#212121] dark:text-white hover:opacity-80 transition-opacity cursor-pointer pt-2"
               >
                 <Plus size={14} /> Tambah Pengalaman Pertama
-              </button>
+              </Link>
             </div>
           ) : (
             <div className="space-y-3">
@@ -597,6 +559,40 @@ export default function PortfolioManager({ memberId, username }: PortfolioManage
           fetchExperiences();
         }}
       />
+
+      {/* 📱 MOBILE VERTICAL FLOATING ACTIONS (+ TAMBAH & PREVIEW PUBLIK) */}
+      {isMounted &&
+        createPortal(
+          <div className="sm:hidden fixed bottom-[88px] right-6 sm:right-8 z-50 flex flex-col items-center gap-2.5 pointer-events-auto">
+            {/* 1. Floating Preview Publik (Icon Only) */}
+            {username && (
+              <Link
+                href={`/talent/${username}`}
+                target="_blank"
+                aria-label="Preview Halaman Publik Talent"
+                className="w-13 h-13 rounded-full bg-white/95 dark:bg-[#1C1C1C]/95 backdrop-blur-md border border-black/10 dark:border-white/10 shadow-lg text-text-primary flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+                title="Lihat Halaman Publik Talent"
+              >
+                <Eye size={24} className="text-neutral-500 dark:text-neutral-400 group-hover:text-black dark:group-hover:text-white transition-colors" />
+              </Link>
+            )}
+
+            {/* 2. Floating + Tambah Button (Icon Only, Enlarged) */}
+            <Link
+              href={
+                activeSection === "portfolio"
+                  ? "/myprofile/edit?tab=portofolio&sub=portfolio&action=add"
+                  : "/myprofile/edit?tab=portofolio&sub=experience&action=add"
+              }
+              aria-label={activeSection === "portfolio" ? "Tambah Portofolio" : "Tambah Jam Terbang"}
+              className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              title={activeSection === "portfolio" ? "Tambah Portofolio" : "Tambah Jam Terbang"}
+            >
+              <Plus size={24} className="stroke-[2.5]" />
+            </Link>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

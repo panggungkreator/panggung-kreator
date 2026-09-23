@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   MemberProfile,
@@ -53,9 +54,14 @@ export default function ShowcasePanel({
   initialSubTab = "experience",
   previewUrl,
 }: ShowcasePanelProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<ShowcaseSubTab>(
     initialSubTab === "achievement" ? "portfolio" : initialSubTab
   );
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Sync with initialSubTab if it changes from parent URL
   useEffect(() => {
@@ -63,6 +69,23 @@ export default function ShowcasePanel({
       setActiveSubTab(initialSubTab === "achievement" ? "portfolio" : initialSubTab);
     }
   }, [initialSubTab]);
+
+  // Auto-open drawer when navigated with action=add
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("action") === "add") {
+        const sub = params.get("sub");
+        if (sub === "portfolio" || (!sub && activeSubTab === "portfolio")) {
+          setEditingPortfolioItem(null);
+          setIsPortfolioDrawerOpen(true);
+        } else if (sub === "experience" || (!sub && activeSubTab === "experience")) {
+          setEditingExperience(null);
+          setIsExpDrawerOpen(true);
+        }
+      }
+    }
+  }, [activeSubTab]);
 
   // ── Portfolio & Achievements State ─────────────────────────────────────────
   const [allItems, setAllItems] = useState<PortfolioItem[]>([]);
@@ -719,6 +742,13 @@ export default function ShowcasePanel({
         onClose={() => {
           setIsPortfolioDrawerOpen(false);
           setEditingPortfolioItem(null);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has("action")) {
+              url.searchParams.delete("action");
+              window.history.replaceState({}, "", url.toString());
+            }
+          }
         }}
         memberId={member.id}
         itemToEdit={editingPortfolioItem}
@@ -747,6 +777,13 @@ export default function ShowcasePanel({
         onClose={() => {
           setIsExpDrawerOpen(false);
           setEditingExperience(null);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has("action")) {
+              url.searchParams.delete("action");
+              window.history.replaceState({}, "", url.toString());
+            }
+          }
         }}
         experienceToEdit={editingExperience}
         onSuccess={() => {
@@ -755,31 +792,35 @@ export default function ShowcasePanel({
       />
 
       {/* 📱 MOBILE VERTICAL FLOATING ACTIONS (+ TAMBAH & PREVIEW PUBLIK) */}
-      <div className="sm:hidden fixed bottom-32 right-4 z-40 flex flex-col items-center gap-3 pointer-events-auto">
-        {/* 1. Floating Preview Publik (Icon Only) */}
-        {previewUrl && (
-          <Link
-            href={previewUrl}
-            target="_blank"
-            aria-label="Preview Halaman Publik Talent"
-            className="w-12 h-12 rounded-full bg-white/95 dark:bg-[#1C1C1C]/95 backdrop-blur-md border border-black/10 dark:border-white/10 shadow-lg text-text-primary flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer group"
-            title="Lihat Halaman Publik Talent"
-          >
-            <Eye size={20} className="text-text-secondary group-hover:text-text-primary transition-colors" />
-          </Link>
-        )}
+      {isMounted &&
+        createPortal(
+          <div className="sm:hidden fixed bottom-[88px] right-6 sm:right-8 z-50 flex flex-col items-center gap-2.5 pointer-events-auto">
+            {/* 1. Floating Preview Publik (Icon Only) */}
+            {previewUrl && (
+              <Link
+                href={previewUrl}
+                target="_blank"
+                aria-label="Preview Halaman Publik Talent"
+                className="w-13 h-13 rounded-full bg-white/95 dark:bg-[#1C1C1C]/95 backdrop-blur-md border border-black/10 dark:border-white/10 shadow-lg text-text-primary flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+                title="Lihat Halaman Publik Talent"
+              >
+                <Eye size={24} className="text-text-secondary group-hover:text-text-primary transition-colors" />
+              </Link>
+            )}
 
-        {/* 2. Floating + Tambah Button (Icon Only, Enlarged) */}
-        <button
-          type="button"
-          onClick={currentTabObj.onAdd}
-          aria-label={`Tambah ${currentTabObj.label}`}
-          className="w-14 h-14 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer"
-          title={`Tambah ${currentTabObj.label}`}
-        >
-          <Plus size={26} className="stroke-[2.5]" />
-        </button>
-      </div>
+            {/* 2. Floating + Tambah Button (Icon Only, Enlarged) */}
+            <button
+              type="button"
+              onClick={currentTabObj.onAdd}
+              aria-label={`Tambah ${currentTabObj.label}`}
+              className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              title={`Tambah ${currentTabObj.label}`}
+            >
+              <Plus size={24} className="stroke-[2.5]" />
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

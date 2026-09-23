@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { useModalValidation, FieldError } from "@/hooks/useModalValidation";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Video, Image as ImageIcon, Award, Link as LinkIcon, Loader2, Sparkles } from "lucide-react";
+import { Video, Image as ImageIcon, Award, Link as LinkIcon, Loader2, Sparkles, VectorSquare } from "lucide-react";
 
 export interface PortfolioDrawerProps {
   isOpen: boolean;
@@ -213,7 +213,7 @@ export default function PortfolioDrawer({
       case "link":
         return <LinkIcon className="w-5 h-5 text-text-primary" />;
       default:
-        return <Sparkles className="w-5 h-5 text-text-primary" />;
+        return <VectorSquare className="w-5 h-5 text-text-primary" />;
     }
   };
 
@@ -251,8 +251,8 @@ export default function PortfolioDrawer({
                   ? "Mengunggah & Menyimpan..."
                   : "Menyimpan..."
                 : itemToEdit
-                ? "Simpan Perubahan"
-                : "Simpan Portofolio"}
+                  ? "Simpan Perubahan"
+                  : "Simpan Portofolio"}
             </span>
           </button>
         </div>

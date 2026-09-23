@@ -69,6 +69,34 @@ export default function EditProfilePage() {
   // Modal confirm tab switch when dirty
   const [pendingTab, setPendingTab] = useState<ProfileEditTabId | null>(null);
 
+  // Synchronize tab and sub-tab from URL on mount/navigation
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      const subParam = params.get("sub") as ShowcaseSubTab;
+      if (tabParam && ["pengalaman", "portofolio", "prestasi"].includes(tabParam)) {
+        setActiveTab("portofolio");
+      } else if (
+        tabParam &&
+        ["identitas", "sosial", "portofolio", "keamanan"].includes(tabParam)
+      ) {
+        setActiveTab(tabParam as ProfileEditTabId);
+      }
+
+      if (tabParam === "pengalaman" || subParam === "experience") {
+        setShowcaseSubTab("experience");
+      } else if (
+        tabParam === "portofolio" ||
+        subParam === "portfolio" ||
+        tabParam === "prestasi" ||
+        subParam === "achievement"
+      ) {
+        setShowcaseSubTab("portfolio");
+      }
+    }
+  }, []);
+
   // Floating back button visibility on scroll
   const [showFloatingBack, setShowFloatingBack] = useState(false);
 

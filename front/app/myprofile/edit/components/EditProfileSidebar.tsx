@@ -73,7 +73,7 @@ export default function EditProfileSidebar({
       <div className="lg:hidden fixed bottom-6 inset-x-0 z-40 pointer-events-none flex justify-center px-4">
         <nav
           aria-label="Navigasi Tab Pengaturan"
-          className="pointer-events-auto bg-[#1C1C1C] dark:bg-[#18181B] border border-white/10 shadow-2xl rounded-full px-4 py-2 flex items-center justify-between gap-1.5 w-full max-w-[340px] sm:max-w-sm text-white"
+          className="pointer-events-auto bg-[#1C1C1C] dark:bg-[#18181B] border border-white/10 shadow-2xl rounded-full px-3.5 py-1.5 flex items-center justify-between gap-1 w-full max-w-[270px] sm:max-w-xs text-white"
         >
           {PROFILE_EDIT_TABS.map((tab) => {
             const isActive = activeTab === tab.id;

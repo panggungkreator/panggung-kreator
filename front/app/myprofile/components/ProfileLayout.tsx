@@ -73,7 +73,7 @@ export default function ProfileLayout({
         {header && <div className="hidden lg:block w-full">{header}</div>}
 
         {/* MAIN TAB CONTENT AREA */}
-        <main className="w-full min-w-0 flex flex-col gap-6 lg:gap-8 z-0">
+        <main className="w-full min-w-0 flex flex-col gap-6 lg:gap-8 z-0 p-4">
           {statsCards && <div className="w-full">{statsCards}</div>}
           <div className="w-full overflow-x-clip">{children}</div>
         </main>
