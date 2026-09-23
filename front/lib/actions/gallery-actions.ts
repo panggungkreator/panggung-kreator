@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 
 export async function saveGalleryAlbumAction(
   data: {
+    event_id?: string | null;
     title: string;
     slug?: string;
     category: string;
@@ -47,14 +48,17 @@ export async function saveGalleryAlbumAction(
     };
   }
 
-  const generatedSlug =
+  const baseSlug =
     data.slug?.trim() ||
     data.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
 
-  const payload = {
+  // Jika edit, pastikan slug tidak bentrok dengan album lain
+  const generatedSlug = id ? `${baseSlug}-${id.slice(0, 6)}` : baseSlug;
+
+  const payload: Record<string, any> = {
     title: data.title.trim(),
     slug: generatedSlug,
     category: data.category || "lainnya",
@@ -67,24 +71,90 @@ export async function saveGalleryAlbumAction(
     updated_at: new Date().toISOString(),
   };
 
+  if (data.event_id) {
+    payload.event_id = data.event_id;
+  }
+
   const { error } = await syncDualOperation(async (client) => {
     if (id) {
-      const { error: err } = await client
+      let { error: err } = await client
         .from("gallery_albums")
         .update(payload)
         .eq("id", id);
+
+      // 1. Fallback jika kolom event_id belum ada di database
+      if (
+        err &&
+        (err.message?.includes("event_id") ||
+          err.code === "PGRST204" ||
+          err.code === "42703")
+      ) {
+        const { event_id, ...fallbackPayload } = payload;
+        const res = await client
+          .from("gallery_albums")
+          .update(fallbackPayload)
+          .eq("id", id);
+        err = res.error;
+      }
+
+      // 2. Fallback jika ada konflik slug unik
+      if (err && err.code === "23505") {
+        const randomSuffix = Math.random().toString(36).substring(2, 6);
+        const retryPayload = {
+          ...payload,
+          slug: `${baseSlug}-${randomSuffix}`,
+        };
+        const res = await client
+          .from("gallery_albums")
+          .update(retryPayload)
+          .eq("id", id);
+        err = res.error;
+      }
+
       if (err) throw err;
     } else {
-      const { error: err } = await client
+      let { error: err } = await client
         .from("gallery_albums")
         .insert([payload]);
+
+      // 1. Fallback jika kolom event_id belum ada di database
+      if (
+        err &&
+        (err.message?.includes("event_id") ||
+          err.code === "PGRST204" ||
+          err.code === "42703")
+      ) {
+        const { event_id, ...fallbackPayload } = payload;
+        const res = await client
+          .from("gallery_albums")
+          .insert([fallbackPayload]);
+        err = res.error;
+      }
+
+      // 2. Fallback jika slug unik bentrok
+      if (err && err.code === "23505") {
+        const randomSuffix = Math.random().toString(36).substring(2, 6);
+        const retryPayload = {
+          ...payload,
+          slug: `${baseSlug}-${randomSuffix}`,
+        };
+        const res = await client
+          .from("gallery_albums")
+          .insert([retryPayload]);
+        err = res.error;
+      }
+
       if (err) throw err;
     }
     return true;
   });
 
   if (error) {
-    return { success: false, error: error.message };
+    const errorMsg =
+      typeof error === "string"
+        ? error
+        : (error as any)?.message || JSON.stringify(error);
+    return { success: false, error: errorMsg };
   }
 
   // Log admin activity

@@ -46,5 +46,32 @@ export default async function AddGalleryPage({ searchParams }: PageProps) {
     }
   }
 
-  return <AddGalleryClient initialAlbum={initialAlbum} />;
+  // Fetch all events
+  const { data: eventsData } = await supabase
+    .from("events")
+    .select("id, title, event_type, event_date")
+    .order("event_date", { ascending: false });
+
+  // Fetch all gallery albums to know which events are already assigned
+  let galleriesData: { id: string; event_id?: string | null; title: string }[] = [];
+  const { data: gData, error: gErr } = await supabase
+    .from("gallery_albums")
+    .select("id, event_id, title");
+
+  if (gErr) {
+    const { data: fallbackGData } = await supabase
+      .from("gallery_albums")
+      .select("id, title");
+    galleriesData = fallbackGData || [];
+  } else {
+    galleriesData = gData || [];
+  }
+
+  return (
+    <AddGalleryClient
+      initialAlbum={initialAlbum}
+      events={eventsData || []}
+      existingGalleries={galleriesData}
+    />
+  );
 }

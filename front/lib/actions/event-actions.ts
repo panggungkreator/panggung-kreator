@@ -177,6 +177,37 @@ export async function createEventAction(data: EventFormData) {
       .select("id")
       .single();
     if (err) throw err;
+
+    // Otomatis buat data album galeri draft yang terhubung ke event
+    const generatedSlug =
+      trimmedTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") +
+      "-" +
+      (inserted.id as string).substring(0, 6);
+
+    const galleryPayload = {
+      event_id: inserted.id,
+      title: trimmedTitle,
+      slug: generatedSlug,
+      category: cleanEventType,
+      event_date: data.event_date,
+      hero_image_url: null,
+      album_link: null,
+      description: null,
+      is_published: false,
+      display_order: 0,
+    };
+
+    const { error: galleryErr } = await client
+      .from("gallery_albums")
+      .insert([galleryPayload]);
+
+    if (galleryErr) {
+      console.warn("Notice: Gagal otomatis membuat galeri untuk event:", galleryErr);
+    }
+
     return inserted;
   });
 
@@ -201,6 +232,8 @@ export async function createEventAction(data: EventFormData) {
   }
 
   revalidatePath("/admin/acara");
+  revalidatePath("/admin/galeri");
+  revalidatePath("/galeri");
   revalidatePath("/myprofile");
 
   return { success: true, eventId: devResult?.id };
@@ -285,6 +318,22 @@ export async function updateEventAction(id: string, data: EventFormData) {
       .update(payload)
       .eq("id", id);
     if (err) throw err;
+
+    // Sync title, category, event_date ke gallery_albums jika ada album yang terhubung
+    try {
+      await client
+        .from("gallery_albums")
+        .update({
+          title: trimmedTitle,
+          category: cleanEventType,
+          event_date: data.event_date,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("event_id", id);
+    } catch (syncGalErr) {
+      console.warn("Notice: Gagal sync data galeri:", syncGalErr);
+    }
+
     return true;
   });
 
@@ -311,6 +360,8 @@ export async function updateEventAction(id: string, data: EventFormData) {
   revalidatePath("/admin/acara");
   revalidatePath(`/admin/acara/${id}`);
   revalidatePath(`/absensi/${id}`);
+  revalidatePath("/admin/galeri");
+  revalidatePath("/galeri");
   revalidatePath("/myprofile");
 
   return { success: true };

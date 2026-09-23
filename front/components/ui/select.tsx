@@ -136,6 +136,16 @@ export function SelectContent({
   );
 }
 
+function getTextFromChildren(node: React.ReactNode): string {
+  if (node === null || node === undefined) return "";
+  if (typeof node === "string" || typeof node === "number") return node.toString();
+  if (Array.isArray(node)) return node.map(getTextFromChildren).join("");
+  if (React.isValidElement(node) && (node.props as any)?.children) {
+    return getTextFromChildren((node.props as any).children);
+  }
+  return "";
+}
+
 export function SelectItem({
   value,
   className,
@@ -150,16 +160,18 @@ export function SelectItem({
 
   useEffect(() => {
     if (isSelected && children) {
-      setSelectedLabel(children.toString());
+      const text = getTextFromChildren(children);
+      setSelectedLabel(text || value);
     }
-  }, [isSelected, children, setSelectedLabel]);
+  }, [isSelected, children, setSelectedLabel, value]);
 
   const handleSelect = () => {
     if (onValueChange) {
       onValueChange(value);
     }
     if (children) {
-      setSelectedLabel(children.toString());
+      const text = getTextFromChildren(children);
+      setSelectedLabel(text || value);
     }
     setOpen(false);
   };

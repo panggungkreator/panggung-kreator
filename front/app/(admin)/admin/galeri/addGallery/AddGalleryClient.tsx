@@ -19,8 +19,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { saveGalleryAlbumAction } from "@/lib/actions/gallery-actions";
 import { toast } from "sonner";
 
+export interface EventItem {
+  id: string;
+  title: string;
+  event_type: string;
+  event_date: string;
+}
+
+export interface ExistingGalleryItem {
+  id: string;
+  event_id?: string | null;
+  title: string;
+}
+
 interface Album {
   id: string;
+  event_id?: string | null;
   title: string;
   slug: string;
   category: string;
@@ -34,6 +48,8 @@ interface Album {
 
 interface AddGalleryClientProps {
   initialAlbum: Album | null;
+  events?: EventItem[];
+  existingGalleries?: ExistingGalleryItem[];
 }
 
 const CATEGORIES = [
@@ -57,12 +73,29 @@ const getStoragePathFromUrl = (url: string, bucketName: string): string | null =
   return null;
 };
 
-export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps) {
+export default function AddGalleryClient({
+  initialAlbum,
+  events = [],
+  existingGalleries = [],
+}: AddGalleryClientProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState("");
 
-  // Form State
+  // Determine initial selected event ID
+  const initialEventId = (() => {
+    if (initialAlbum?.event_id) return initialAlbum.event_id;
+    if (initialAlbum?.title) {
+      const match = events.find(
+        (e) =>
+          e.title.toLowerCase().trim() === initialAlbum.title.toLowerCase().trim()
+      );
+      if (match) return match.id;
+    }
+    return "";
+  })();
+
+  const [selectedEventId, setSelectedEventId] = useState(initialEventId);
   const [title, setTitle] = useState(initialAlbum?.title || "");
   const [category, setCategory] = useState(initialAlbum?.category || "open-mic");
   const [eventDate, setEventDate] = useState(() => {
@@ -82,6 +115,48 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
   const [isPublished, setIsPublished] = useState(
     initialAlbum ? initialAlbum.is_published : true
   );
+
+  // Set of used event IDs and titles already assigned to other galleries
+  const usedEventIds = new Set<string>();
+  const usedEventTitles = new Set<string>();
+
+  existingGalleries.forEach((g) => {
+    // Jangan anggap event milik album yang sedang diedit ini sebagai "terpakai oleh galeri lain"
+    if (initialAlbum && g.id === initialAlbum.id) return;
+    if (g.event_id) {
+      usedEventIds.add(g.event_id);
+    }
+    if (g.title) {
+      usedEventTitles.add(g.title.trim().toLowerCase());
+    }
+  });
+
+  // Filter acara yang masih tersedia:
+  // 1. Acara yang sedang dipilih pada album saat ini (jika sedang edit/pilih), ATAU
+  // 2. Acara yang ID maupun Judulnya belum dipakai di galeri manapun
+  const availableEvents = events.filter((ev) => {
+    if (selectedEventId && ev.id === selectedEventId) {
+      return true;
+    }
+    const isIdUsed = usedEventIds.has(ev.id);
+    const isTitleUsed = usedEventTitles.has(ev.title.trim().toLowerCase());
+    return !isIdUsed && !isTitleUsed;
+  });
+
+  const selectedEvent = events.find((e) => e.id === selectedEventId);
+
+  const handleEventSelect = (eventId: string) => {
+    setSelectedEventId(eventId);
+    const ev = events.find((e) => e.id === eventId);
+    if (ev) {
+      setTitle(ev.title);
+      if (ev.event_date) setEventDate(ev.event_date);
+      if (ev.event_type) {
+        const cleanType = ev.event_type.replace(/_/g, "-");
+        setCategory(cleanType);
+      }
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -105,7 +180,7 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
     setFormError("");
 
     if (!title.trim()) {
-      setFormError("Judul album dokumentasi wajib diisi.");
+      setFormError("Silakan pilih acara (event) untuk dokumentasi ini.");
       return;
     }
 
@@ -158,6 +233,7 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
       // 2. Save album with dual-sync
       const res = await saveGalleryAlbumAction(
         {
+          event_id: selectedEventId || null,
           title: title.trim(),
           category,
           event_date: eventDate,
@@ -276,19 +352,48 @@ export default function AddGalleryClient({ initialAlbum }: AddGalleryClientProps
 
           {/* Form Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border-default/40">
-            {/* Judul */}
-            <div className="md:col-span-2">
-              <label className="block text-[11px] font-semibold text-text-secondary mb-1.5">
-                Judul Dokumentasi Kegiatan <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Contoh: Open Mic Session #12 - Personal Branding Workshop"
-                className="w-full h-10 px-3.5 text-xs font-medium rounded-xl border border-border-default bg-bg-well/50 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-primary transition-all"
-              />
+            {/* Pilih Acara / Event Terkait */}
+            <div className="md:col-span-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-[11px] font-semibold text-text-secondary">
+                  Kaitkan dengan Acara (Event) <span className="text-red-500">*</span>
+                </label>
+                <span className="text-[10px] text-text-muted font-mono">
+                  {availableEvents.length} acara tersedia
+                </span>
+              </div>
+
+              <Select value={selectedEventId} onValueChange={handleEventSelect}>
+                <SelectTrigger className="w-full h-10 rounded-xl border-border-default bg-bg-well/50 text-xs font-medium focus:outline-none focus:border-text-primary">
+                  <SelectValue placeholder="-- Pilih Acara / Event yang Belum Dikaitkan --" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl max-h-60">
+                  {availableEvents.length === 0 ? (
+                    <div className="p-3 text-xs text-text-muted text-center">
+                      Semua acara sudah memiliki galeri dokumentasi.
+                    </div>
+                  ) : (
+                    availableEvents.map((ev) => (
+                      <SelectItem key={ev.id} value={ev.id} className="text-xs py-2">
+                        {ev.title} ({ev.event_date})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+
+              {/* Label Nama Galeri di bawahnya */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-[11px] text-text-muted">Nama Galeri:</span>
+                <span className="text-xs font-semibold text-text-primary px-2.5 py-1 rounded-lg bg-bg-well border border-border-default/70 inline-flex items-center gap-1.5">
+                  {title || initialAlbum?.title || "(Pilih acara di atas)"}
+                </span>
+                {initialAlbum?.title && initialAlbum.title !== title && (
+                  <span className="text-[10px] text-text-muted italic">
+                    (Nama galeri lama: "{initialAlbum.title}")
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Kategori */}

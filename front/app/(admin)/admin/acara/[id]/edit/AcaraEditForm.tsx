@@ -17,7 +17,9 @@ import {
   Building2,
   Sparkles,
   Pencil,
-  Tag
+  Tag,
+  VectorSquare,
+  Bookmark
 } from "lucide-react";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -360,9 +362,8 @@ export default function AcaraEditForm({
                       title="Buka daftar tipe acara"
                     >
                       <ChevronDown
-                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                          isTypeDropdownOpen ? "rotate-180" : ""
-                        }`}
+                        className={`w-3.5 h-3.5 transition-transform duration-200 ${isTypeDropdownOpen ? "rotate-180" : ""
+                          }`}
                       />
                     </button>
                   </div>
@@ -387,17 +388,15 @@ export default function AcaraEditForm({
                             key={t.id || t.value}
                             type="button"
                             onClick={() => handleSelectType(t)}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${
-                              isSelected
-                                ? "bg-bg-well font-bold text-text-primary"
-                                : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
-                            }`}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${isSelected
+                              ? "bg-bg-well font-bold text-text-primary"
+                              : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                              }`}
                           >
                             <span className="flex items-center gap-2">
                               <span
-                                className={`w-2 h-2 rounded-full ${
-                                  t.color || "bg-cyan-500"
-                                } shrink-0`}
+                                className={`w-2 h-2 rounded-full ${t.color || "bg-cyan-500"
+                                  } shrink-0`}
                               />
                               <span>{t.name}</span>
                             </span>
@@ -514,7 +513,7 @@ export default function AcaraEditForm({
                 </span>
               ) : location.trim() ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 font-semibold select-none animate-fade-in">
-                  <Sparkles className="w-3 h-3 shrink-0" />
+                  <Bookmark className="w-3 h-3 shrink-0" />
                   <span>Venue Baru (Auto-Save)</span>
                 </span>
               ) : null}
@@ -556,9 +555,8 @@ export default function AcaraEditForm({
                     title="Buka daftar pilihan venue"
                   >
                     <ChevronDown
-                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                        isVenueDropdownOpen ? "rotate-180" : ""
-                      }`}
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${isVenueDropdownOpen ? "rotate-180" : ""
+                        }`}
                     />
                   </button>
                 </div>
@@ -588,11 +586,10 @@ export default function AcaraEditForm({
                           key={v.id}
                           type="button"
                           onClick={() => handleSelectVenue(v)}
-                          className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer group ${
-                            isSelected
-                              ? "bg-bg-well font-bold text-text-primary"
-                              : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
-                          }`}
+                          className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer group ${isSelected
+                            ? "bg-bg-well font-bold text-text-primary"
+                            : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
+                            }`}
                         >
                           <Building2 className="w-4 h-4 shrink-0 mt-0.5 text-text-muted group-hover:text-text-primary transition-colors" />
                           <div className="flex-1 min-w-0">
