@@ -500,8 +500,7 @@ export default function AcaraDetailClient({
               </div>
               <div>
                 <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Presensi</p>
-                <p className="text-xs font-bold text-text-primary mt-0.5 font-mono">{stats.present} Hadir / {stats.total} Terdaftar</p>
-                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">{stats.percentage}% Kehadiran</p>
+                <p className="text-xs font-bold text-text-primary mt-0.5 font-mono">{stats.present} Hadir </p>
               </div>
             </div>
           </div>
