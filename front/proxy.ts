@@ -213,7 +213,7 @@ export async function proxy(request: NextRequest) {
     const isAdmin = member?.role === "admin";
 
     if (!isPaid && !isAdmin) {
-      return NextResponse.redirect(new URL("/akademi/checkout", request.url));
+      return NextResponse.redirect(new URL("/registration", request.url));
     }
   }
 
@@ -263,47 +263,20 @@ export async function proxy(request: NextRequest) {
   }
 
   // B. Web Akademi Subdomain (akademi.panggungkreator.web.id)
+  // Alihkan semua trafik akademi ke halaman pendaftaran/checkout di domain utama
   if (sub === "akademi") {
-    // Redirect untuk menghilangkan prefix "/akademi" jika diakses via subdomain akademi
-    if (pathname === "/akademi" || pathname.startsWith("/akademi/")) {
-      const strippedPath = pathname.replace(/^\/akademi/, "") || "/";
-      return NextResponse.redirect(new URL(`${protocol}//${host}${strippedPath}${search}`));
-    }
-
-    if (pathname.startsWith("/dashboard")) {
-      if (!user) {
-        return NextResponse.redirect(new URL(`${protocol}//${rootHost}/login`, request.url));
-      }
-
-      const { data: member } = await supabase
-        .from("members")
-        .select("role, membership_tier, payment_status")
-        .eq("id", user.id)
-        .single();
-
-      const isPaid =
-        member?.payment_status === "paid" ||
-        member?.membership_tier === "regular" ||
-        member?.membership_tier === "mvp";
-      const isAdmin = member?.role === "admin";
-
-      if (!isPaid && !isAdmin) {
-        // Redirect to /checkout on the same akademi subdomain
-        return NextResponse.redirect(new URL(`${protocol}//${host}/checkout${search}`, request.url));
-      }
-    }
-
-    // Rewrite request to /akademi subfolder
-    return NextResponse.rewrite(new URL(`/akademi${pathname}${search}`, request.url));
+    return NextResponse.redirect(
+      new URL(`${protocol}//${rootHost}/registration${search}`, request.url)
+    );
   }
 
   // C. Web Komunitas (panggungkreator.web.id)
   if (isRootDomain) {
-    // Redirect /akademi to akademi subdomain in production
-    if (!isLocalhost && (pathname === "/akademi" || pathname.startsWith("/akademi/"))) {
-      const targetPath = pathname.replace(/^\/akademi/, "") || "/";
-      const targetUrl = `${protocol}//akademi.${rootHost}${targetPath}${search}`;
-      return NextResponse.redirect(new URL(targetUrl, request.url));
+    // Alihkan /akademi ke /registration pada domain utama
+    if (pathname === "/akademi" || pathname.startsWith("/akademi/")) {
+      return NextResponse.redirect(
+        new URL(`${protocol}//${rootHost}/registration${search}`, request.url)
+      );
     }
 
     if (pathname === "/myprofile" || pathname.startsWith("/myprofile/")) {
