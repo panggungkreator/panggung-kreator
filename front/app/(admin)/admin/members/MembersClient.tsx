@@ -1401,27 +1401,34 @@ export default function MembersClient({
         {detailMember && (
           <div className="flex flex-col gap-3 text-xs">
             {/* Rekap Jawaban Form Onboarding Card */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-bg-well/60 border border-border-default/80">
-              <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-bg-well/60 border border-border-default/80 gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-bg-card border border-border-default/80 flex items-center justify-center shrink-0 text-text-muted">
                   <FileText size={15} />
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-text-primary">Rekap Jawaban Form Onboarding</p>
-                  <p className="text-[10px] text-text-muted">Profiling minat & kebutuhan program (StepEssential)</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-xs font-bold text-text-primary">Rekap Form Onboarding</p>
+                    {hasFilledOnboardingForm(detailMember) ? (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-semibold leading-none">
+                        Terisi
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-semibold leading-none">
+                        Belum diisi
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-text-muted mt-0.5 truncate">Profiling minat & kebutuhan program (StepEssential)</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setRecapModalMember(detailMember)}
-                className="h-8 px-3 rounded-xl bg-text-primary text-bg-card hover:opacity-90 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                className="h-8 px-3 rounded-xl bg-text-primary text-bg-card hover:opacity-90 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
               >
+                <Eye size={13} />
                 <span>Lihat Rekap</span>
-                {hasFilledOnboardingForm(detailMember) ? (
-                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-white text-[9px] font-bold">Terisi</span>
-                ) : (
-                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[9px] font-bold">Belum diisi</span>
-                )}
               </button>
             </div>
 
