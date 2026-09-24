@@ -64,14 +64,14 @@ export default function HeroSection() {
 
               <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                 <a
-                  href="#gabung"
-                  className="bg-[#2c2c2c] text-white dark:bg-white dark:text-[#2c2c2c] text-xs font-bold uppercase tracking-[0.2em] px-8 py-4 border border-[#2c2c2c] dark:border-white text-center hover:bg-transparent hover:text-[#2c2c2c] dark:hover:bg-transparent dark:hover:text-white transition-all duration-350 rounded-none"
+                  href="/registration"
+                  className="bg-[#2c2c2c] text-white dark:bg-white dark:text-[#2c2c2c] text-xs font-bold uppercase tracking-[0.2em] px-8 py-4 border border-[#2c2c2c] dark:border-white text-center  transition-all duration-350 rounded-none"
                 >
                   GABUNG — MEMBERSHIP
                 </a>
                 <a
                   href="#program"
-                  className="bg-transparent text-[#2c2c2c] dark:text-white text-xs font-bold uppercase tracking-[0.2em] px-8 py-4 border border-[#2c2c2c] dark:border-white text-center hover:bg-[#2c2c2c] hover:text-white dark:hover:bg-white dark:hover:text-[#2c2c2c] transition-all duration-350 rounded-none"
+                  className="bg-transparent text-[#2c2c2c] dark:text-white text-xs font-bold uppercase tracking-[0.2em] px-8 py-4 border border-[#2c2c2c] dark:border-white text-center transition-all duration-350 rounded-none"
                 >
                   JELAJAHI PROGRAM
                 </a>

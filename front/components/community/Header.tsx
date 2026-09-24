@@ -179,8 +179,7 @@ export default function Header() {
                 {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
               </button>
             ) : null}
-
-            {/* {user ? (
+            {user ? (
               <div className="flex items-center gap-4">
                 <Link
                   href="/myprofile"
@@ -188,30 +187,17 @@ export default function Header() {
                 >
                   Profil Saya
                 </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="bg-[#2c2c2c] text-white dark:bg-white dark:text-[#2c2c2c] text-[10px] font-bold uppercase tracking-[0.25em] px-5 py-2.5 border border-[#2c2c2c] dark:border-white hover:bg-transparent hover:text-[#2c2c2c] dark:hover:bg-transparent dark:hover:text-white transition-all duration-350 rounded-none cursor-pointer"
-                >
-                  Keluar
-                </button>
               </div>
-            ) : ( */}
-            {/* <div className="flex items-center gap-5">
-              <Link
-                href="/login"
-                className="text-xs uppercase tracking-[0.2em] font-bold text-[#2c2c2c]/60 hover:text-[#2c2c2c] dark:text-white/60 dark:hover:text-white transition-colors"
-              >
-                Masuk
-              </Link>
-              <a
-                href="#gabung"
-                onClick={(e) => handleSmoothScroll(e, "#gabung")}
-                className="text-xs uppercase tracking-[0.2em] font-bold bg-[#2c2c2c] text-white dark:bg-white dark:text-[#2c2c2c] px-5 py-2.5 rounded-none border border-[#2c2c2c] dark:border-white hover:bg-white hover:text-[#2c2c2c] dark:hover:bg-[#2c2c2c] dark:hover:text-white transition-all duration-300 cursor-pointer"
-              >
-                GABUNG — GRATIS
-              </a>
-            </div> */}
-            {/* )} */}
+            ) : (
+              <div className="flex items-center gap-5">
+                <Link
+                  href="/login"
+                  className="w-full bg-[#2c2c2c] text-white dark:bg-white dark:text-[#2c2c2c] text-center text-xs uppercase tracking-[0.2em] font-bold py-3.5 px-6 border border-[#2c2c2c] dark:border-white transition-all duration-300"
+                >
+                  Masuk
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Mobile menu trigger */}
@@ -236,8 +222,8 @@ export default function Header() {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-white dark:bg-[#2c2c2c] md:hidden flex flex-col pt-24 p-6 gap-6 justify-between overflow-y-auto max-h-screen">
-          <nav className="flex flex-col gap-4 pt-2 items-start">
+        <div className="fixed inset-0 z-40 bg-white dark:bg-[#2c2c2c] md:hidden flex flex-col justify-between pt-28 pb-10 px-8 overflow-y-auto">
+          <nav className="flex flex-col items-center justify-center gap-6 my-auto text-center w-full max-w-sm mx-auto">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -245,9 +231,9 @@ export default function Header() {
                   key={link.label}
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`text-lg font-bold tracking-[0.15em] uppercase transition-all duration-200 ${isActive
-                    ? "bg-[#ffe78a] text-black dark:bg-[#0762bd] dark:text-white px-4 py-2"
-                    : "text-[#2c2c2c]/70 hover:text-[#2c2c2c] dark:text-white/70 dark:hover:text-white px-4 py-2"
+                  className={`w-full text-center text-lg font-bold tracking-[0.2em] uppercase py-3.5 px-6 transition-all duration-200 ${isActive
+                    ? "bg-[#ffe78a] text-black dark:bg-[#0762bd] dark:text-white"
+                    : "text-[#2c2c2c]/80 hover:text-[#2c2c2c] dark:text-white/80 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
                     }`}
                 >
                   {link.label}
@@ -256,55 +242,27 @@ export default function Header() {
             })}
           </nav>
 
-          <div className="flex flex-col gap-4 pb-8">
+          {/* Mobile Auth / CTA Controls */}
+          <div className="flex flex-col items-center gap-4 w-full max-w-sm mx-auto pt-6 border-t border-[#2c2c2c]/10 dark:border-white/10">
             {user ? (
-              memberProfile ? (
-                <div className="border-t border-[#2c2c2c]/10 dark:border-white/10 pt-6">
-                  <ProfileSidebar
-                    member={memberProfile}
-                    onSignout={() => {
-                      setIsMobileMenuOpen(false);
-                      handleSignOut();
-                    }}
-                    onLinkClick={() => setIsMobileMenuOpen(false)}
-                  />
-                </div>
-              ) : (
-                <>
-                  <Link
-                    href="/myprofile"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full text-center py-3 border border-[#2c2c2c] dark:border-white text-xs uppercase tracking-[0.2em] font-bold text-[#2c2c2c] dark:text-white bg-[#2c2c2c]/5 dark:bg-white/5 rounded-none"
-                  >
-                    Profil Saya
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      handleSignOut();
-                    }}
-                    className="w-full text-center py-3 border border-red-600/30 text-xs uppercase tracking-[0.2em] font-bold text-red-600 bg-red-50 dark:bg-red-950/10 rounded-none"
-                  >
-                    Keluar
-                  </button>
-                </>
-              )
+              <>
+                <Link
+                  href="/myprofile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full text-center text-xs uppercase tracking-[0.2em] font-bold py-3.5 px-6 border border-[#2c2c2c] dark:border-white text-[#2c2c2c] dark:text-white hover:bg-[#2c2c2c] hover:text-white dark:hover:bg-white dark:hover:text-[#2c2c2c] transition-all duration-300"
+                >
+                  Profil Saya
+                </Link>
+              </>
             ) : (
               <>
                 <Link
                   href="/login"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full text-center py-3 border border-[#2c2c2c] dark:border-white text-xs uppercase tracking-[0.2em] font-bold text-[#2c2c2c] dark:text-white bg-[#2c2c2c]/5 dark:bg-white/5 rounded-none"
+                  className="w-full text-center text-xs uppercase tracking-[0.2em] font-bold py-3.5 px-6 border border-[#2c2c2c] dark:border-white text-[#2c2c2c] dark:text-white hover:bg-[#2c2c2c] hover:text-white dark:hover:bg-white dark:hover:text-[#2c2c2c] transition-all duration-300"
                 >
                   Masuk
                 </Link>
-                <a
-                  href="#membership"
-                  onClick={(e) => handleSmoothScroll(e, "#membership")}
-                  className="w-full text-center py-3 bg-[#2c2c2c] text-white dark:bg-white dark:text-[#2c2c2c] text-xs uppercase tracking-[0.2em] font-bold rounded-none border border-[#2c2c2c] dark:border-white cursor-pointer"
-                >
-                  GABUNG — MEMBERSHIP
-                </a>
               </>
             )}
           </div>

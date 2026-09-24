@@ -51,7 +51,7 @@ export default function ProfileLayout({
       {/* MOBILE HAMBURGER MENU DRAWER */}
       <div
         className={`lg:hidden fixed top-16 left-0 right-0 bottom-0 z-40 bg-[#F6F5FA] dark:bg-[#0E1210] transition-all duration-300 ease-in-out overflow-y-auto ${isMobileMenuOpen
-          ? "opacity-100 py-6 px-4 sm:px-6 shadow-2xl pointer-events-auto"
+          ? "opacity-100 py-6 sm:px-6 shadow-2xl pointer-events-auto"
           : "opacity-0 py-0 px-4 sm:px-6 pointer-events-none translate-y-[-10px]"
           }`}
         onClick={() => setIsMobileMenuOpen(false)}

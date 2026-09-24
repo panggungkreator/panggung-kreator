@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Trash2, Clock } from "lucide-react";
 
 export interface ModalConfirmationProps {
@@ -26,7 +27,24 @@ export const ModalConfirmation: React.FC<ModalConfirmationProps> = ({
   confirmText,
   cancelText = "Batal",
 }) => {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
 
   // Determine Icon and styles based on type
   let iconContainerClass = "bg-zinc-100 text-zinc-650 dark:bg-zinc-800 dark:text-zinc-400";
@@ -46,13 +64,13 @@ export const ModalConfirmation: React.FC<ModalConfirmationProps> = ({
     defaultConfirmText = "Konfirmasi";
   }
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4">
       <div 
-        className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" 
+        className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-xs transition-opacity" 
         onClick={() => !isLoading && onClose()}
       />
-      <div className="relative bg-white dark:bg-zinc-900 rounded-none sm:rounded-[2rem] border-0 sm:border border-zinc-150 dark:border-white/5 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in p-6 sm:p-8 text-center">
+      <div className="relative bg-white dark:bg-zinc-900 rounded-none sm:rounded-[2rem] border-0 sm:border border-zinc-150 dark:border-white/5 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in p-6 sm:p-8 text-center z-10">
 
         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${iconContainerClass}`}>
           <IconComponent className="w-8 h-8" />
@@ -85,6 +103,7 @@ export const ModalConfirmation: React.FC<ModalConfirmationProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

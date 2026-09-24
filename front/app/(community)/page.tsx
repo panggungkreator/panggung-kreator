@@ -17,9 +17,6 @@ export default function Page() {
       {/* 1. Hero Section (Giant headline + visual stage) */}
       <HeroSection />
 
-      {/* 2. Marquee Ticker (Infinite horizontal typography ribbon) */}
-      <MarqueeSection />
-
       {/* 3. Pillars Section (Stark 3-column numbered grid) */}
       <PillarsSection />
 
