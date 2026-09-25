@@ -67,15 +67,15 @@ export default function ProfileLayout({
       </div>
 
       {/* 💻 MAIN DESKTOP LAYOUT (CLEAN CENTERED MAIN CONTENT) */}
-      <div className="max-w-5xl w-full mx-auto pt-20 lg:pt-8 pb-28 lg:pb-12 px-4 sm:px-6 lg:px-8 flex-1 flex flex-col gap-6 lg:gap-8">
+      <div className="max-w-5xl w-full mx-auto pt-16 lg:pt-8 pb-28 lg:pb-12 px-0 sm:px-6 lg:px-8 flex-1 flex flex-col gap-6 lg:gap-8">
 
         {/* TOP HEADER (Breadcrumb + Profile Dropdown) */}
         {header && <div className="hidden lg:block w-full">{header}</div>}
 
         {/* MAIN TAB CONTENT AREA */}
-        <main className="w-full min-w-0 flex flex-col gap-6 lg:gap-8 z-0 p-4">
-          {statsCards && <div className="w-full">{statsCards}</div>}
-          <div className="w-full overflow-x-clip">{children}</div>
+        <main className="w-full min-w-0 flex flex-col gap-6 lg:gap-8 z-0 p-0 sm:p-4">
+          {statsCards && <div className="w-full px-4 sm:px-0">{statsCards}</div>}
+          <div className="w-full">{children}</div>
         </main>
       </div>
 

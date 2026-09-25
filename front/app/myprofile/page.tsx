@@ -308,25 +308,31 @@ export default function MyProfilePage() {
 
             {activeTab === "attendance" && (
               disabledTabs.attendance ? (
-                <UnderConstruction
-                  title="Absensi Event"
-                  description="Fitur Absensi Event sedang dalam peningkatan performa sistem. Terima kasih atas kesabaran Anda."
-                  onBackToOverview={() => handleTabChange("overview")}
-                />
+                <div className="px-4 sm:px-0">
+                  <UnderConstruction
+                    title="Absensi Event"
+                    description="Fitur Absensi Event sedang dalam peningkatan performa sistem. Terima kasih atas kesabaran Anda."
+                    onBackToOverview={() => handleTabChange("overview")}
+                  />
+                </div>
               ) : (
-                <AttendanceTracker memberId={member.id} />
+                <div className="px-4 sm:px-0">
+                  <AttendanceTracker memberId={member.id} />
+                </div>
               )
             )}
 
             {activeTab === "portfolio" && (
               disabledTabs.portfolio ? (
-                <UnderConstruction
-                  title="Portofolio Kreator"
-                  description="Fitur manajemen portofolio karya sedang dalam pengembangan."
-                  onBackToOverview={() => handleTabChange("overview")}
-                />
+                <div className="px-4 sm:px-0">
+                  <UnderConstruction
+                    title="Portofolio Kreator"
+                    description="Fitur manajemen portofolio karya sedang dalam pengembangan."
+                    onBackToOverview={() => handleTabChange("overview")}
+                  />
+                </div>
               ) : (
-                <div className="bg-transparent border-0 p-0 shadow-none">
+                <div className="bg-transparent border-0 p-0 shadow-none px-4 sm:px-0">
                   <PortfolioManager
                     memberId={member.id}
                     username={member.username || undefined}
@@ -337,20 +343,24 @@ export default function MyProfilePage() {
 
             {activeTab === "affiliate" && (
               disabledTabs.affiliate ? (
-                <UnderConstruction
-                  title="Program Affiliate"
-                  description="Panel Affiliate sedang menjalani penyesuaian sistem komisi. Silakan hubungi admin untuk info lebih lanjut."
-                  onBackToOverview={() => handleTabChange("overview")}
-                />
+                <div className="px-4 sm:px-0">
+                  <UnderConstruction
+                    title="Program Affiliate"
+                    description="Panel Affiliate sedang menjalani penyesuaian sistem komisi. Silakan hubungi admin untuk info lebih lanjut."
+                    onBackToOverview={() => handleTabChange("overview")}
+                  />
+                </div>
               ) : (
-                <AffiliatePanel
-                  member={member}
-                  referrals={referrals}
-                  ledger={ledger}
-                  onAffiliateGenerated={(newCode) => {
-                    setMember((prev) => (prev ? { ...prev, affiliate_code: newCode } : prev));
-                  }}
-                />
+                <div className="px-4 sm:px-0">
+                  <AffiliatePanel
+                    member={member}
+                    referrals={referrals}
+                    ledger={ledger}
+                    onAffiliateGenerated={(newCode) => {
+                      setMember((prev) => (prev ? { ...prev, affiliate_code: newCode } : prev));
+                    }}
+                  />
+                </div>
               )
             )}
           </>
