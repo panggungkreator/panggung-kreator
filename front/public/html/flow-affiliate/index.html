@@ -329,8 +329,7 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      max-height: 480px;
-      min-height: 280px;
+      height: auto;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
       margin-bottom: 24px;
     }
@@ -377,28 +376,20 @@
     }
 
     .window-body {
-      flex: 1;
       padding: 0;
-      padding-bottom: 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
       position: relative;
       background: #faf9f6;
-      overflow-y: auto;
-      max-height: 420px;
-      -webkit-overflow-scrolling: touch;
+      overflow: hidden;
     }
 
     .window-body img {
       width: 100%;
       height: auto;
       display: block;
-    }
-
-    .window-body img:last-child {
-      margin-bottom: 24px;
     }
 
     /* ---------- CTA BUTTONS & INTERACTION ---------- */
@@ -615,8 +606,7 @@
                 <span class="window-title">profil-saya // kode-referral</span>
               </div>
               <div class="window-body">
-                <img src="/images/docs/step1.png" alt="Screenshot letak Kode Referral di Halaman Profil"
-                  style="margin-bottom: 24px;">
+                <img src="/images/docs/step1.png" alt="Screenshot letak Kode Referral di Halaman Profil">
               </div>
             </div>
           </div>
