@@ -483,3 +483,234 @@ export async function updateMemberStatusAction(payload: {
     return { success: false, error: err.message || "Gagal memperbarui status member." };
   }
 }
+
+export async function adminAssignAffiliateAction(payload: {
+  memberId: string;
+  referrerId: string | null;
+}): Promise<ActionResponse> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+
+    if (!currentUser) {
+      return { success: false, error: "Sesi tidak valid. Silakan login kembali." };
+    }
+
+    const { data: adminMember } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", currentUser.id)
+      .single();
+
+    if (!adminMember || adminMember.role !== "admin") {
+      return {
+        success: false,
+        error: "Akses ditolak. Anda tidak memiliki wewenang admin.",
+      };
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
+    const { data: targetMember, error: fetchErr } = await supabaseAdmin
+      .from("members")
+      .select("id, full_name, stage_name, email, role, membership_tier, referred_by_member_id, referred_by")
+      .eq("id", payload.memberId)
+      .single();
+
+    if (fetchErr || !targetMember) {
+      return { success: false, error: "Data member tidak ditemukan." };
+    }
+
+    // Constraint: Hanya berlaku untuk user dengan role member reguler (bukan admin)
+    const isRegularMember = targetMember.role !== "admin";
+
+    if (!isRegularMember) {
+      return {
+        success: false,
+        error: "Penetapan affiliator hanya berlaku untuk member reguler (bukan akun admin).",
+      };
+    }
+
+    let referrerMember: any = null;
+    if (payload.referrerId) {
+      if (payload.referrerId === payload.memberId) {
+        return {
+          success: false,
+          error: "Member tidak dapat menjadi affiliator untuk dirinya sendiri.",
+        };
+      }
+
+      const { data: refData, error: refErr } = await supabaseAdmin
+        .from("members")
+        .select("id, full_name, stage_name, email, affiliate_code, commission_balance")
+        .eq("id", payload.referrerId)
+        .single();
+
+      if (refErr || !refData) {
+        return { success: false, error: "Data member affiliator terpilih tidak ditemukan." };
+      }
+      referrerMember = refData;
+    }
+
+    const oldReferrerId = targetMember.referred_by_member_id || targetMember.referred_by;
+
+    // 1. Update target member referred_by in database
+    const { syncDualOperation } = await import("@/lib/supabase/dual-sync");
+    const { devResult, error: syncErr } = await syncDualOperation(async (client) => {
+      return await client
+        .from("members")
+        .update({
+          referred_by_member_id: payload.referrerId || null,
+          referred_by: payload.referrerId || null,
+        })
+        .eq("id", payload.memberId);
+    });
+
+    if (devResult?.error || syncErr) {
+      console.error("Error updating member referrer via dual-sync:", devResult?.error || syncErr);
+      return {
+        success: false,
+        error: `Gagal menyimpan affiliator: ${(devResult?.error || syncErr)?.message}`,
+      };
+    }
+
+    // 2. Calculate Commission Reward Amount based on system settings
+    const { getReferralCommissionSettingsAction } = await import("@/lib/actions/settings-actions");
+    const settings = await getReferralCommissionSettingsAction();
+    let rewardAmount = 10000;
+    if (settings.mode === "percentage") {
+      const basePrice = Number((targetMember as any).final_price || 49000);
+      const pct = parseFloat(settings.percentage) || 10;
+      rewardAmount = Math.round((basePrice * pct) / 100);
+    } else {
+      const cleanFlat = parseInt(String(settings.flatAmount).replace(/\D/g, ""), 10);
+      rewardAmount = isNaN(cleanFlat) ? 10000 : cleanFlat;
+    }
+
+    // 3. Handle Old Referrer Commission Removal (if changing or clearing affiliator)
+    if (oldReferrerId && oldReferrerId !== payload.referrerId) {
+      try {
+        const { data: oldLedgers } = await supabaseAdmin
+          .from("commission_ledger")
+          .select("id, amount, member_id")
+          .eq("member_id", oldReferrerId)
+          .eq("reference_id", targetMember.id);
+
+        if (oldLedgers && oldLedgers.length > 0) {
+          const totalOldAmount = oldLedgers.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+          const { data: oldRefUser } = await supabaseAdmin
+            .from("members")
+            .select("id, commission_balance")
+            .eq("id", oldReferrerId)
+            .single();
+
+          if (oldRefUser) {
+            const newOldBal = Math.max(0, Number(oldRefUser.commission_balance || 0) - totalOldAmount);
+            await supabaseAdmin
+              .from("members")
+              .update({ commission_balance: newOldBal })
+              .eq("id", oldReferrerId);
+          }
+
+          await supabaseAdmin
+            .from("commission_ledger")
+            .delete()
+            .eq("member_id", oldReferrerId)
+            .eq("reference_id", targetMember.id);
+        }
+      } catch (oldErr) {
+        console.warn("Notice: Error reverting old commission ledger:", oldErr);
+      }
+    }
+
+    // 4. Handle New Referrer Commission Addition (if affiliator is assigned)
+    if (payload.referrerId) {
+      try {
+        const { data: existingLedger } = await supabaseAdmin
+          .from("commission_ledger")
+          .select("id")
+          .eq("member_id", payload.referrerId)
+          .eq("reference_id", targetMember.id)
+          .maybeSingle();
+
+        if (!existingLedger && rewardAmount > 0) {
+          const { data: refCurrent } = await supabaseAdmin
+            .from("members")
+            .select("commission_balance")
+            .eq("id", payload.referrerId)
+            .single();
+
+          const currentBalance = Number(refCurrent?.commission_balance || 0);
+          const newReferrerBalance = currentBalance + rewardAmount;
+
+          await supabaseAdmin
+            .from("members")
+            .update({ commission_balance: newReferrerBalance })
+            .eq("id", payload.referrerId);
+
+          await supabaseAdmin
+            .from("commission_ledger")
+            .insert({
+              member_id: payload.referrerId,
+              type: "pending",
+              amount: rewardAmount,
+              balance_after: newReferrerBalance,
+              source: "referral_reward",
+              reference_id: targetMember.id,
+              description: `Komisi referral dari pendaftaran ${targetMember.stage_name || targetMember.full_name || "member"}`,
+              created_by: currentUser.id,
+            });
+        }
+      } catch (newLedgerErr) {
+        console.warn("Notice: Error adding new commission ledger entry:", newLedgerErr);
+      }
+    }
+
+    // 5. Log the admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      const memberName = targetMember.stage_name || targetMember.full_name || targetMember.id;
+      const referrerName = referrerMember
+        ? referrerMember.stage_name || referrerMember.full_name || referrerMember.id
+        : "Tanpa Affiliator";
+
+      await logAdminActivity({
+        adminId: currentUser.id,
+        action: "UPDATE",
+        module: "Members",
+        targetId: payload.memberId,
+        description: payload.referrerId
+          ? `Menetapkan affiliator "${referrerName}" untuk member "${memberName}" (Komisi Rp ${rewardAmount.toLocaleString("id-ID")})`
+          : `Menghapus affiliator dari member "${memberName}"`,
+        oldData: {
+          referred_by_member_id: targetMember.referred_by_member_id,
+          referred_by: targetMember.referred_by,
+        },
+        newData: {
+          referred_by_member_id: payload.referrerId || null,
+          referred_by: payload.referrerId || null,
+        },
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log assign affiliate:", logErr);
+    }
+
+    revalidatePath("/admin/members");
+    revalidatePath("/admin/affiliate-payout");
+    revalidatePath("/myprofile");
+
+    return {
+      success: true,
+      message: payload.referrerId
+        ? `Berhasil menetapkan affiliator (${referrerMember.stage_name || referrerMember.full_name}) untuk ${targetMember.stage_name || targetMember.full_name} beserta komisi referral.`
+        : `Berhasil menghapus affiliator untuk ${targetMember.stage_name || targetMember.full_name}.`,
+    };
+  } catch (err: any) {
+    console.error("Error in adminAssignAffiliateAction:", err);
+    return {
+      success: false,
+      error: err.message || "Terjadi kesalahan saat menetapkan affiliator.",
+    };
+  }
+}

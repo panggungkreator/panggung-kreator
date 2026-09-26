@@ -22,6 +22,7 @@ import {
   Check,
   FileText,
   User,
+  UserPlus,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -29,7 +30,13 @@ import { Modal, ModalSection } from "@/components/ui/Modal";
 import { toast } from "sonner";
 import AdminPagination from "@/components/admin/AdminPagination";
 import { isDedicatedAdmin } from "@/lib/constants";
-import { sendMemberCredentialsAction, deleteMemberAction, fetchLatestMembersAction, updateMemberStatusAction } from "./actions";
+import {
+  sendMemberCredentialsAction,
+  deleteMemberAction,
+  fetchLatestMembersAction,
+  updateMemberStatusAction,
+  adminAssignAffiliateAction,
+} from "./actions";
 import { MemberFormRecapModal } from "./MemberFormRecapModal";
 
 type Member = {
@@ -67,6 +74,8 @@ type Member = {
   package?: { id: string; name: string } | null;
   subscribed_newsletter?: boolean;
   interests?: any;
+  referred_by_member_id?: string | null;
+  referred_by?: string | null;
 };
 
 interface MembersClientProps {
@@ -305,6 +314,7 @@ export default function MembersClient({
   const [editCommunity, setEditCommunity] = useState<string>("panggung_kreator");
   const [editTier, setEditTier] = useState<string>("free");
   const [editNote, setEditNote] = useState<string>("");
+  const [editReferrerId, setEditReferrerId] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
 
   // Detail modal state
@@ -323,6 +333,87 @@ export default function MembersClient({
   // Delete modal state
   const [deleteModalMember, setDeleteModalMember] = useState<Member | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Assign Affiliate modal state
+  const [assignAffiliateMember, setAssignAffiliateMember] = useState<Member | null>(null);
+  const [selectedReferrerId, setSelectedReferrerId] = useState<string>("");
+  const [isSubmittingAffiliate, setIsSubmittingAffiliate] = useState<boolean>(false);
+  const [referrerSearch, setReferrerSearch] = useState<string>("");
+
+  // Helper constraint: Hanya berlaku untuk user dengan role member reguler (bukan admin)
+  const isEligibleForAffiliateAssign = (m: Member | null | undefined) => {
+    if (!m) return false;
+    return m.role !== "admin";
+  };
+
+  const openAssignAffiliateModal = (m: Member) => {
+    setAssignAffiliateMember(m);
+    setSelectedReferrerId(m.referred_by_member_id || m.referred_by || "");
+    setReferrerSearch("");
+  };
+
+  const potentialAffiliators = useMemo(() => {
+    if (!assignAffiliateMember) return [];
+    return members
+      .filter((m) => m.id !== assignAffiliateMember.id)
+      .sort((a, b) => (a.full_name || a.stage_name || "").localeCompare(b.full_name || b.stage_name || ""));
+  }, [members, assignAffiliateMember]);
+
+  const filteredAffiliators = useMemo(() => {
+    if (!referrerSearch.trim()) return potentialAffiliators;
+    const q = referrerSearch.toLowerCase();
+    return potentialAffiliators.filter(
+      (m) =>
+        m.full_name?.toLowerCase().includes(q) ||
+        m.stage_name?.toLowerCase().includes(q) ||
+        m.username?.toLowerCase().includes(q) ||
+        m.email?.toLowerCase().includes(q)
+    );
+  }, [potentialAffiliators, referrerSearch]);
+
+  const handleSaveAffiliate = async () => {
+    if (!assignAffiliateMember) return;
+    setIsSubmittingAffiliate(true);
+    try {
+      const res = await adminAssignAffiliateAction({
+        memberId: assignAffiliateMember.id,
+        referrerId: selectedReferrerId ? selectedReferrerId : null,
+      });
+
+      if (res.success) {
+        toast.success(res.message || "Affiliator berhasil disimpan.");
+        setMembers((prev) =>
+          prev.map((mem) =>
+            mem.id === assignAffiliateMember.id
+              ? {
+                ...mem,
+                referred_by_member_id: selectedReferrerId || null,
+                referred_by: selectedReferrerId || null,
+              }
+              : mem
+          )
+        );
+        if (detailMember?.id === assignAffiliateMember.id) {
+          setDetailMember((prev) =>
+            prev
+              ? {
+                ...prev,
+                referred_by_member_id: selectedReferrerId || null,
+                referred_by: selectedReferrerId || null,
+              }
+              : null
+          );
+        }
+        setAssignAffiliateMember(null);
+      } else {
+        toast.error(res.error || "Gagal menetapkan affiliator.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan.");
+    } finally {
+      setIsSubmittingAffiliate(false);
+    }
+  };
 
   // Helper to check whether member has filled StepEssential onboarding form
   const hasFilledOnboardingForm = (m: Member | null | undefined) => {
@@ -521,6 +612,7 @@ export default function MembersClient({
     setEditCommunity(member.community || "panggung_kreator");
     setEditTier(member.membership_tier || "free");
     setEditNote(member.tier_note || "");
+    setEditReferrerId(member.referred_by_member_id || member.referred_by || "");
     setIsEditOpen(true);
   };
 
@@ -544,11 +636,27 @@ export default function MembersClient({
         throw new Error(res.error || "Gagal memperbarui status member.");
       }
 
+      // If referrer was also modified
+      const currentRefId = editingMember.referred_by_member_id || editingMember.referred_by || "";
+      if (isEligibleForAffiliateAssign(editingMember) && editReferrerId !== currentRefId) {
+        await adminAssignAffiliateAction({
+          memberId: editingMember.id,
+          referrerId: editReferrerId ? editReferrerId : null,
+        });
+      }
+
       // Update local state
       setMembers(prev =>
         prev.map(m =>
           m.id === editingMember.id
-            ? { ...m, community: editCommunity, membership_tier: editTier, tier_note: editNote }
+            ? {
+              ...m,
+              community: editCommunity,
+              membership_tier: editTier,
+              tier_note: editNote,
+              referred_by_member_id: editReferrerId || null,
+              referred_by: editReferrerId || null,
+            }
             : m
         )
       );
@@ -1055,6 +1163,16 @@ export default function MembersClient({
                     >
                       <Edit2 size={13} />
                     </button>
+                    {isEligibleForAffiliateAssign(m) && (
+                      <button
+                        type="button"
+                        onClick={() => openAssignAffiliateModal(m)}
+                        className="w-8 h-8 rounded-full border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-950/40 active:scale-95 transition-all cursor-pointer"
+                        title={m.referred_by_member_id || m.referred_by ? "Ubah Affiliator (Manual)" : "Tetapkan Affiliator (Manual)"}
+                      >
+                        <UserPlus size={13} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setRecapModalMember(m)}
@@ -1317,6 +1435,33 @@ export default function MembersClient({
               </Select>
             </div>
 
+            {/* Affiliator / Referrer */}
+            {isEligibleForAffiliateAssign(editingMember) && (
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-text-secondary block">
+                  Affiliator (Referrer)
+                </label>
+                <select
+                  value={editReferrerId}
+                  onChange={(e) => setEditReferrerId(e.target.value)}
+                  className="w-full h-10 bg-bg-well/50 border border-border-default rounded-xl px-3 text-xs text-text-primary font-medium focus:ring-0 focus:outline-none"
+                >
+                  <option value="">-- Tanpa Affiliator (Kosongkan) --</option>
+                  {members
+                    .filter((m) => m.id !== editingMember.id)
+                    .sort((a, b) => (a.full_name || a.stage_name || "").localeCompare(b.full_name || b.stage_name || ""))
+                    .map((aff) => (
+                      <option key={aff.id} value={aff.id}>
+                        {aff.stage_name || aff.full_name} (@{aff.username}) {aff.email ? `- ${aff.email}` : ""}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-[10px] text-text-muted">
+                  Pilih member yang menjadi affiliator untuk pendaftar ini.
+                </p>
+              </div>
+            )}
+
             {/* Note */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold text-text-secondary block">
@@ -1518,6 +1663,62 @@ export default function MembersClient({
                 <div className="flex justify-between items-center">
                   <span className="text-text-muted font-medium">Tipe Tier:</span>
                   <div>{renderTierBadge(detailMember, detailMember.package?.name || (detailMember.package_id ? packagesMap.get(detailMember.package_id) : null))}</div>
+                </div>
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-text-muted font-medium shrink-0">Affiliator:</span>
+                  <div className="flex items-center gap-1.5 justify-end min-w-0">
+                    {(() => {
+                      const refId = detailMember.referred_by_member_id || detailMember.referred_by;
+                      const refObj = refId ? members.find((m) => m.id === refId) : null;
+                      if (refObj) {
+                        return (
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-bg-well border border-border-default/80 min-w-0">
+                              <User size={12} className="text-text-muted shrink-0" />
+                              <span
+                                className="text-xs font-semibold text-text-primary truncate max-w-[130px] sm:max-w-[180px]"
+                                title={`${refObj.stage_name || refObj.full_name} (@${refObj.username})`}
+                              >
+                                {refObj.stage_name || refObj.full_name}
+                              </span>
+                              <span className="text-[10px] text-text-muted font-mono shrink-0">
+                                @{refObj.username}
+                              </span>
+                            </div>
+                            {isEligibleForAffiliateAssign(detailMember) && (
+                              <button
+                                type="button"
+                                onClick={() => openAssignAffiliateModal(detailMember)}
+                                className="h-7 px-2 rounded-lg border border-border-default bg-bg-card hover:bg-bg-well text-[11px] font-medium text-text-secondary hover:text-text-primary transition-all flex items-center gap-1 cursor-pointer shrink-0 shadow-xs"
+                                title="Ubah Affiliator"
+                              >
+                                <UserPlus size={11} className="text-text-muted" />
+                                <span>Ubah</span>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-text-muted italic bg-bg-well/60 px-2 py-0.5 rounded-md border border-border-default/40">
+                            Belum ada
+                          </span>
+                          {isEligibleForAffiliateAssign(detailMember) && (
+                            <button
+                              type="button"
+                              onClick={() => openAssignAffiliateModal(detailMember)}
+                              className="h-7 px-2.5 rounded-lg bg-zinc-900 text-white dark:bg-yellow-100 dark:text-zinc-900 hover:opacity-90 text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                              title="Tetapkan Affiliator"
+                            >
+                              <UserPlus size={11} />
+                              <span>Tetapkan</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
                 {detailMember.tier_note && (
                   <div className="pt-2 mt-1 border-t border-border-default/50">
@@ -1807,6 +2008,132 @@ export default function MembersClient({
         onClose={() => setRecapModalMember(null)}
         member={recapModalMember}
       />
+
+      {/* ═══ MODAL: MANUAL ASSIGN AFFILIATE ═══ */}
+      <Modal
+        isOpen={!!assignAffiliateMember}
+        onClose={() => !isSubmittingAffiliate && setAssignAffiliateMember(null)}
+        title="Tetapkan Affiliator Member"
+      >
+        <div className="space-y-4 pt-1">
+          <div className="p-3 bg-bg-well border border-border-default/60 rounded-2xl flex items-center justify-between text-xs">
+            <div>
+              <span className="text-[10px] text-text-muted font-medium block">Member yang Diaffiliate:</span>
+              <span className="font-bold text-text-primary">
+                {assignAffiliateMember?.stage_name || assignAffiliateMember?.full_name}
+              </span>
+              <span className="text-text-muted block text-[11px]">
+                @{assignAffiliateMember?.username} ({assignAffiliateMember?.email || "-"})
+              </span>
+            </div>
+            <div>
+              {assignAffiliateMember && renderTierBadge(assignAffiliateMember, assignAffiliateMember.package?.name || (assignAffiliateMember.package_id ? packagesMap.get(assignAffiliateMember.package_id) : null))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-text-primary block">
+              Pilih Member Affiliator (Referrer):
+            </label>
+            <p className="text-[11px] text-text-secondary">
+              Pilih member yang menjadi affiliator untuk pendaftar ini. Data member ini akan langsung tampil di dashboard Afiliasi affiliator terpilih.
+            </p>
+
+            {/* Search filter for dropdown list */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Cari nama, username, atau email affiliator..."
+                value={referrerSearch}
+                onChange={(e) => setReferrerSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 text-xs bg-bg-well border border-border-default rounded-xl text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-border-default"
+              />
+            </div>
+
+            <div className="max-h-56 overflow-y-auto border border-border-default/80 rounded-xl divide-y divide-border-default/40 bg-bg-card">
+              <label className={`flex items-center gap-2.5 p-2.5 hover:bg-bg-well/60 cursor-pointer text-xs transition-colors ${selectedReferrerId === "" ? "bg-bg-well font-semibold" : ""}`}>
+                <input
+                  type="radio"
+                  name="affiliator_radio"
+                  checked={selectedReferrerId === ""}
+                  onChange={() => setSelectedReferrerId("")}
+                  className="text-primary focus:ring-0"
+                />
+                <div className="flex-1">
+                  <span className="text-text-muted italic block">-- Tanpa Affiliator (Kosongkan) --</span>
+                </div>
+              </label>
+
+              {filteredAffiliators.length === 0 ? (
+                <div className="p-4 text-center text-xs text-text-muted">
+                  Tidak ada data affiliator yang cocok.
+                </div>
+              ) : (
+                filteredAffiliators.map((aff) => {
+                  const isSelected = selectedReferrerId === aff.id;
+                  return (
+                    <label
+                      key={aff.id}
+                      className={`flex items-center gap-2.5 p-2.5 hover:bg-bg-well/60 cursor-pointer text-xs transition-colors ${isSelected ? "bg-bg-well font-semibold" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name="affiliator_radio"
+                        checked={isSelected}
+                        onChange={() => setSelectedReferrerId(aff.id)}
+                        className="text-primary focus:ring-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-text-primary truncate font-medium">
+                            {aff.stage_name || aff.full_name}
+                          </span>
+                          <span className="text-[10px] font-mono text-text-muted shrink-0">
+                            @{aff.username}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-text-muted truncate">
+                          {aff.email || aff.whatsapp_number || "-"}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-border-default/60">
+            <button
+              type="button"
+              disabled={isSubmittingAffiliate}
+              onClick={() => setAssignAffiliateMember(null)}
+              className="h-10 px-4 text-xs font-bold rounded-xl text-text-secondary bg-bg-well hover:bg-bg-well/80 border border-border-default transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              disabled={isSubmittingAffiliate}
+              onClick={handleSaveAffiliate}
+              className="h-10 px-5 text-xs font-bold rounded-xl text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-yellow-100 dark:text-zinc-900 dark:hover:bg-yellow-200 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {isSubmittingAffiliate ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Menyimpan...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Simpan Affiliator</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   );

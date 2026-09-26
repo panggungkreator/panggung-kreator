@@ -954,7 +954,10 @@ export async function getMyCommissionLedgerAction() {
 
       let referredMember: any = matchingReward?.referred;
       if (!referredMember && entry.source === "referral_reward") {
-        if (entry.description) {
+        if (entry.reference_id) {
+          referredMember = referredMembers.find((m: any) => m.id === entry.reference_id);
+        }
+        if (!referredMember && entry.description) {
           referredMember = referredMembers.find((m: any) =>
             entry.description.toLowerCase().includes((m.full_name || "").toLowerCase()) ||
             (m.stage_name && entry.description.toLowerCase().includes(m.stage_name.toLowerCase()))

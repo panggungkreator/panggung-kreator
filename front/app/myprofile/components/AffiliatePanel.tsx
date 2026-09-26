@@ -412,6 +412,145 @@ export default function AffiliatePanel({
         </div>
       )}
 
+      {/* DAFTAR MEMBER YANG DIAFFILIATE */}
+      <div className="pt-2 space-y-3">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-[#212121]/10 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
+          <h3 className="font-sans font-bold text-base sm:text-lg text-[#212121] dark:text-white flex items-center gap-2">
+            Member yang <span className="highlight-stabilo">Diaffiliate</span>
+          </h3>
+          <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+            [ {referralsList.length} MEMBER ]
+          </span>
+        </div>
+
+        {referralsList.length === 0 ? (
+          <div className="border border-dashed border-[#212121]/20 dark:border-white/20 py-8 text-center text-xs text-neutral-500 font-sans rounded-2xl bg-white/50 dark:bg-[#151B18]/50">
+            Belum ada member yang diaffiliate atau bergabung lewat referral Anda.
+          </div>
+        ) : (
+          <>
+            {/* DESKTOP TABLE VIEW */}
+            <div className="hidden md:block border border-[#212121]/10 dark:border-white/10 overflow-x-auto rounded-2xl bg-white dark:bg-[#151B18] shadow-2xs">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#F6F5FA] dark:bg-[#1E2622] border-b border-[#212121]/10 dark:border-white/10 text-[10px] font-mono uppercase text-neutral-500 dark:text-neutral-400 tracking-wider">
+                    <th className="p-3.5">Nama Member</th>
+                    <th className="p-3.5">Email</th>
+                    <th className="p-3.5">Status Tier</th>
+                    <th className="p-3.5 text-right">Tanggal Bergabung</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referralsList.map((ref) => {
+                    const tier = ref.membership_tier || "free";
+                    const isPriority = tier === "priority";
+                    const isMembership = (tier as string) === "membership" || (tier as string) === "regular" || (tier as string) === "mvp";
+                    const isNewMember = tier === "new_member";
+
+                    return (
+                      <tr
+                        key={ref.id}
+                        className="border-b border-[#212121]/5 dark:border-white/5 last:border-b-0 hover:bg-[#F6F5FA]/60 dark:hover:bg-neutral-800/40 transition-colors"
+                      >
+                        <td className="p-3.5 font-medium text-neutral-900 dark:text-neutral-100">
+                          {ref.full_name || "Member Panggung"}
+                        </td>
+                        <td className="p-3.5 text-neutral-500 dark:text-neutral-400 font-sans">
+                          {ref.email || "-"}
+                        </td>
+                        <td className="p-3.5 whitespace-nowrap">
+                          {isPriority ? (
+                            <span className="px-2.5 py-0.5 text-[10px] font-sans font-semibold tracking-wider bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 rounded-full uppercase">
+                              Priority PK
+                            </span>
+                          ) : isMembership ? (
+                            <span className="px-2.5 py-0.5 text-[10px] font-sans font-semibold tracking-wider bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/20 rounded-full uppercase">
+                              Membership
+                            </span>
+                          ) : isNewMember ? (
+                            <span className="px-2.5 py-0.5 text-[10px] font-sans font-semibold tracking-wider bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20 rounded-full uppercase">
+                              New Member
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 text-[10px] font-sans font-semibold tracking-wider bg-zinc-500/10 text-zinc-700 dark:text-zinc-400 border border-zinc-500/20 rounded-full uppercase">
+                              Reguler / Free
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3.5 text-right text-neutral-500 dark:text-neutral-400 font-sans whitespace-nowrap font-mono text-[11px]">
+                          {new Date(ref.created_at).toLocaleDateString("id-ID", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* MOBILE COMPACT LIST VIEW */}
+            <div className="block md:hidden divide-y divide-[#212121]/5 dark:divide-white/5 border-t border-b border-[#212121]/10 dark:border-white/10">
+              {referralsList.map((ref) => {
+                const tier = ref.membership_tier || "free";
+                const isPriority = tier === "priority";
+                const isMembership = (tier as string) === "membership" || (tier as string) === "regular" || (tier as string) === "mvp";
+                const isNewMember = tier === "new_member";
+
+                const formattedDate = new Date(ref.created_at).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                });
+
+                return (
+                  <div
+                    key={ref.id}
+                    className="flex items-center justify-between py-2.5 px-1 hover:bg-[#F6F5FA] dark:hover:bg-neutral-900/40 transition-colors gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <h5 className="font-semibold text-xs text-[#212121] dark:text-white truncate">
+                        {ref.full_name || "Member Panggung"}
+                      </h5>
+                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
+                        {ref.email || `Gabung ${formattedDate}`}
+                      </p>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div>
+                        {isPriority ? (
+                          <span className="inline-block px-2 py-0.5 text-[9px] font-sans font-semibold uppercase bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 rounded-full">
+                            PRIORITY
+                          </span>
+                        ) : isMembership ? (
+                          <span className="inline-block px-2 py-0.5 text-[9px] font-sans font-semibold uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/20 rounded-full">
+                            MEMBERSHIP
+                          </span>
+                        ) : isNewMember ? (
+                          <span className="inline-block px-2 py-0.5 text-[9px] font-sans font-semibold uppercase bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20 rounded-full">
+                            NEW
+                          </span>
+                        ) : (
+                          <span className="inline-block px-2 py-0.5 text-[9px] font-sans font-semibold uppercase bg-zinc-500/10 text-zinc-700 dark:text-zinc-400 border border-zinc-500/20 rounded-full">
+                            REGULER
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 mt-0.5">
+                        {formattedDate}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
       {/* RIWAYAT MUTASI KOMISI */}
       <div className="pt-2 space-y-3">
         <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-[#212121]/10 dark:border-neutral-800 pb-3 gap-1 sm:gap-2">
