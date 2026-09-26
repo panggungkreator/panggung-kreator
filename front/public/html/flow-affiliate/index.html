@@ -1,58 +1,65 @@
 <!doctype html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Langkah Teknis Sistem Afiliasi - Panggung Kreator</title>
+  <title>Panduan Langkah Sistem Afiliasi - Panggung Kreator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet" />
   <style>
     :root {
-      --bg: #f8fafc;
+      --bg: #ecebe8;
       --panel: #ffffff;
-      --panel-soft: #f1f5f9;
-      --line: #e2e8f0;
-      --line-light: #f1f5f9;
-      --ink: #0f172a;
-      --ink-dim: #475569;
-      --ink-soft: #64748b;
-      --accent: #bc151b;
-      --accent-soft: #fef2f2;
-      --accent-border: #fecaca;
-      --green: #166534;
-      --green-soft: #f0fdf4;
-      --green-border: #bbf7d0;
-      --blue: #1e40af;
-      --blue-soft: #eff6ff;
-      --blue-border: #bfdbfe;
-      --font-main: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --font-mono: "JetBrains Mono", monospace;
+      --panel-2: #f7f2ea;
+      --line: #e3dac9;
+      --ink: #24211c;
+      --ink-dim: #5f5749;
+      --ink-soft: #a59a86;
+      --clay: #bc151b;
+      /* Brand Crimson */
+      --clay-soft: #fde8e8;
+      --teal: #2c7148;
+      /* Success/Commission Green */
+      --teal-soft: #cfe6d6;
+      --plum: #7a4a5a;
+      --display: "Space Grotesk", sans-serif;
+      --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: "JetBrains Mono", monospace;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-weight: 400 !important;
       -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
 
-    html, body {
-      height: 100%;
+    html,
+    body {
+      height: 100dvh;
       background: var(--bg);
       color: var(--ink);
-      font-family: var(--font-main);
+      font-family: var(--sans);
       overflow: hidden;
       user-select: text;
+      display: flex;
+      flex-direction: column;
     }
 
-    /* Presentation Canvas */
+    /* ---------- STAGE & SLIDES ---------- */
     .stage {
       position: relative;
       width: 100%;
-      height: 100%;
+      flex: 1;
+      min-height: 0;
       z-index: 2;
+      cursor: pointer;
+      overflow: hidden;
     }
 
     .slide {
@@ -60,12 +67,27 @@
       inset: 0;
       display: flex;
       flex-direction: column;
-      padding: 40px 60px 80px 60px;
+      padding: 36px 60px 48px 60px;
       opacity: 0;
       visibility: hidden;
-      transform: translateY(10px);
-      transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+      transform: translateY(14px);
+      transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s;
       overflow-y: auto;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .slide::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .slide::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .slide::-webkit-scrollbar-thumb {
+      background: var(--line);
+      border-radius: 3px;
     }
 
     .slide.active {
@@ -74,28 +96,31 @@
       transform: translateY(0);
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
       .slide {
-        padding: 20px 16px 76px 16px;
+        padding: 20px 16px 40px 16px;
       }
     }
 
-    /* Eyebrow Header */
+    /* ---------- HEADER / EYEBROW ---------- */
     .eyebrow {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.14em;
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: var(--accent);
+      color: var(--clay);
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 12px;
+      margin-bottom: 20px;
+      font-weight: 600;
       flex-shrink: 0;
+      flex-wrap: wrap;
     }
 
     .eyebrow .idx {
       color: var(--ink-soft);
+      font-weight: 500;
     }
 
     .eyebrow::after {
@@ -103,561 +128,705 @@
       height: 1px;
       flex: 1;
       background: var(--line);
+      min-width: 40px;
     }
 
-    /* Slide Titles */
+    /* ---------- TITLES & HEADINGS ---------- */
+    h1.title-hero {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: clamp(30px, 4vw, 54px);
+      line-height: 1.1;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      margin-bottom: 16px;
+    }
+
     h2.slide-title {
-      font-size: clamp(22px, 2.6vw, 32px);
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: clamp(22px, 2.8vw, 36px);
       line-height: 1.25;
-      letter-spacing: -0.015em;
+      letter-spacing: -0.02em;
       color: var(--ink);
       margin-bottom: 8px;
     }
 
+    .accent {
+      color: var(--clay);
+    }
+
+    .accent-teal {
+      color: var(--teal);
+    }
+
     .subtitle-copy {
-      font-size: 14px;
-      line-height: 1.55;
+      font-size: clamp(14.5px, 1.2vw, 16px);
+      line-height: 1.6;
       color: var(--ink-dim);
-      margin-bottom: 18px;
+      margin-bottom: 24px;
+      max-width: 68ch;
     }
 
     .slide-body {
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
+      padding-top: 10px;
       min-height: 0;
     }
 
-    /* 2-Column Grid Layout */
+    /* ---------- GRID LAYOUTS ---------- */
     .grid2 {
       display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
+      grid-template-columns: 1fr 1fr;
       gap: 24px;
       align-items: start;
+      margin-bottom: 32px;
+    }
+
+    .single-col {
+      max-width: 540px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
     }
 
     @media (max-width: 900px) {
-      .grid2 {
+
+      .grid2,
+      .grid3 {
         grid-template-columns: 1fr;
         gap: 16px;
       }
+
+      .single-col {
+        max-width: 100%;
+      }
     }
 
-    /* Card Panels */
+    /* ---------- CARDS ---------- */
     .card {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 16px 18px;
-      margin-bottom: 12px;
+      border-radius: 16px;
+      padding: 24px 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .card.tight {
+      padding: 18px 20px;
     }
 
     .card-label {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.08em;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--ink-soft);
-      margin-bottom: 6px;
-      display: block;
+      margin-bottom: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .card-title {
-      font-size: 14px;
+      font-family: var(--display);
+      font-size: 17px;
+      font-weight: 700;
       color: var(--ink);
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
     }
 
     .card-text {
-      font-size: 13px;
-      line-height: 1.55;
+      font-size: 14px;
+      line-height: 1.6;
       color: var(--ink-dim);
     }
 
-    /* Numbered Step Instructions */
+    /* ---------- STEP LIST ---------- */
     .step-list {
       list-style: none;
       counter-reset: step-counter;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin: 12px 0;
+      gap: 14px;
+      margin-top: 4px;
     }
 
     .step-list li {
       counter-increment: step-counter;
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      font-size: 13.5px;
-      line-height: 1.5;
+      position: relative;
+      padding-left: 36px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--ink);
+    }
+
+    .step-list li strong {
+      font-weight: 600;
       color: var(--ink);
     }
 
     .step-list li::before {
       content: counter(step-counter);
-      min-width: 22px;
-      height: 22px;
+      position: absolute;
+      left: 0;
+      top: -2px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
-      background: var(--panel-soft);
+      background: var(--panel-2);
       border: 1px solid var(--line);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 11px;
-      font-family: var(--font-mono);
-      color: var(--ink-dim);
-      flex-shrink: 0;
-      margin-top: 1px;
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--clay);
     }
 
-    /* Screenshot Placeholder Box */
-    .placeholder-box {
+    /* ---------- TIPS & NOTES CARD ---------- */
+    .tips-card {
+      background: var(--panel-2);
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .tips-text {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ink-dim);
+    }
+
+    .tips-text strong {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    /* ---------- MOCKUP WINDOW / SCREENSHOT HOLDER ---------- */
+    .window-mockup {
       background: var(--panel);
-      border: 2px dashed var(--line);
-      border-radius: 8px;
-      padding: 22px 16px;
-      text-align: center;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: 480px;
+      min-height: 280px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      margin-bottom: 24px;
+    }
+
+    .window-header {
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--line);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .window-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--line);
+    }
+
+    .window-dot:nth-child(1) {
+      background: #fca5a5;
+    }
+
+    .window-dot:nth-child(2) {
+      background: #fde047;
+    }
+
+    .window-dot:nth-child(3) {
+      background: #86efac;
+    }
+
+    .window-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-soft);
+      margin-left: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    .window-body {
+      flex: 1;
+      padding: 0;
+      padding-bottom: 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 12px;
+      justify-content: flex-start;
+      position: relative;
+      background: #faf9f6;
+      overflow-y: auto;
+      max-height: 420px;
+      -webkit-overflow-scrolling: touch;
     }
 
-    .placeholder-tag {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--accent);
-      background: var(--accent-soft);
-      border: 1px solid var(--accent-border);
-      padding: 2px 8px;
-      border-radius: 4px;
+    .window-body img {
+      width: 100%;
+      height: auto;
+      display: block;
     }
 
-    .placeholder-text {
-      font-size: 12.5px;
-      line-height: 1.5;
-      color: var(--ink-dim);
+    .window-body img:last-child {
+      margin-bottom: 24px;
     }
 
-    /* Technical Key-Value Info */
-    .tech-box {
-      background: var(--panel-soft);
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 10px 12px;
-      font-size: 12px;
-      font-family: var(--font-mono);
-      color: var(--ink-dim);
-      line-height: 1.6;
+    /* ---------- CTA BUTTONS & INTERACTION ---------- */
+    .btn-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--clay);
+      color: #ffffff;
+      font-family: var(--display);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(188, 21, 27, 0.25);
+      width: fit-content;
+      margin-top: 18px;
+      margin-bottom: 24px;
     }
 
-    .tech-row {
-      display: flex;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--line);
-      padding: 4px 0;
+    .btn-cta:hover {
+      background: #a11116;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(188, 21, 27, 0.35);
     }
 
-    .tech-row:last-child {
-      border-bottom: none;
-    }
-
-    .tech-key {
-      color: var(--ink-soft);
-    }
-
-    .tech-val {
-      color: var(--ink);
-    }
-
-    /* Bottom Navigation Bar */
-    .control-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 52px;
+    /* ---------- FOOTER NAVIGATION BAR ---------- */
+    .footer-bar {
+      position: relative;
+      height: 58px;
+      flex-shrink: 0;
       background: var(--panel);
       border-top: 1px solid var(--line);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 20px;
+      padding: 0 28px;
       z-index: 100;
+      cursor: default;
     }
 
-    .control-left {
+    .prog {
       display: flex;
       align-items: center;
-      gap: 12px;
-    }
-
-    .slide-label {
+      gap: 14px;
+      font-family: var(--mono);
       font-size: 12px;
       color: var(--ink-dim);
-      font-family: var(--font-mono);
+      font-weight: 500;
     }
 
-    .slide-counter {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--ink-soft);
-      background: var(--panel-soft);
-      border: 1px solid var(--line);
-      padding: 2px 6px;
-      border-radius: 4px;
+    .prog-title {
+      max-width: 320px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .control-center {
+    .bar {
+      width: 140px;
+      height: 3px;
+      background: var(--line);
+      position: relative;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .bar span {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: var(--clay);
+      transition: width 0.35s ease;
+    }
+
+    .nav-btns {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .btn-nav {
-      background: var(--panel);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
       border: 1px solid var(--line);
-      color: var(--ink);
-      width: 32px;
-      height: 32px;
-      border-radius: 4px;
+      background: var(--panel);
+      color: var(--ink-dim);
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      font-size: 13px;
+      transition: all 0.2s ease;
     }
 
     .btn-nav:hover {
-      background: var(--panel-soft);
-      border-color: var(--ink-soft);
+      border-color: var(--clay);
+      color: var(--clay);
+      background: var(--panel-2);
     }
 
-    .nav-hint {
-      font-size: 11px;
-      color: var(--ink-soft);
-      font-family: var(--font-mono);
-    }
+    @media (max-width: 768px) {
+      .footer-bar {
+        padding: 0 16px;
+      }
 
-    @media (max-width: 600px) {
-      .nav-hint {
+      .bar {
+        width: 60px;
+      }
+
+      .prog-title {
         display: none;
       }
-    }
 
-    /* Progress Line */
-    .progress-track {
-      position: absolute;
-      top: -2px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: var(--line-light);
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: var(--accent);
-      width: 20%;
-      transition: width 0.25s ease;
+      .btn-nav {
+        width: 42px;
+        height: 42px;
+        font-size: 16px;
+      }
     }
   </style>
 </head>
+
 <body>
 
-  <!-- STAGE -->
+  <!-- PRESENTATION CANVAS -->
   <main class="stage" id="stage">
 
-    <!-- SLIDE 1: LANGKAH 1 -->
-    <section class="slide active" data-title="01. Salin Kode & Link">
+    <!-- SLIDE 0: PEMBUKA (INTRO) -->
+    <section class="slide active" data-title="Halo Kreator!">
+      <div class="eyebrow">
+        <span>PANGGUNG KREATOR</span>
+        <span class="idx">· PANDUAN SINGKAT</span>
+      </div>
+      <div class="slide-body">
+        <h1 class="title-hero">
+          Cara Kerja <span class="accent">Program Afiliasi</span>
+        </h1>
+        <p class="subtitle-copy">
+          Halo Kreator! Di panduan ini, kita bakal bahas gimana gampangnya dapetin penghasilan tambahan lewat Panggung
+          Kreator. Intinya simpel: kamu sebar link, ada yang daftar, kamu dapet komisi. Gak perlu ribet nyatet manual
+          karena sistem kita udah ngatur semuanya otomatis!
+        </p>
+
+        <div class="grid3" style="margin-top: 10px; margin-bottom: 20px;">
+          <div class="card tight">
+            <span class="card-label">TAHAP 01</span>
+            <div class="card-title">Ambil Link</div>
+            <p class="card-text">Tinggal copy link unik yang ada di profilmu.</p>
+          </div>
+          <div class="card tight">
+            <span class="card-label">TAHAP 02</span>
+            <div class="card-title">Otomatis Kecatat</div>
+            <p class="card-text">Gak bakal ketuker, komisi aman buat kamu.</p>
+          </div>
+          <div class="card tight">
+            <span class="card-label">TAHAP 03</span>
+            <div class="card-title">Cairin Uang</div>
+            <p class="card-text">Chat admin kalau mau narik saldo ke rekening.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 1: TAHAP 1 -->
+    <section class="slide" data-title="01. Ambil Link Afiliasimu">
       <div class="eyebrow">
         <span>TAHAP 1 DARI 5</span>
-        <span class="idx">01 // PENGAMBILAN KREDENSIAL</span>
+        <span class="idx">01 // SIAPIN LINKNYA</span>
       </div>
       <div class="slide-body">
-        <h2 class="slide-title">1. Ambil Kode Referral & Tautan URL</h2>
+        <h2 class="slide-title">1. Ambil Link Afiliasi Khusus Buatmu</h2>
         <p class="subtitle-copy">
-          Afiliator mengakses halaman profil untuk mendapatkan kode unik referral (affiliate code) dan URL promosi.
+          Pertama-tama, kamu butuh link khusus. Link ini ibarat 'KTP' kamu di sistem kita. Kalau ada yang daftar lewat
+          link ini, sistem bakal langsung tahu kalau itu hasil rekomendasi dari kamu.
         </p>
 
         <div class="grid2">
           <div>
             <div class="card">
-              <span class="card-label">LANGKAH OPERASIONAL</span>
+              <span class="card-label">CARANYA GAMPANG</span>
               <ul class="step-list">
-                <li>Buka halaman Profil Saya (/myprofile) setelah berhasil login.</li>
-                <li>Lihat panel samping kiri pada kartu Kode Referral.</li>
-                <li>Gunakan tombol Salin Kode untuk mengambil teks kode (misal: PK-RIZAL-4921).</li>
-                <li>Gunakan tombol Salin Link untuk mengambil tautan URL lengkap pendaftaran akademi.</li>
+                <li>Login dulu ke akunmu, terus buka menu <strong>Profil Saya (/myprofile)</strong>.</li>
+                <li>Scroll ke bawah sedikit, nanti ketemu deh bagian <strong>Kode Referral</strong>.</li>
+                <li>Tinggal klik tombol salin (copy) pada <strong>Link Afiliasi</strong> yang disediain.</li>
+                <li>Kalau cuma butuh kodenya aja, kamu juga bisa copy kodenya doang (misal: PK-XXX).</li>
               </ul>
             </div>
 
-            <div class="tech-box">
-              <div class="tech-row">
-                <span class="tech-key">Endpoint:</span>
-                <span class="tech-val">panggungkreator.web.id/myprofile</span>
-              </div>
-              <div class="tech-row">
-                <span class="tech-key">Kolom Database:</span>
-                <span class="tech-val">members.affiliate_code</span>
-              </div>
-              <div class="tech-row">
-                <span class="tech-key">Format Kode:</span>
-                <span class="tech-val">PK-[NAMA]-[4 DIGIT ACAK]</span>
+            <div style="margin-top: 14px;">
+              <div class="tips-card">
+                <div class="tips-text">
+                  <strong>Penting nih:</strong> Jangan sampai ada huruf atau angka yang kehapus pas kamu copy linknya
+                  ya, biar sistem ngenalin itu link kamu dan komisinya gak nyasar.
+                </div>
               </div>
             </div>
           </div>
 
           <div>
-            <div class="placeholder-box">
-              <span class="placeholder-tag">Slot Gambar 01</span>
-              <p class="placeholder-text">
-                [tambahkan screenshot panel sidebar code affiliat]
-              </p>
+            <div class="window-mockup">
+              <div class="window-header">
+                <div class="window-dots">
+                  <div class="window-dot"></div>
+                  <div class="window-dot"></div>
+                  <div class="window-dot"></div>
+                </div>
+                <span class="window-title">profil-saya // kode-referral</span>
+              </div>
+              <div class="window-body">
+                <img src="/images/docs/step1.png" alt="Screenshot letak Kode Referral di Halaman Profil"
+                  style="margin-bottom: 24px;">
+              </div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 2: LANGKAH 2 -->
-    <section class="slide" data-title="02. Distribusi & Tracking">
+    <!-- SLIDE 2: TAHAP 2 -->
+    <section class="slide" data-title="02. Waktunya Sebar Link!">
       <div class="eyebrow">
         <span>TAHAP 2 DARI 5</span>
-        <span class="idx">02 // DISTRIBUSI LINK</span>
+        <span class="idx">02 // SEBAR KE MANA AJA</span>
       </div>
       <div class="slide-body">
-        <h2 class="slide-title">2. Distribusi Tautan & Tracking Parameter</h2>
+        <h2 class="slide-title">2. Waktunya Sebar Link!</h2>
         <p class="subtitle-copy">
-          Tautan promosi dibagikan ke calon member. Sistem membaca parameter ref dari URL dan menyimpannya di memori sesi.
+          Link udah di tangan? Mantap! Sekarang waktunya kamu sebarin link itu ke teman-teman, followers, grup chat,
+          atau siapa aja yang kira-kira butuh kelas kita.
         </p>
 
-        <div class="grid2">
-          <div>
-            <div class="card">
-              <span class="card-label">LANGKAH OPERASIONAL</span>
-              <ul class="step-list">
-                <li>Afiliator membagikan tautan melalui WhatsApp, bio media sosial, atau grup komunitas.</li>
-                <li>Calon member mengeklik tautan referral tersebut di peramban (browser).</li>
-                <li>Halaman web membaca parameter query (?ref=...) pada URL secara otomatis.</li>
-                <li>Sistem memvalidasi keaktifan kode pemilik sebelum diarahkan ke pendaftaran.</li>
-              </ul>
-            </div>
-
-            <div class="tech-box">
-              <div class="tech-row">
-                <span class="tech-key">Format URL:</span>
-                <span class="tech-val">/akademi?ref=PK-RIZAL-4921</span>
-              </div>
-              <div class="tech-row">
-                <span class="tech-key">Handler:</span>
-                <span class="tech-val">validateReferralCodeAction(code)</span>
-              </div>
-              <div class="tech-row">
-                <span class="tech-key">Penyimpanan:</span>
-                <span class="tech-val">Session Storage / State Query</span>
-              </div>
-            </div>
+        <div class="single-col">
+          <div class="card">
+            <span class="card-label">KREASIKAN PROMOSIMU</span>
+            <ul class="step-list">
+              <li>Kamu bebas naruh link ini di mana aja. Bisa di bio Instagram, TikTok, Facebook, atau share langsung
+                via WhatsApp.</li>
+              <li>Nantinya, pas ada yang nge-klik link itu dari HP atau laptop mereka...</li>
+              <li>Mereka bakal langsung masuk dan diarahkan ke website Panggung Kreator.</li>
+            </ul>
           </div>
 
-          <div>
-            <div class="placeholder-box">
-              <span class="placeholder-tag">Slot Gambar 02</span>
-              <p class="placeholder-text">
-                [tambahkan screenshot contoh pesan promosi whatsapp dan link bio]
-              </p>
+          <div class="tips-card">
+            <div class="tips-text">
+              <strong>Sipnya lagi:</strong> Orang yang nge-klik link kamu gak usah repot-repot bikin akun atau login
+              dulu cuma buat liat-liat halaman pendaftarannya. Langsung gas!
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 3: LANGKAH 3 -->
-    <section class="slide" data-title="03. Checkout Calon Member">
+    <!-- SLIDE 3: TAHAP 3 -->
+    <section class="slide" data-title="03. Tenang, Sistem Otomatis">
       <div class="eyebrow">
         <span>TAHAP 3 DARI 5</span>
-        <span class="idx">03 // CHECKOUT & PEMBAYARAN</span>
+        <span class="idx">03 // GAK PERLU CATAT MANUAL</span>
       </div>
       <div class="slide-body">
-        <h2 class="slide-title">3. Pendaftaran Akun & Checkout Tagihan</h2>
+        <h2 class="slide-title">3. Tenang, Sistem Kita Otomatis</h2>
         <p class="subtitle-copy">
-          Calon member mengisi form checkout, kode referral terikat ke akun baru, dan sistem membuat invoice kode unik.
+          Gimana kalau orangnya beneran daftar? Santai, kamu gak perlu laporan atau lapor ke admin. Sistem kita udah
+          pinter banget ngenalin kalau pembeli itu datangnya dari link kamu.
         </p>
 
-        <div class="grid2">
-          <div>
-            <div class="card">
-              <span class="card-label">LANGKAH OPERASIONAL</span>
-              <ul class="step-list">
-                <li>Calon member membuka formulir pendaftaran di /akademi/checkout.</li>
-                <li>Indikator hijau menunjukkan kode referral telah terpasang secara otomatis.</li>
-                <li>Calon member melengkapi nama, email, nomor WhatsApp, dan password akun.</li>
-                <li>Sistem menghitung total nominal transfer beserta 3 digit kode unik verifikasi.</li>
-                <li>Calon member mentransfer pembayaran melalui QRIS atau transfer bank.</li>
-              </ul>
-            </div>
-
-            <div class="tech-box">
-              <div class="tech-row">
-                <span class="tech-key">Relasi Akun:</span>
-                <span class="tech-val">members.referred_by = referrer_id</span>
-              </div>
-              <div class="tech-row">
-                <span class="tech-key">Data Transaksi:</span>
-                <span class="tech-val">transactions.referred_by_id</span>
-              </div>
-              <div class="tech-row">
-                <span class="tech-key">Status Awal:</span>
-                <span class="tech-val">payment_status = pending</span>
-              </div>
-            </div>
+        <div class="single-col">
+          <div class="card">
+            <span class="card-label">GIMANA PROSESNYA?</span>
+            <ul class="step-list">
+              <li>Pas calon pembeli masuk ke halaman pendaftaran buat ngisi biodata...</li>
+              <li>Kolom <strong>Kode Referral</strong> mereka bakal langsung otomatis terisi sama kodemu. Ajaib kan?
+              </li>
+              <li>Supaya aman, kolom ini sengaja dikunci, jadi pembeli gak bisa iseng ngehapus kodemu.</li>
+              <li>Begitu dia selesai daftar, transaksi barunya udah langsung terdaftar atas nama refferalmu.</li>
+            </ul>
           </div>
 
-          <div>
-            <div class="placeholder-box">
-              <span class="placeholder-tag">Slot Gambar 03</span>
-              <p class="placeholder-text">
-                [tambahkan screenshot halaman checkout dengan badge kode referral terpasang]
-              </p>
+          <div class="tips-card">
+            <div class="tips-text">
+              <strong>Gak bakal ketuker:</strong> Karena kodenya langsung terisi otomatis dari link, dijamin komisinya
+              masuk ke kamu, bukan ke orang lain.
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 4: LANGKAH 4 -->
-    <section class="slide" data-title="04. Verifikasi & Reward">
+    <!-- SLIDE 4: TAHAP 4 -->
+    <section class="slide" data-title="04. Yey! Komisi Masuk">
       <div class="eyebrow">
         <span>TAHAP 4 DARI 5</span>
-        <span class="idx">04 // VERIFIKASI ADMIN</span>
+        <span class="idx">04 // SALDO NAMBAH SENDIRI</span>
       </div>
       <div class="slide-body">
-        <h2 class="slide-title">4. Verifikasi Admin & Eksekusi Reward</h2>
+        <h2 class="slide-title">4. Yey! Komisi Langsung Masuk</h2>
         <p class="subtitle-copy">
-          Admin menyetujui mutasi pembayaran. Sistem secara otomatis mengaktifkan member dan mengkreditkan reward komisi.
+          Tugasmu nyebarin link udah selesai! Sekarang kamu tinggal nunggu pembelinya transfer dan admin kita nge-acc
+          pembayarannya.
         </p>
 
-        <div class="grid2">
-          <div>
-            <div class="card">
-              <span class="card-label">LANGKAH OPERASIONAL</span>
-              <ul class="step-list">
-                <li>Admin memeriksa bukti transfer pada panel transaksi /admin/referral.</li>
-                <li>Admin mengklik tombol Konfirmasi Pembayaran.</li>
-                <li>Status member baru diubah menjadi paid dan hak akses program aktif.</li>
-                <li>Saldo komisi milik afiliator langsung bertambah secara instan (+Rp 10.000).</li>
-                <li>Sistem mencatat mutasi kredit pada buku besar (commission_ledger) dan mengirim email.</li>
-              </ul>
-            </div>
-
-            <div class="tech-box">
-              <div class="tech-row">
-                <span class="tech-key">Server Action:</span>
-                <span class="tech-val">confirmPaymentWithRewardAction</span>
-              </div>
-              <div class="tech-row">
-                <span class="tech-key">Ledger Entry:</span>
-                <span class="tech-val">commission_ledger (type = credit)</span>
-              </div>
-              <div class="tech-row">
-                <span class="tech-key">Email Alert:</span>
-                <span class="tech-val">Notifikasi reward terkirim otomatis</span>
-              </div>
-            </div>
+        <div class="single-col">
+          <div class="card">
+            <span class="card-label">PROSES CAIRNYA KOMISI</span>
+            <ul class="step-list">
+              <li>Pembeli mentransfer biaya pendaftaran dan nge-upload bukti bayarnya.</li>
+              <li>Admin ngecek transferan itu. Kalau udah bener, admin bakal klik tombol 'Lunas'.</li>
+              <li>Detik itu juga, saldo komisi di akun afiliasimu bakal langsung nambah!</li>
+              <li>Kamu bisa mantau kapan aja siapa yang udah bayar lewat tabel komisi di profilmu.</li>
+            </ul>
           </div>
 
-          <div>
-            <div class="placeholder-box">
-              <span class="placeholder-tag">Slot Gambar 04</span>
-              <p class="placeholder-text">
-                [tambahkan screenshot dashboard admin verifikasi referral dan email notifikasi reward]
-              </p>
+          <div class="tips-card">
+            <div class="tips-text">
+              <strong>Rebahan dapet cuan:</strong> Kamu bisa ngecek saldo nambah sendiri lewat HP-mu kapan aja tanpa
+              perlu nge-chat nanya-nanya terus.
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 5: LANGKAH 5 -->
-    <section class="slide" data-title="05. Saldo & Pencairan">
+    <!-- SLIDE 5: TAHAP 5 -->
+    <section class="slide" data-title="05. Mau Cairin Komisi? Gini Caranya">
       <div class="eyebrow">
         <span>TAHAP 5 DARI 5</span>
-        <span class="idx">05 // PENCAIRAN KOMISI</span>
+        <span class="idx">05 // HUBUNGI ADMIN BUAT TRANSFER</span>
       </div>
       <div class="slide-body">
-        <h2 class="slide-title">5. Monitoring Saldo & Pengajuan Pencairan</h2>
+        <h2 class="slide-title">5. Mau Cairin Komisi? Gini Caranya</h2>
         <p class="subtitle-copy">
-          Afiliator memantau akumulasi komisi di dasbor profil dan mengajukan penarikan dana ke rekening bank.
+          Wah saldonya udah kekumpul banyak dan pengen ditarik ke rekening bank? Bisa banget! Untuk saat ini, proses
+          pencairannya kita bantu manual ya lewat admin kita yang ramah.
         </p>
 
         <div class="grid2">
           <div>
             <div class="card">
-              <span class="card-label">LANGKAH OPERASIONAL</span>
+              <span class="card-label">LANGKAH PENCAIRAN</span>
               <ul class="step-list">
-                <li>Afiliator memeriksa total saldo komisi tersedia di halaman /myprofile.</li>
-                <li>Klik tombol Tarik Saldo untuk mengajukan pencairan dana.</li>
-                <li>Input nama bank, nomor rekening tujuan, dan nama pemilik rekening.</li>
-                <li>Admin keuangan memproses transfer dana dan menandai transaksi selesai.</li>
-                <li>Sistem mencatat transaksi debit pada buku besar komisi.</li>
+                <li>Buka profilmu dan <em>screenshot</em> (foto layar) bagian total saldo komisi yang kamu punya.</li>
+                <li>Chat WhatsApp Admin Panggung Kreator, kirim screenshotnya, dan bilang kalau kamu mau narik komisi.
+                </li>
+                <li>Jangan lupa ketik nomor rekening tujuanmu, nama bank, dan nama pemilik rekening di chat.</li>
+                <li>Admin bakal transfer uangnya. Sesudah beres, admin bakal motong saldo di akunmu sesuai nominal yang
+                  dicairin.</li>
               </ul>
             </div>
 
-            <div class="tech-box">
-              <div class="tech-row">
-                <span class="tech-key">Monitoring:</span>
-                <span class="tech-val">members.commission_balance</span>
-              </div>
-              <div class="tech-row">
-                <span class="tech-key">Pencairan:</span>
-                <span class="tech-val">commission_ledger (type = debit)</span>
-              </div>
-              <div class="tech-row">
-                <span class="tech-key">Kanal Tujuan:</span>
-                <span class="tech-val">Rekening Bank / E-Wallet Resmi</span>
+            <div style="margin-top: 14px;">
+              <div class="tips-card">
+                <div class="tips-text">
+                  <strong>Gak usah khawatir:</strong> History saldo yang dipotong admin bakal tetep kecatat rapi kok di
+                  riwayat akunmu, jadi transparan dan ketahuan ke mana perginya.
+                </div>
               </div>
             </div>
           </div>
 
           <div>
-            <div class="placeholder-box">
-              <span class="placeholder-tag">Slot Gambar 05</span>
-              <p class="placeholder-text">
-                [tambahkan screenshot kartu saldo komisi afiliasi dan tombol tarik saldo di /myprofile]
-              </p>
+            <div class="window-mockup">
+              <div class="window-header">
+                <div class="window-dots">
+                  <div class="window-dot"></div>
+                  <div class="window-dot"></div>
+                  <div class="window-dot"></div>
+                </div>
+                <span class="window-title">profil-saya // rincian-komisi</span>
+              </div>
+              <div class="window-body">
+                <img src="/images/docs/step5.png" alt="Riwayat Mutasi Komisi">
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: PENUTUP -->
+    <section class="slide" data-title="Selesai! Gampang Banget Kan?">
+      <div class="eyebrow">
+        <span>SELESAI</span>
+        <span class="idx">· YUK MULAI SEKARANG</span>
+      </div>
+      <div class="slide-body">
+        <h1 class="title-hero">
+          <span class="accent-teal">Selesai!</span> Gampang Banget Kan?
+        </h1>
+        <p class="subtitle-copy">
+          Udah paham kan sekarang? Sistem afiliasi kita sengaja dibikin se-simpel mungkin biar kamu bisa santai dan
+          fokus nyari orang sebanyak-banyaknya tanpa pusing mikirin hal teknis.
+        </p>
+
+        <div>
+          <a href="/myprofile" class="btn-cta" id="ctaBtn">
+            <span>Yuk, Ambil Link Kamu Sekarang</span>
+          </a>
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- CONTROL BAR -->
-  <footer class="control-bar">
-    <div class="progress-track">
-      <div class="progress-fill" id="progressFill"></div>
+  <!-- FOOTER CONTROL BAR -->
+  <footer class="footer-bar">
+    <div class="prog">
+      <span class="prog-title" id="slideLabel">Halo Kreator!</span>
+      <div class="bar">
+        <span id="progressFill" style="width: 14%;"></span>
+      </div>
+      <span id="slideCounter">01 / 07</span>
     </div>
 
-    <div class="control-left">
-      <span class="slide-counter" id="slideCounter">01 / 05</span>
-      <span class="slide-label" id="slideLabel">01. Salin Kode & Link</span>
-    </div>
-
-    <div class="control-center">
-      <button type="button" class="btn-nav" id="prevBtn" title="Slide Sebelumnya (Panah Kiri)">&#8592;</button>
-      <button type="button" class="btn-nav" id="nextBtn" title="Slide Selanjutnya (Panah Kanan / Spasi)">&#8594;</button>
-      <span class="nav-hint">Tekan Panah / Spasi untuk Navigasi</span>
+    <div class="nav-btns">
+      <button type="button" class="btn-nav" id="prevBtn" aria-label="Slide Sebelumnya"
+        title="Slide Sebelumnya (Panah Kiri)">&#8592;</button>
+      <button type="button" class="btn-nav" id="nextBtn" aria-label="Slide Selanjutnya"
+        title="Slide Selanjutnya (Panah Kanan / Spasi)">&#8594;</button>
     </div>
   </footer>
 
-  <!-- SCRIPT -->
+  <!-- INTERACTIVE SCRIPT -->
   <script>
     (function () {
       const slides = Array.from(document.querySelectorAll(".slide"));
@@ -669,17 +838,24 @@
       const fill = document.getElementById("progressFill");
       const prevBtn = document.getElementById("prevBtn");
       const nextBtn = document.getElementById("nextBtn");
+      const stage = document.getElementById("stage");
 
       function updateSlide() {
         slides.forEach((slide, idx) => {
-          slide.classList.toggle("active", idx === current);
+          const isActive = idx === current;
+          slide.classList.toggle("active", isActive);
+          slide.setAttribute("aria-hidden", !isActive);
         });
 
         const activeSlide = slides[current];
-        label.textContent = activeSlide.dataset.title || "";
-        counter.textContent =
-          String(current + 1).padStart(2, "0") + " / " + String(total).padStart(2, "0");
-        fill.style.width = ((current + 1) / total) * 100 + "%";
+        if (label) label.textContent = activeSlide.dataset.title || "";
+        if (counter) {
+          counter.textContent =
+            String(current + 1).padStart(2, "0") + " / " + String(total).padStart(2, "0");
+        }
+        if (fill) {
+          fill.style.width = ((current + 1) / total) * 100 + "%";
+        }
 
         activeSlide.scrollTop = 0;
       }
@@ -703,6 +879,7 @@
         updateSlide();
       }
 
+      // Next / Prev button events
       nextBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         nextSlide();
@@ -713,6 +890,15 @@
         prevSlide();
       });
 
+      // Stage click to advance (except links and buttons)
+      stage.addEventListener("click", (e) => {
+        if (e.target.closest("a, button, input, select, textarea")) {
+          return;
+        }
+        nextSlide();
+      });
+
+      // Keyboard navigation
       document.addEventListener("keydown", (e) => {
         if (["ArrowRight", "ArrowDown", " ", "PageDown"].includes(e.key)) {
           e.preventDefault();
@@ -729,11 +915,15 @@
         }
       });
 
+      // Touch swipe gestures for mobile
       let startX = null;
+      let startY = null;
+
       document.addEventListener(
         "touchstart",
         (e) => {
           startX = e.touches[0].clientX;
+          startY = e.touches[0].clientY;
         },
         { passive: true }
       );
@@ -741,9 +931,11 @@
       document.addEventListener(
         "touchend",
         (e) => {
-          if (startX === null) return;
+          if (startX === null || startY === null) return;
           const diffX = e.changedTouches[0].clientX - startX;
-          if (Math.abs(diffX) > 40) {
+          const diffY = e.changedTouches[0].clientY - startY;
+
+          if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY)) {
             if (diffX < 0) {
               nextSlide();
             } else {
@@ -751,6 +943,7 @@
             }
           }
           startX = null;
+          startY = null;
         },
         { passive: true }
       );
@@ -759,4 +952,5 @@
     })();
   </script>
 </body>
+
 </html>
