@@ -74,6 +74,26 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
     const checkSession = async () => {
       const supabase = createClient();
 
+      // Helper: baca cache tanpa verifikasi blocking — jangan hapus kalau verifikasi gagal (RLS prod)
+      const readCachedState = () => {
+        if (typeof window === 'undefined') return null;
+        const raw = localStorage.getItem("pangkreas_checkout_state");
+        if (!raw) return null;
+        try {
+          const parsed = JSON.parse(raw);
+          if (!parsed || !parsed.expiry || Date.now() >= parsed.expiry || !parsed.memberData) {
+            localStorage.removeItem("pangkreas_checkout_state");
+            return null;
+          }
+          return parsed.memberData;
+        } catch {
+          return null;
+        }
+      };
+
+      const cachedMemberData = readCachedState();
+      const hasValidCache = !!cachedMemberData;
+
       // 1. Check if there is an active session in auth
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -86,13 +106,38 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
 
         if (member) {
           if (member.role === 'admin' || member.payment_status === 'paid') {
-            // User sudah aktif/lunas/admin, bersihkan cache QRIS dan tampilkan form
-            localStorage.removeItem("pangkreas_checkout_state");
-            setCurrentUser(session.user);
-            setDbMember(null);
-            setQrisGenerated(false);
-            setLoadingSession(false);
-            return;
+            // JANGAN hapus cache guest secara membabi-buta di prod - cache bisa milik member pending lain di browser yang sama
+            // Hanya hapus cache jika cache tersebut milik user yang sedang login dan sudah paid
+            const cacheBelongsToThisUser = hasValidCache && (cachedMemberData as any)?.username === member.username;
+            if (!hasValidCache || cacheBelongsToThisUser) {
+              // Tidak ada pending guest yang perlu dipertahankan -> aman hapus & tampilkan form
+              if (cacheBelongsToThisUser) {
+                localStorage.removeItem("pangkreas_checkout_state");
+              }
+              setDbMember(null);
+              setQrisGenerated(false);
+              setLoadingSession(false);
+              return;
+            } else {
+              // Ada cache pending milik tamu yang belum dikonfirmasi - PERTAHANKAN tampilan bayar
+              // (admin sedang login di browser yang sama tidak boleh mengusir tampilan bayar tamu)
+              setDbMember(cachedMemberData);
+              setQrisGenerated(true);
+              // optional: restore formData dari cache untuk konsistensi nominal
+              if ((cachedMemberData as any).email) {
+                setFormData(prev => ({
+                  fullName: (cachedMemberData as any).fullName || prev.fullName,
+                  stageName: (cachedMemberData as any).stageName || prev.stageName,
+                  instagram: (cachedMemberData as any).instagram || prev.instagram,
+                  tiktok: (cachedMemberData as any).tiktok || prev.tiktok,
+                  whatsapp: (cachedMemberData as any).whatsapp || prev.whatsapp,
+                  email: (cachedMemberData as any).email || prev.email,
+                  profession: (cachedMemberData as any).profession || prev.profession,
+                }));
+              }
+              setLoadingSession(false);
+              return;
+            }
           } else if (member.payment_status === 'pending') {
             // Member pending
             const { data: transaction } = await supabase
@@ -127,50 +172,48 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
         }
       }
 
-      // 2. Check localStorage for cached checkout state
-      const cachedStateStr = typeof window !== 'undefined' ? localStorage.getItem("pangkreas_checkout_state") : null;
-      if (cachedStateStr) {
+      // 2. Fallback ke cache localStorage — PERTAHANKAN sampai admin verifikasi
+      //    Verifikasi DB hanya untuk mengkonfirmasi "sudah paid" dan harus sukses; jika RLS/network gagal, JANGAN hapus cache.
+      if (hasValidCache && cachedMemberData) {
+        // Best-effort: hanya hapus jika TERBUKTI sudah paid (query sukses & status paid)
+        let shouldClearBecausePaid = false;
         try {
-          const cached = JSON.parse(cachedStateStr);
-          if (cached && cached.expiry && Date.now() < cached.expiry) {
-            const username = cached.memberData?.username;
-            const orderId = cached.memberData?.orderId;
-            let isAlreadyPaid = false;
-
-            if (username) {
-              const { data: m } = await supabase
-                .from("members")
-                .select("payment_status")
-                .eq("username", username)
-                .maybeSingle();
-              if (m && m.payment_status === 'paid') {
-                isAlreadyPaid = true;
-              }
-            } else if (orderId) {
-              const { data: tx } = await supabase
-                .from("transactions")
-                .select("status")
-                .eq("order_id", orderId)
-                .maybeSingle();
-              if (tx && (tx.status === 'success' || tx.status === 'paid')) {
-                isAlreadyPaid = true;
-              }
+          const username = (cachedMemberData as any)?.username;
+          const orderId = (cachedMemberData as any)?.orderId;
+          if (username) {
+            const { data: m, error } = await supabase
+              .from("members")
+              .select("payment_status")
+              .eq("username", username)
+              .maybeSingle();
+            if (!error && m && m.payment_status === 'paid') {
+              shouldClearBecausePaid = true;
+            } else if (error) {
+              console.warn("Cache paid check skipped (RLS/network), keeping payment view:", error.message);
             }
-
-            if (isAlreadyPaid) {
-              // Jika sudah dikonfirmasi lunas di database, bersihkan state & kembali ke form
-              localStorage.removeItem("pangkreas_checkout_state");
-              setDbMember(null);
-              setQrisGenerated(false);
-            } else {
-              setDbMember(cached.memberData);
-              setQrisGenerated(true);
+          } else if (orderId) {
+            const { data: tx, error } = await supabase
+              .from("transactions")
+              .select("status")
+              .eq("order_id", orderId)
+              .maybeSingle();
+            if (!error && tx && (tx.status === 'success' || tx.status === 'paid')) {
+              shouldClearBecausePaid = true;
+            } else if (error) {
+              console.warn("Cache tx check skipped (RLS/network), keeping payment view:", error.message);
             }
-          } else {
-            localStorage.removeItem("pangkreas_checkout_state");
           }
-        } catch (e) {
-          console.error("Error parsing cached checkout state:", e);
+        } catch (verifyErr) {
+          console.warn("Cache verify failed, keeping payment view:", verifyErr);
+        }
+
+        if (shouldClearBecausePaid) {
+          localStorage.removeItem("pangkreas_checkout_state");
+          setDbMember(null);
+          setQrisGenerated(false);
+        } else {
+          setDbMember(cachedMemberData);
+          setQrisGenerated(true);
         }
       }
 
@@ -400,7 +443,15 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
           orderId: result.orderId,
           final_price: result.finalPrice!,
           unique_code: result.uniqueCode!,
-          used_voucher_code: appliedVoucher?.code || null
+          used_voucher_code: appliedVoucher?.code || null,
+          // Simpan juga form untuk restore tampilan setelah refresh (prod tidak punya session)
+          fullName: payloadData.fullName,
+          stageName: payloadData.stageName,
+          instagram: payloadData.instagram,
+          tiktok: payloadData.tiktok,
+          whatsapp: payloadData.whatsapp,
+          email: payloadData.email,
+          profession: payloadData.profession,
         };
 
         setDbMember(memberData);
