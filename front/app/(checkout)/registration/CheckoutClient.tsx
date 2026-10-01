@@ -473,7 +473,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
 
   const renderQrisBlock = (isMobile = false) => (
     <div className="w-full">
-      <img src="/qris.jpeg" alt="QRIS Panggung Kreator" className={`${isMobile ? "w-64" : "w-80 md:w-96"} h-auto mx-auto object-contain`} />
+      <img src="/qris.jpg" alt="QRIS Panggung Kreator" className={`${isMobile ? "w-64" : "w-80 md:w-96"} h-auto mx-auto object-contain`} />
     </div>
   );
 
