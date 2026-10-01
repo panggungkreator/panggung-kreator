@@ -276,7 +276,6 @@ export default function MultiImageUploader({
       {/* ── INFO BANNER: LOSSLESS COMPRESSION & LOCAL STAGING ───────── */}
       <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-bg-well/40 border border-border-default/70 text-[11px] text-text-secondary">
         <div className="flex items-center gap-1.5 font-medium">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
           <span>Kompresi Lossless Aktif: Kualitas resolusi tinggi tetap tajam & jernih</span>
         </div>
         <span className="font-mono text-[10px] text-text-tertiary">
