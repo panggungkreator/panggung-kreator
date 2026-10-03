@@ -1163,16 +1163,6 @@ export default function MembersClient({
                     >
                       <Edit2 size={13} />
                     </button>
-                    {isEligibleForAffiliateAssign(m) && (
-                      <button
-                        type="button"
-                        onClick={() => openAssignAffiliateModal(m)}
-                        className="w-8 h-8 rounded-full border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-950/40 active:scale-95 transition-all cursor-pointer"
-                        title={m.referred_by_member_id || m.referred_by ? "Ubah Affiliator (Manual)" : "Tetapkan Affiliator (Manual)"}
-                      >
-                        <UserPlus size={13} />
-                      </button>
-                    )}
                     <button
                       type="button"
                       onClick={() => setRecapModalMember(m)}
