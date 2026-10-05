@@ -253,7 +253,7 @@ Halaman `/kolaborasi` saat ini hanyalah **placeholder kosong** bertuliskan "Hala
 
 | Kanal | Detail |
 |-------|--------|
-| WhatsApp | 0878 2323 9575 (Aldi - Founder) |
+| WhatsApp | 0878-2323-9575 (Aldi - Founder) |
 | Instagram | @panggungkreator |
 | Email | panggungkreator.idn@gmail.com |
 

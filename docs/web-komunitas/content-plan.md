@@ -80,7 +80,7 @@
 | 5 | **Program yang Tersedia** | Ringkasan 9 program aktif — nama program, pilar, dan deskripsi singkat | Bab 06 |
 | 6 | **Bentuk Kolaborasi yang Tersedia** | 4 tipe partner: Kafe & Coffee Shop · Kampus & Institusi · Brand & UMKM · Media Partner & EO — dengan deskripsi bentuk kerja sama tiap tipe | Bab 12 |
 | 7 | **Mengapa Bermitra dengan Kami?** | 5 alasan: ekosistem aktif & terstruktur · audiens nyata & engaged · fleksibilitas kolaborasi · jangkauan media sosial · reputasi komunitas positif | Bab 07 & 12 |
-| 8 | **Kontak Partnership** | Instagram: @panggungkreator · WhatsApp: 0878 2323 9575 (Aldi - Founder) · Email komunitas | Bab 14 |
+| 8 | **Kontak Partnership** | Instagram: @panggungkreator · WhatsApp: 0878-2323-9575 (Aldi - Founder) · Email komunitas | Bab 14 |
 | 9 | **CTA** | *"Tertarik Bermitra?"* → Hubungi Kami · *"Ingin Tahu Lebih?"* → `/tentang` | — |
 
 > **Catatan:** Pertimbangkan menambahkan tombol "Unduh Media Kit (PDF)" di masa depan untuk memudahkan sponsor offline.
@@ -109,5 +109,5 @@ Selama foto asli belum tersedia, setiap slot gambar menggunakan placeholder teks
 
 ### Kontak Resmi
 - **Instagram:** @panggungkreator
-- **WhatsApp:** 0878 2323 9575 (Aldi — Founder)
+- **WhatsApp:** 0878-2323-9575 (Aldi — Founder)
 - **Basecamp:** Bandung, Jawa Barat, Indonesia

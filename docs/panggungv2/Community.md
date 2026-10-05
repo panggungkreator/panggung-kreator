@@ -227,7 +227,7 @@ Data masuk database → bisa dipakai saat upgrade Akademi
 | | |
 |---|---|
 | **Instagram** | @panggungkreator |
-| **WhatsApp** | 0878 2323 9575 (Aldi — Founder) |
+| **WhatsApp** | 0878-2323-9575 (Aldi — Founder) |
 | **Basecamp** | Bandung, Jawa Barat, Indonesia |
 
 ---

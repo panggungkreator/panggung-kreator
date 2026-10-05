@@ -558,7 +558,7 @@ export async function registerMemberAction(payload: CheckoutPayload) {
 
                 <!-- TOMBOL KONFIRMASI WA -->
                 <div style="margin: 30px 0; text-align: center;">
-                  <a href="https://wa.me/6281111156736?text=${waConfirmText}" style="background-color: #25d366; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px;">Kirim Bukti Pembayaran ke WhatsApp</a>
+                  <a href="https://wa.me/6287823239575?text=${waConfirmText}" style="background-color: #25d366; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px;">Kirim Bukti Pembayaran ke WhatsApp</a>
                 </div>
 
                 <p style="font-size: 13px; color: #64748b; margin-top: 30px; border-top: 1px solid #f1f5f9; padding-top: 15px;">Jika Anda memiliki kendala atau pertanyaan, silakan balas email ini untuk menghubungi tim support kami.</p>

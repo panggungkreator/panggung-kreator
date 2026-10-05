@@ -628,7 +628,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                   <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800">
                     {/* Tombol CTA WhatsApp */}
                     <a
-                      href={`https://wa.me/6281111156736?text=Halo%20Admin%20Panggung%20Kreator%2C%20saya%20sudah%20melakukan%20pembayaran%20pendaftaran%20Akademi.%20Berikut%20bukti%20transfernya.%0A%0AUsername%20Login%20Saya%3A%20${activeUsername}`}
+                      href={`https://wa.me/6287823239575?text=Halo%20Admin%20Panggung%20Kreator%2C%20saya%20sudah%20melakukan%20pembayaran%20pendaftaran%20Akademi.%20Berikut%20bukti%20transfernya.%0A%0AUsername%20Login%20Saya%3A%20${activeUsername}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-3.5 bg-[#25D366] hover:bg-[#20BA5A] text-white font-bold rounded-none uppercase tracking-widest transition-all flex items-center justify-center gap-2 text-[11px] cursor-pointer"

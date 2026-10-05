@@ -175,7 +175,7 @@ Panggung Kreator percaya pada kekuatan sinergi. Kami membuka pintu kerja sama ya
 | 📸  | **Instagram**                 | @panggungkreator                |
 | --- | ----------------------------- | ------------------------------- |
 | 📧  | **E-mail**                    |                                 |
-| 💬  | **WhatsApp / Contact Person** | 0878 2323 9575 (Aldi - Founder) |
+| 💬  | **WhatsApp / Contact Person** | 0878-2323-9575 (Aldi - Founder) |
 | 📍  | **Basecamp**                  | Bandung, Jawa Barat, Indonesia  |
 
 **Mari Bertumbuh Bersama.**

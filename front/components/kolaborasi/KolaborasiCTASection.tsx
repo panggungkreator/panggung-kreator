@@ -19,7 +19,7 @@ export default function KolaborasiCTASection() {
   const contacts = [
     {
       label: "WHATSAPP",
-      value: "0878 2323 9575 (Aldi)",
+      value: "0878-2323-9575 (Aldi)",
       href: "https://wa.me/6287823239575",
       icon: <MessageSquare className="w-4 h-4 text-neutral-500" />
     },

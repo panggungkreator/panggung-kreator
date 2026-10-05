@@ -402,7 +402,7 @@ Bergabunglah bersama 300+ anggota yang sudah membuktikan bahwa bertumbuh lebih m
 
 ## Kontak
 - 📸 Instagram: @panggungkreator
-- 💬 WhatsApp: 0878 2323 9575 (Aldi — Founder)
+- 💬 WhatsApp: 0878-2323-9575 (Aldi — Founder)
 - 📍 Basecamp: Bandung, Jawa Barat, Indonesia
 
 ---
@@ -420,7 +420,7 @@ Bergabunglah bersama 300+ anggota yang sudah membuktikan bahwa bertumbuh lebih m
 
 ## Sosial Media
 - Instagram: [@panggungkreator]
-- WhatsApp: [0878 2323 9575]
+- WhatsApp: [0878-2323-9575]
 - Email: [email komunitas]
 
 ## Tagline Penutup
