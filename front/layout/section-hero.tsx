@@ -4,7 +4,11 @@ import React from "react";
 import { Edit } from "@/components/editor/Edit";
 import Link from "next/link";
 
-export default function SectionHero() {
+interface SectionHeroProps {
+  checkoutEnabled?: boolean;
+}
+
+export default function SectionHero({ checkoutEnabled = true }: SectionHeroProps) {
   return (
     <section
       id="hero"
@@ -41,12 +45,14 @@ export default function SectionHero() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto reveal-up">
-          <Link
-            href="/checkout"
-            className="w-full sm:w-auto text-center text-sm font-bold text-black bg-amber-400 hover:bg-amber-500 rounded-lg px-8 py-4 transition-all shadow-lg shadow-amber-500/10 hover:scale-[1.02] active:scale-[0.98] duration-150"
-          >
-            <Edit id="hero.cta">Gabung Jadi Member Baru</Edit>
-          </Link>
+          {checkoutEnabled && (
+            <Link
+              href="/registration"
+              className="w-full sm:w-auto text-center text-sm font-bold text-black bg-amber-400 hover:bg-amber-500 rounded-lg px-8 py-4 transition-all shadow-lg shadow-amber-500/10 hover:scale-[1.02] active:scale-[0.98] duration-150"
+            >
+              <Edit id="hero.cta">Gabung Jadi Member Baru</Edit>
+            </Link>
+          )}
           <a
             href="#pain-points"
             className="w-full sm:w-auto text-center text-sm font-semibold text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white border border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 rounded-lg px-8 py-4 transition-all duration-150"

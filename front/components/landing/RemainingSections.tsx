@@ -366,7 +366,7 @@ export function ClosingCtaSection({ id, isVisible, content }: any) {
         </div>
 
         <div className="inline-block relative">
-          <Link href="/checkout" className="px-12 py-5 text-xl font-bold text-white uppercase tracking-wider bg-[#bc151b] rounded-xl inline-block pointer-events-none">
+          <Link href="/registration" className="px-12 py-5 text-xl font-bold text-white uppercase tracking-wider bg-[#bc151b] rounded-xl inline-block pointer-events-none">
             <InlineEditText tagName="span" className="pointer-events-auto" value={content.ctaText || "DAFTAR SEKARANG"} onSave={(v) => handleSave("ctaText", v)} />
           </Link>
         </div>

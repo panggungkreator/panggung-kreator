@@ -12,8 +12,15 @@ import {
   CheckCircle,
   Package,
   Sparkles,
+  Eye,
+  EyeOff,
 } from "lucide-react";
-import { deletePackageAction, updatePackagesOrderAction, setDefaultPackageAction } from "@/lib/actions/package-actions";
+import {
+  deletePackageAction,
+  updatePackagesOrderAction,
+  setDefaultPackageAction,
+  togglePackagePublishAction,
+} from "@/lib/actions/package-actions";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { DeleteConfirmDialog } from "@/components/ui/DeleteConfirmDialog";
 import { toast } from "sonner";
@@ -31,6 +38,7 @@ export default function PackagesClient({
   const [packages, setPackages] = useState<any[]>(initialPackages);
   const [isMounted, setIsMounted] = useState(false);
   const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
+  const [togglingPackageId, setTogglingPackageId] = useState<string | null>(null);
   const [packageToDelete, setPackageToDelete] = useState<{ id: string; name: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -50,6 +58,32 @@ export default function PackagesClient({
   useEffect(() => {
     setPackages(initialPackages);
   }, [initialPackages]);
+
+  const handleTogglePublish = async (id: string, currentStatus: boolean, name: string) => {
+    const newStatus = !currentStatus;
+    // Optimistic UI update
+    setPackages((prev) =>
+      prev.map((pkg) => (pkg.id === id ? { ...pkg, is_published: newStatus } : pkg))
+    );
+    setTogglingPackageId(id);
+
+    const { success, error } = await togglePackagePublishAction(id, currentStatus);
+    setTogglingPackageId(null);
+
+    if (!success) {
+      // Revert if failed
+      setPackages((prev) =>
+        prev.map((pkg) => (pkg.id === id ? { ...pkg, is_published: currentStatus } : pkg))
+      );
+      toast.error("Gagal mengubah visibilitas paket: " + error);
+    } else {
+      toast.success(
+        newStatus
+          ? `Paket "${name}" kini tampil di landing page.`
+          : `Paket "${name}" berhasil disembunyikan dari landing page.`
+      );
+    }
+  };
 
   const handleSetDefault = async (id: string) => {
     // Optimistic UI
@@ -163,7 +197,25 @@ export default function PackagesClient({
           </span>
         </div>
 
-        {/* Pill 2: Paket Highlight */}
+        {/* Pill 2: Paket Aktif / Tampil */}
+        <div className="shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#dcfce7] text-[#15803d] border border-[#86efac] shadow-xs dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 select-none">
+          <Eye className="w-3.5 h-3.5 shrink-0" />
+          <span>Tampil di Landing</span>
+          <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-[#15803d] dark:text-emerald-300 shadow-2xs">
+            {packages.filter((p) => p.is_published !== false).length}
+          </span>
+        </div>
+
+        {/* Pill 3: Paket Disembunyikan */}
+        <div className="shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-zinc-200/70 text-zinc-700 border border-zinc-300 shadow-xs dark:bg-zinc-800/80 dark:text-zinc-300 dark:border-zinc-700 select-none">
+          <EyeOff className="w-3.5 h-3.5 shrink-0" />
+          <span>Disembunyikan</span>
+          <span className="px-2 py-0.5 rounded-full bg-white dark:bg-zinc-950 text-[10px] font-extrabold text-zinc-700 dark:text-zinc-300 shadow-2xs">
+            {packages.filter((p) => p.is_published === false).length}
+          </span>
+        </div>
+
+        {/* Pill 4: Paket Highlight */}
         <div className="shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#fef9c3] text-[#854d0e] border border-[#fde047] shadow-xs dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800 select-none">
           <Sparkles className="w-3.5 h-3.5 shrink-0" />
           <span>Highlight</span>
@@ -172,8 +224,8 @@ export default function PackagesClient({
           </span>
         </div>
 
-        {/* Pill 3: Paket Default */}
-        <div className="shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#dcfce7] text-[#15803d] border border-[#86efac] shadow-xs dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 select-none">
+        {/* Pill 5: Paket Default */}
+        <div className="shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#ede9fe] text-[#6d28d9] border border-[#ddd6fe] shadow-xs dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800 select-none">
           <Star className="w-3.5 h-3.5 shrink-0 fill-current" />
           <span>Default: {defaultPackage ? defaultPackage.name : "-"}</span>
         </div>
@@ -181,7 +233,7 @@ export default function PackagesClient({
 
       {/* Info Reorder Helper */}
       <p className="text-xs text-text-muted font-medium px-1">
-        <span className="font-semibold text-text-secondary">Petunjuk:</span> Tarik dan lepas (Drag & Drop) baris untuk mengubah urutan tampilan paket di Landing Page.
+        <span className="font-semibold text-text-secondary">Petunjuk:</span> Tarik dan lepas (Drag & Drop) baris untuk mengubah urutan tampilan paket. Gunakan tombol status visibilitas untuk menampilkan atau menyembunyikan paket dari Landing Page.
       </p>
 
       {/* ═══ 1. DESKTOP VIEW: TABLE (hidden on mobile, visible on md/lg) ═══ */}
@@ -193,7 +245,8 @@ export default function PackagesClient({
                 <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">Urutan</th>
                 <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">Nama Paket</th>
                 <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">Harga</th>
-                <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">Status</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold text-center">Visibilitas</th>
+                <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">Tipe</th>
                 <th className="py-3.5 px-5 border-r border-border-default/60 uppercase tracking-wider font-bold">Default</th>
                 <th className="py-3.5 px-5 text-center uppercase tracking-wider font-bold">Aksi</th>
               </tr>
@@ -205,7 +258,7 @@ export default function PackagesClient({
                     <tbody {...provided.droppableProps} ref={provided.innerRef} className="divide-y divide-border-default/40">
                       {packages.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="p-8 text-center text-text-muted">
+                          <td colSpan={7} className="p-8 text-center text-text-muted">
                             Belum ada data paket.
                           </td>
                         </tr>
@@ -241,6 +294,32 @@ export default function PackagesClient({
                                 <td className="py-3.5 px-5 border-r border-border-default/40 font-bold text-text-primary">
                                   <div>{pkg.price}</div>
                                   {pkg.original_price && <div className="text-[10px] text-text-muted line-through font-normal">{pkg.original_price}</div>}
+                                </td>
+                                <td className="py-3.5 px-5 border-r border-border-default/40 text-center">
+                                  <button
+                                    type="button"
+                                    disabled={togglingPackageId === pkg.id}
+                                    onClick={() => handleTogglePublish(pkg.id, pkg.is_published !== false, pkg.name)}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border ${
+                                      pkg.is_published !== false
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 shadow-xs"
+                                        : "bg-zinc-500/10 text-zinc-650 dark:text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/20"
+                                    }`}
+                                    title={
+                                      pkg.is_published !== false
+                                        ? "Klik untuk sembunyikan paket dari landing page"
+                                        : "Klik untuk tampilkan paket di landing page"
+                                    }
+                                  >
+                                    {togglingPackageId === pkg.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : pkg.is_published !== false ? (
+                                      <Eye size={12} className="text-emerald-500" />
+                                    ) : (
+                                      <EyeOff size={12} className="text-zinc-500" />
+                                    )}
+                                    <span>{pkg.is_published !== false ? "Tampil" : "Disembunyikan"}</span>
+                                  </button>
                                 </td>
                                 <td className="py-3.5 px-5 border-r border-border-default/40">
                                   {pkg.is_highlighted ? (
@@ -300,7 +379,7 @@ export default function PackagesClient({
             ) : (
               <tbody>
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-text-muted">
+                  <td colSpan={7} className="p-8 text-center text-text-muted">
                     <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-text-muted" />
                     Memuat data paket...
                   </td>
@@ -349,6 +428,28 @@ export default function PackagesClient({
                               </div>
 
                               <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                {/* Visibility Toggle Button */}
+                                <button
+                                  type="button"
+                                  disabled={togglingPackageId === pkg.id}
+                                  onClick={() => handleTogglePublish(pkg.id, pkg.is_published !== false, pkg.name)}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${
+                                    pkg.is_published !== false
+                                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                      : "bg-zinc-500/10 text-zinc-650 dark:text-zinc-400 border-zinc-500/20"
+                                  }`}
+                                  title={pkg.is_published !== false ? "Klik untuk sembunyikan paket" : "Klik untuk tampilkan paket"}
+                                >
+                                  {togglingPackageId === pkg.id ? (
+                                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                  ) : pkg.is_published !== false ? (
+                                    <Eye size={10} className="text-emerald-500" />
+                                  ) : (
+                                    <EyeOff size={10} className="text-zinc-400" />
+                                  )}
+                                  <span>{pkg.is_published !== false ? "Tampil" : "Sembunyi"}</span>
+                                </button>
+
                                 {pkg.is_highlighted && (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20 uppercase tracking-wider">
                                     Highlight

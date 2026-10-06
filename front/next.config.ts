@@ -17,6 +17,16 @@ const nextConfig: NextConfig = {
     USERNAME_ADMIN: process.env.USERNAME_ADMIN || process.env.NEXT_PUBLIC_USERNAME_ADMIN || "adminpangkreas",
     NEXT_PUBLIC_USERNAME_ADMIN: process.env.NEXT_PUBLIC_USERNAME_ADMIN || process.env.USERNAME_ADMIN || "adminpangkreas",
   },
+  async redirects() {
+    return [
+      {
+        source: '/checkout',
+        destination: '/registration',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
+

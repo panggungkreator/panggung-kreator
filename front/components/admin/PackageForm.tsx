@@ -29,6 +29,7 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
     price: initialData?.price ? formatRupiah(String(initialData.price)) : "",
     original_price: initialData?.original_price ? formatRupiah(String(initialData.original_price)) : "",
     is_highlighted: initialData?.is_highlighted || false,
+    is_published: initialData?.is_published !== undefined ? initialData.is_published : true,
     cta_text: initialData?.cta_text || "DAFTAR SEKARANG",
     order_index: initialData?.order_index || 1,
   });
@@ -231,18 +232,34 @@ export default function PackageForm({ initialData = null }: { initialData?: any 
               />
             </div>
 
-            <div className="flex items-center gap-3 bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl">
-              <input
-                type="checkbox"
-                id="is_highlighted"
-                name="is_highlighted"
-                checked={formData.is_highlighted}
-                onChange={handleChange}
-                className="w-4 h-4 accent-amber-500 cursor-pointer"
-              />
-              <label htmlFor="is_highlighted" className="text-xs font-semibold text-amber-700 dark:text-amber-400 cursor-pointer select-none">
-                Highlight Paket Ini? (Tampil lebih menonjol di Landing Page)
-              </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-center gap-3 bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="is_highlighted"
+                  name="is_highlighted"
+                  checked={formData.is_highlighted}
+                  onChange={handleChange}
+                  className="w-4 h-4 accent-amber-500 cursor-pointer"
+                />
+                <label htmlFor="is_highlighted" className="text-xs font-semibold text-amber-700 dark:text-amber-400 cursor-pointer select-none">
+                  Highlight Paket Ini? (Tampil lebih menonjol di Landing Page)
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="is_published"
+                  name="is_published"
+                  checked={formData.is_published}
+                  onChange={handleChange}
+                  className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                />
+                <label htmlFor="is_published" className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 cursor-pointer select-none">
+                  Tampilkan di Landing Page (Status Aktif)
+                </label>
+              </div>
             </div>
           </div>
         </div>

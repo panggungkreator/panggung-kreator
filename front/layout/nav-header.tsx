@@ -8,7 +8,11 @@ import { performCompleteSignOut } from "@/lib/utils/auth-client";
 import { useRouter, usePathname } from "next/navigation";
 import Logo from "../components/ui/Logo";
 
-export default function NavHeader() {
+interface NavHeaderProps {
+  checkoutEnabled?: boolean;
+}
+
+export default function NavHeader({ checkoutEnabled = true }: NavHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -28,8 +32,10 @@ export default function NavHeader() {
       if (
         p === "/akademi/checkout" ||
         p === "/checkout" ||
+        p === "/registration" ||
         p.startsWith("/akademi/checkout") ||
-        p.startsWith("/checkout")
+        p.startsWith("/checkout") ||
+        p.startsWith("/registration")
       ) {
         setIsClientCheckout(true);
       }
@@ -125,8 +131,10 @@ export default function NavHeader() {
     isClientCheckout ||
     pathname === "/akademi/checkout" ||
     pathname === "/checkout" ||
+    pathname === "/registration" ||
     Boolean(pathname?.startsWith("/akademi/checkout")) ||
-    Boolean(pathname?.startsWith("/checkout"));
+    Boolean(pathname?.startsWith("/checkout")) ||
+    Boolean(pathname?.startsWith("/registration"));
 
   return (
     <header
@@ -181,9 +189,9 @@ export default function NavHeader() {
               </button>
             </div>
           ) : (
-            !isCheckoutPage && (
+            !isCheckoutPage && checkoutEnabled && (
               <Link
-                href="/checkout"
+                href="/registration"
                 className="text-sm font-bold text-white transition-all bg-[#bc151b] hover:bg-[#9a1116] border border-[#bc151b] hover:border-[#9a1116] rounded-lg px-5 py-2 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] duration-150"
               >
                 Daftar Sekarang
@@ -242,18 +250,18 @@ export default function NavHeader() {
                   </Link>
                   <button
                     onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      handleSignOut();
-                    }}
+                    setIsMobileMenuOpen(false);
+                    handleSignOut();
+                  }}
                     className="text-center font-semibold text-red-600 dark:text-red-400 py-3 border border-red-200 dark:border-red-900/30 rounded-lg bg-red-50/50 dark:bg-red-950/10"
                   >
                     Keluar
                   </button>
                 </>
               ) : (
-                !isCheckoutPage && (
+                !isCheckoutPage && checkoutEnabled && (
                   <Link
-                    href="/checkout"
+                    href="/registration"
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="text-center font-bold text-white py-3 bg-[#bc151b] rounded-lg shadow-sm"
                   >

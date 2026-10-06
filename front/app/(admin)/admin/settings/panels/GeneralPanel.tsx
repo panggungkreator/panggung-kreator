@@ -1,11 +1,13 @@
 "use client";
 
 import React from "react";
-import { Server, ShieldCheck, Info, Sliders, Database, Check } from "lucide-react";
+import { Server, ShieldCheck, Info, Sliders, Database, Check, ShoppingCart, Eye, EyeOff, AlertTriangle } from "lucide-react";
 
 interface GeneralPanelProps {
   paginationLimit: number;
   onChangePaginationLimit: (limit: number) => void;
+  checkoutEnabled: boolean;
+  onChangeCheckoutEnabled: (enabled: boolean) => void;
 }
 
 const PRESET_LIMITS = [5, 10, 15, 20, 25, 50];
@@ -13,6 +15,8 @@ const PRESET_LIMITS = [5, 10, 15, 20, 25, 50];
 export default function GeneralPanel({
   paginationLimit,
   onChangePaginationLimit,
+  checkoutEnabled,
+  onChangeCheckoutEnabled,
 }: GeneralPanelProps) {
   return (
     <div className="space-y-6">
@@ -61,11 +65,10 @@ export default function GeneralPanel({
                     key={preset}
                     type="button"
                     onClick={() => onChangePaginationLimit(preset)}
-                    className={`h-9 px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                      isActive
-                        ? "bg-text-primary text-bg-card shadow-xs scale-105"
-                        : "bg-bg-card border border-border-default text-text-secondary hover:text-text-primary hover:border-text-primary/40"
-                    }`}
+                    className={`h-9 px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer select-none ${isActive
+                      ? "bg-text-primary text-bg-card shadow-xs scale-105"
+                      : "bg-bg-card border border-border-default text-text-secondary hover:text-text-primary hover:border-text-primary/40"
+                      }`}
                   >
                     {isActive && <Check size={13} className="stroke-[3]" />}
                     <span>{preset} data</span>
@@ -93,6 +96,102 @@ export default function GeneralPanel({
               />
               <span className="text-[11px] text-text-muted">data / halaman (1–100)</span>
             </div>
+          </div>
+        </div>
+
+        {/* ═══ FITUR CHECKOUT & PENDAFTARAN SETTING CARD ═══ */}
+        <div className="bg-bg-well/50 border border-border-default rounded-xl p-5 sm:p-6 space-y-4">
+          <div className="flex items-start justify-between gap-4 border-b border-border-default/60 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className={`p-2 rounded-lg transition-colors ${checkoutEnabled
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                }`}>
+                <ShoppingCart size={16} />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold text-text-primary uppercase tracking-wider">
+                  Visibilitas & Akses Fitur Checkout
+                </h3>
+                <p className="text-[11px] text-text-secondary mt-0.5">
+                  Kontrol status publikasi alur pendaftaran dan pembelian paket keanggotaan.
+                </p>
+              </div>
+            </div>
+
+            <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border shadow-2xs ${checkoutEnabled
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+              : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+              }`}>
+              {checkoutEnabled ? "Checkout Aktif" : "Disembunyikan"}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <label className="block text-[11px] font-semibold text-text-secondary">
+              Pilih Status Akses Checkout:
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Option 1: Aktif */}
+              <button
+                type="button"
+                onClick={() => onChangeCheckoutEnabled(true)}
+                className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${checkoutEnabled
+                  ? "bg-bg-card border-emerald-500/50 shadow-xs ring-2 ring-emerald-500/20"
+                  : "bg-bg-card/60 border-border-default hover:border-border-default/80 opacity-70 hover:opacity-100"
+                  }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-xs text-text-primary">
+                    <Eye size={14} className="text-emerald-500" />
+                    <span>Aktif (Tampil)</span>
+                  </div>
+                  {checkoutEnabled && (
+                    <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+                      <Check size={12} className="stroke-[3]" />
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-text-secondary leading-relaxed">
+                  Halaman checkout dapat diakses oleh publik, dan seluruh tombol pendaftaran tampil di Landing Page.
+                </p>
+              </button>
+
+              {/* Option 2: Sembunyi / Not Found */}
+              <button
+                type="button"
+                onClick={() => onChangeCheckoutEnabled(false)}
+                className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${!checkoutEnabled
+                  ? "bg-bg-card border-amber-500/50 shadow-xs ring-2 ring-amber-500/20"
+                  : "bg-bg-card/60 border-border-default hover:border-border-default/80 opacity-70 hover:opacity-100"
+                  }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-xs text-text-primary">
+                    <EyeOff size={14} className="text-amber-500" />
+                    <span>Disembunyikan (Not Found)</span>
+                  </div>
+                  {!checkoutEnabled && (
+                    <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center">
+                      <Check size={12} className="stroke-[3]" />
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-text-secondary leading-relaxed">
+                  URL checkout dialihkan ke <strong>404 (Not Found)</strong>, serta tombol pendaftaran di Landing Page otomatis disembunyikan.
+                </p>
+              </button>
+            </div>
+
+            {!checkoutEnabled && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2.5 mt-2">
+                <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                <span className="text-[11px] leading-relaxed">
+                  <strong>Perhatian:</strong> Saat fitur checkout disembunyikan, pengunjung yang mencoba membuka URL <code className="px-1 py-0.5 rounded bg-amber-500/20 font-mono text-[10px]">/registration</code> atau <code className="px-1 py-0.5 rounded bg-amber-500/20 font-mono text-[10px]">/register</code> akan menerima halaman 404 Not Found.
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

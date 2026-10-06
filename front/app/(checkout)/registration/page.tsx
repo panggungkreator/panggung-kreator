@@ -1,11 +1,19 @@
 import React from "react";
 import { getPackageAction, getPackagesAction } from "@/lib/actions/package-actions";
+import { getCheckoutEnabledSettingAction } from "@/lib/actions/settings-actions";
 import CheckoutClient from "./CheckoutClient";
 import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ packageId?: string }> }) {
+  // Check if checkout feature is enabled via admin settings
+  const isCheckoutEnabled = await getCheckoutEnabledSettingAction();
+  if (!isCheckoutEnabled) {
+    notFound();
+  }
+
   let selectedPackage = null;
   const resolvedParams = await searchParams;
 
@@ -33,3 +41,4 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
 
   return <CheckoutClient selectedPackage={selectedPackage} />;
 }
+

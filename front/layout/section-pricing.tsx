@@ -7,9 +7,10 @@ import { Check, Crown, HelpCircle } from "lucide-react";
 
 interface SectionPricingProps {
   packagesData: any[];
+  checkoutEnabled?: boolean;
 }
 
-export default function SectionPricing({ packagesData }: SectionPricingProps) {
+export default function SectionPricing({ packagesData, checkoutEnabled = true }: SectionPricingProps) {
   return (
     <section
       id="pricing"
@@ -123,16 +124,18 @@ export default function SectionPricing({ packagesData }: SectionPricingProps) {
                     </ul>
 
                     {/* Button */}
-                    <Link
-                      href={`/checkout?packageId=${pkg.id}`}
-                      className={`block w-full py-4 rounded-xl text-center text-sm font-extrabold uppercase tracking-widest transition-all duration-150 ${
-                        isMVP
-                          ? "bg-amber-400 text-zinc-950 hover:bg-amber-500 shadow-lg shadow-amber-500/10 active:scale-[0.98]"
-                          : "bg-zinc-900 text-white hover:bg-zinc-850 dark:bg-zinc-800 dark:hover:bg-zinc-700 active:scale-[0.98]"
-                      }`}
-                    >
-                      {pkg.cta_text || "JOIN SEKARANG"}
-                    </Link>
+                    {checkoutEnabled && (
+                      <Link
+                        href={`/registration?packageId=${pkg.id}`}
+                        className={`block w-full py-4 rounded-xl text-center text-sm font-extrabold uppercase tracking-widest transition-all duration-150 ${
+                          isMVP
+                            ? "bg-amber-400 text-zinc-950 hover:bg-amber-500 shadow-lg shadow-amber-500/10 active:scale-[0.98]"
+                            : "bg-zinc-900 text-white hover:bg-zinc-850 dark:bg-zinc-800 dark:hover:bg-zinc-700 active:scale-[0.98]"
+                        }`}
+                      >
+                        {pkg.cta_text || "JOIN SEKARANG"}
+                      </Link>
+                    )}
                   </div>
                 </div>
               );

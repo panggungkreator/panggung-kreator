@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { syncDualOperation } from "@/lib/supabase/dual-sync";
+import { revalidatePath } from "next/cache";
 
 // ═══ PAGINATION LIMIT SETTINGS ═══
 
@@ -288,6 +289,76 @@ export async function saveTabVisibilitySettingsAction(settings: TabVisibilitySet
   } catch (err: any) {
     console.error("saveTabVisibilitySettingsAction error:", err);
     return { success: false, error: err.message || "Gagal menyimpan ke database." };
+  }
+}
+
+// ═══ CHECKOUT FEATURE VISIBILITY SETTINGS ═══
+
+export async function getCheckoutEnabledSettingAction(): Promise<boolean> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "checkout_enabled")
+      .maybeSingle();
+
+    if (error) {
+      console.warn("system_settings query checkout_enabled error:", error.message);
+    }
+
+    if (data && data.value !== undefined && data.value !== null) {
+      return data.value === "true" || data.value === true;
+    }
+  } catch (err) {
+    console.warn("system_settings table query checkout_enabled error, fallback to true:", err);
+  }
+  return true; // Default: checkout aktif
+}
+
+export async function saveCheckoutEnabledSettingAction(enabled: boolean) {
+  try {
+    const now = new Date().toISOString();
+    await syncDualOperation(async (client) => {
+      const { error } = await client
+        .from("system_settings")
+        .upsert(
+          {
+            key: "checkout_enabled",
+            value: enabled ? "true" : "false",
+            updated_at: now,
+          },
+          { onConflict: "key" }
+        );
+      if (error) throw error;
+      return true;
+    });
+
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        action: "UPDATE",
+        module: "Settings",
+        targetId: "checkout_enabled",
+        description: `Mengubah status visibilitas fitur checkout: ${enabled ? "Aktif (Tampil)" : "Nonaktif / Disembunyikan (Not Found)"}`,
+        oldData: null,
+        newData: { checkout_enabled: enabled },
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log setting checkout:", logErr);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/registration");
+    revalidatePath("/checkout");
+    revalidatePath("/akademi");
+    revalidatePath("/admin/settings");
+
+    return { success: true, enabled };
+  } catch (err: any) {
+    console.error("saveCheckoutEnabledSettingAction error:", err);
+    return { success: false, error: err.message || "Gagal menyimpan pengaturan checkout ke database." };
   }
 }
 

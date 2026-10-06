@@ -1,6 +1,7 @@
 import React from "react";
 import { getLandingSectionsAction } from "@/lib/actions/landing-actions";
 import { getPackagesAction } from "@/lib/actions/package-actions";
+import { getCheckoutEnabledSettingAction } from "@/lib/actions/settings-actions";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -60,13 +61,15 @@ export default async function LandingPage() {
     }
   }
 
-  // Fetch sections data from database
-  const { data: sectionsData, success } = await getLandingSectionsAction();
-  const sections = success && sectionsData ? sectionsData : [];
+  // Fetch sections data, checkout status, and only published packages from database
+  const [sectionsRes, isCheckoutEnabled, packagesRes] = await Promise.all([
+    getLandingSectionsAction(),
+    getCheckoutEnabledSettingAction(),
+    getPackagesAction({ onlyPublished: true }),
+  ]);
 
-  // Fetch packages data from database
-  const { data: packagesData, success: pkgSuccess } = await getPackagesAction();
-  const packages = pkgSuccess && packagesData ? packagesData : [];
+  const sections = sectionsRes.success && sectionsRes.data ? sectionsRes.data : [];
+  const packages = packagesRes.success && packagesRes.data ? packagesRes.data : [];
 
   return (
     <EditorProvider isAdmin={isAdmin} initialSections={sections}>
@@ -79,19 +82,19 @@ export default async function LandingPage() {
         <AdminEditBar />
 
         {/* 1. Header/Navbar */}
-        <NavHeader />
+        <NavHeader checkoutEnabled={isCheckoutEnabled} />
 
         {/* Dynamic Redesigned Sections */}
-        <SectionHero />
+        <SectionHero checkoutEnabled={isCheckoutEnabled} />
         <SectionPainPoints />
         <SectionTurningPoint />
         <SectionOriginStory />
         <SectionPerformerVision />
         <SectionCurriculum />
-        <SectionPricing packagesData={packages} />
+        <SectionPricing packagesData={packages} checkoutEnabled={isCheckoutEnabled} />
         <SectionWhyUs />
         <SectionTransformation />
-        <SectionClosingCta />
+        <SectionClosingCta checkoutEnabled={isCheckoutEnabled} />
         <SectionFaq />
         
         {/* Footer */}

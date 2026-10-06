@@ -18,6 +18,8 @@ import {
   saveTabVisibilitySettingsAction,
   getPaginationLimitSettingAction,
   savePaginationLimitSettingAction,
+  getCheckoutEnabledSettingAction,
+  saveCheckoutEnabledSettingAction,
   ReferralCommissionSettings,
   TabVisibilitySettings,
 } from "@/lib/actions/settings-actions";
@@ -38,6 +40,7 @@ export default function SettingsClient() {
 
   // Saved States (from DB)
   const [savedPaginationLimit, setSavedPaginationLimit] = useState(10);
+  const [savedCheckoutEnabled, setSavedCheckoutEnabled] = useState(true);
   const [savedEmailEnabled, setSavedEmailEnabled] = useState(true);
   const [savedReferral, setSavedReferral] = useState<ReferralCommissionSettings>({
     mode: "flat",
@@ -52,6 +55,7 @@ export default function SettingsClient() {
 
   // Current Working States (Form)
   const [currentPaginationLimit, setCurrentPaginationLimit] = useState(10);
+  const [currentCheckoutEnabled, setCurrentCheckoutEnabled] = useState(true);
   const [currentEmailEnabled, setCurrentEmailEnabled] = useState(true);
   const [currentReferral, setCurrentReferral] = useState<ReferralCommissionSettings>({
     mode: "flat",
@@ -69,15 +73,19 @@ export default function SettingsClient() {
     async function loadAllSettings() {
       setIsLoading(true);
       try {
-        const [paginationVal, emailVal, referralVal, tabVisVal] = await Promise.all([
+        const [paginationVal, emailVal, referralVal, tabVisVal, checkoutVal] = await Promise.all([
           getPaginationLimitSettingAction(),
           getAttendanceEmailSettingAction(),
           getReferralCommissionSettingsAction(),
           getTabVisibilitySettingsAction(),
+          getCheckoutEnabledSettingAction(),
         ]);
 
         setSavedPaginationLimit(paginationVal);
         setCurrentPaginationLimit(paginationVal);
+
+        setSavedCheckoutEnabled(checkoutVal);
+        setCurrentCheckoutEnabled(checkoutVal);
 
         setSavedEmailEnabled(emailVal);
         setCurrentEmailEnabled(emailVal);
@@ -99,7 +107,9 @@ export default function SettingsClient() {
 
   // Check unsaved changes per tab
   const unsavedTabs = useMemo(() => {
-    const isGeneralUnsaved = currentPaginationLimit !== savedPaginationLimit;
+    const isGeneralUnsaved =
+      currentPaginationLimit !== savedPaginationLimit ||
+      currentCheckoutEnabled !== savedCheckoutEnabled;
     const isAbsensiUnsaved = currentEmailEnabled !== savedEmailEnabled;
     const isReferralUnsaved =
       currentReferral.mode !== savedReferral.mode ||
@@ -119,6 +129,8 @@ export default function SettingsClient() {
   }, [
     currentPaginationLimit,
     savedPaginationLimit,
+    currentCheckoutEnabled,
+    savedCheckoutEnabled,
     currentEmailEnabled,
     savedEmailEnabled,
     currentReferral,
@@ -145,6 +157,7 @@ export default function SettingsClient() {
   const handleConfirmDiscardAndSwitch = () => {
     if (activeTab === "general") {
       setCurrentPaginationLimit(savedPaginationLimit);
+      setCurrentCheckoutEnabled(savedCheckoutEnabled);
     } else if (activeTab === "absensi") {
       setCurrentEmailEnabled(savedEmailEnabled);
     } else if (activeTab === "referral") {
@@ -163,7 +176,8 @@ export default function SettingsClient() {
   const handleDiscardActiveTabChanges = () => {
     if (activeTab === "general") {
       setCurrentPaginationLimit(savedPaginationLimit);
-      toast.info("Perubahan limit pagination dibuang.");
+      setCurrentCheckoutEnabled(savedCheckoutEnabled);
+      toast.info("Perubahan pengaturan umum dibuang.");
     } else if (activeTab === "absensi") {
       setCurrentEmailEnabled(savedEmailEnabled);
       toast.info("Perubahan pengaturan Absensi dibuang.");
@@ -181,12 +195,16 @@ export default function SettingsClient() {
     setIsSaving(true);
     try {
       if (activeTab === "general") {
-        const res = await savePaginationLimitSettingAction(currentPaginationLimit);
-        if (res.success) {
+        const [pagRes, checkRes] = await Promise.all([
+          savePaginationLimitSettingAction(currentPaginationLimit),
+          saveCheckoutEnabledSettingAction(currentCheckoutEnabled),
+        ]);
+        if (pagRes.success && checkRes.success) {
           setSavedPaginationLimit(currentPaginationLimit);
-          toast.success(`Pengaturan disimpan: Limit data disetel ${currentPaginationLimit} per halaman.`);
+          setSavedCheckoutEnabled(currentCheckoutEnabled);
+          toast.success("Pengaturan umum berhasil disimpan!");
         } else {
-          toast.error(res.error || "Gagal menyimpan limit pagination.");
+          toast.error(pagRes.error || checkRes.error || "Gagal menyimpan pengaturan umum.");
         }
       } else if (activeTab === "absensi") {
         const res = await saveAttendanceEmailSettingAction(currentEmailEnabled);
@@ -290,6 +308,8 @@ export default function SettingsClient() {
               <GeneralPanel
                 paginationLimit={currentPaginationLimit}
                 onChangePaginationLimit={setCurrentPaginationLimit}
+                checkoutEnabled={currentCheckoutEnabled}
+                onChangeCheckoutEnabled={setCurrentCheckoutEnabled}
               />
             )}
 

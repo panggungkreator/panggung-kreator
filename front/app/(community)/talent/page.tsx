@@ -133,7 +133,7 @@ export default function TalentShowcasePage() {
                     <img
                       src={talent.avatar_url}
                       alt={talent.full_name}
-                      className="h-full w-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500"
+                      className="h-full w-full object-cover grayscale group-hover:scale-105 transition-all duration-500"
                     />
                   ) : (
                     <div className="text-zinc-300 dark:text-zinc-700">

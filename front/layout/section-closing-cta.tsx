@@ -5,7 +5,11 @@ import { Edit } from "@/components/editor/Edit";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 
-export default function SectionClosingCta() {
+interface SectionClosingCtaProps {
+  checkoutEnabled?: boolean;
+}
+
+export default function SectionClosingCta({ checkoutEnabled = true }: SectionClosingCtaProps) {
   return (
     <section
       id="closing-cta"
@@ -56,21 +60,23 @@ export default function SectionClosingCta() {
         </div>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-          <Link
-            href="/checkout?packageId=regular" // Fallback query or link
-            className="w-full sm:w-auto text-center text-sm font-bold text-zinc-700 dark:text-white bg-white hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-850 rounded-lg px-8 py-4 transition-all shadow-sm active:scale-[0.98]"
-          >
-            <Edit id="closing_cta.btn_regular">Gabung Member Regular Rp49.000</Edit>
-          </Link>
-          
-          <Link
-            href="/checkout?packageId=mvp" // Fallback query or link
-            className="w-full sm:w-auto text-center text-sm font-extrabold text-black bg-amber-400 hover:bg-amber-500 rounded-lg px-8 py-4 transition-all shadow-lg shadow-amber-500/10 hover:scale-[1.02] active:scale-[0.98] duration-150"
-          >
-            <Edit id="closing_cta.btn_mvp">Jadi MVP Rp249.000</Edit>
-          </Link>
-        </div>
+        {checkoutEnabled && (
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+            <Link
+              href="/registration?packageId=regular"
+              className="w-full sm:w-auto text-center text-sm font-bold text-zinc-700 dark:text-white bg-white hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-850 rounded-lg px-8 py-4 transition-all shadow-sm active:scale-[0.98]"
+            >
+              <Edit id="closing_cta.btn_regular">Gabung Member Regular Rp49.000</Edit>
+            </Link>
+            
+            <Link
+              href="/registration?packageId=mvp"
+              className="w-full sm:w-auto text-center text-sm font-extrabold text-black bg-amber-400 hover:bg-amber-500 rounded-lg px-8 py-4 transition-all shadow-lg shadow-amber-500/10 hover:scale-[1.02] active:scale-[0.98] duration-150"
+            >
+              <Edit id="closing_cta.btn_mvp">Jadi MVP Rp249.000</Edit>
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

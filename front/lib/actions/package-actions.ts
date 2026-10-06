@@ -42,13 +42,19 @@ async function ensureOneDefaultPackage(supabase: any) {
 }
 
 // Fetch all packages
-export async function getPackagesAction() {
+export async function getPackagesAction(options?: { onlyPublished?: boolean }) {
   try {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase
+    let query = supabase
       .from("packages")
       .select("*")
       .order("order_index", { ascending: true });
+
+    if (options?.onlyPublished) {
+      query = query.eq("is_published", true);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return { success: true, data };
@@ -94,9 +100,14 @@ export async function createPackageAction(packageData: any) {
       return { success: false, error: "Akses ditolak" };
     }
 
+    const insertPayload = {
+      ...packageData,
+      is_published: packageData.is_published ?? true,
+    };
+
     const { data, error } = await supabase
       .from("packages")
-      .insert([packageData])
+      .insert([insertPayload])
       .select()
       .single();
 
@@ -370,3 +381,73 @@ export async function setDefaultPackageAction(id: string) {
     return { success: false, error: error.message };
   }
 }
+
+// Toggle package published/visibility status (Admin only)
+export async function togglePackagePublishAction(id: string, currentStatus: boolean) {
+  try {
+    const supabase = await getSupabaseClient();
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return { success: false, error: "Tidak diotorisasi" };
+
+    const { data: adminMember } = await supabase
+      .from("members")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!adminMember || adminMember.role !== "admin") {
+      return { success: false, error: "Akses ditolak" };
+    }
+
+    const newStatus = !currentStatus;
+    const updatePayload = {
+      is_published: newStatus,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Update in Dev
+    const { error } = await supabase
+      .from("packages")
+      .update(updatePayload)
+      .eq("id", id);
+
+    if (error) throw error;
+
+    // Synchronize to Production Supabase (wmuzvefmrbgffftkpdnx) per Rule 2
+    try {
+      const { getProdClient } = await import("@/lib/supabase/dual-sync");
+      const prodSupabase = getProdClient();
+      if (prodSupabase) {
+        await prodSupabase.from("packages").update(updatePayload).eq("id", id);
+      }
+    } catch (prodErr) {
+      console.warn("Sync package toggle publish to prod failed:", prodErr);
+    }
+
+    // Log admin activity
+    try {
+      const { logAdminActivity } = await import("@/lib/actions/log-actions");
+      await logAdminActivity({
+        adminId: session.user.id,
+        action: "UPDATE",
+        module: "Packages",
+        targetId: id,
+        description: `Mengubah status visibilitas paket ID ${id} menjadi: ${newStatus ? "Tampil di Landing Page" : "Disembunyikan"}`,
+        oldData: { is_published: currentStatus },
+        newData: { is_published: newStatus },
+      });
+    } catch (logErr) {
+      console.warn("Notice: Gagal mencatat log toggle package publish:", logErr);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin/packages");
+    revalidatePath("/akademi");
+    return { success: true, is_published: newStatus };
+  } catch (error: any) {
+    console.error(`Error toggling package publish ${id}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
