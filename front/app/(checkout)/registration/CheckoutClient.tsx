@@ -496,6 +496,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
   };
 
   const activeUsername = dbMember?.username || '';
+  const activeFullName = (dbMember as any)?.fullName || (dbMember as any)?.full_name || formData.fullName || '';
 
   const parsedBasePrice = selectedPackage?.price ? parseInt(selectedPackage.price.replace(/\D/g, ""), 10) : 49000;
   const basePrice = isNaN(parsedBasePrice) ? 49000 : parsedBasePrice;
@@ -628,7 +629,9 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                   <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800">
                     {/* Tombol CTA WhatsApp */}
                     <a
-                      href={`https://wa.me/6287823239575?text=Halo%20Admin%20Panggung%20Kreator%2C%20saya%20sudah%20melakukan%20pembayaran%20pendaftaran%20Akademi.%20Berikut%20bukti%20transfernya.%0A%0AUsername%20Login%20Saya%3A%20${activeUsername}`}
+                      href={`https://wa.me/6287823239575?text=${encodeURIComponent(
+                        `Halo Admin Panggung Kreator, saya sudah melakukan pembayaran pendaftaran Akademi. Berikut bukti transfernya.\n\nNama: ${activeFullName}\nKode Unik: ${uniqueCode}`
+                      )}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-3.5 bg-[#25D366] hover:bg-[#20BA5A] text-white font-bold rounded-none uppercase tracking-widest transition-all flex items-center justify-center gap-2 text-[11px] cursor-pointer"
