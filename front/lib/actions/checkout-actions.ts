@@ -517,7 +517,11 @@ export async function registerMemberAction(payload: CheckoutPayload) {
         });
 
         const waConfirmText = encodeURIComponent(
+<<<<<<< HEAD
           `Halo Admin Panggung Kreator, saya sudah melakukan pembayaran pendaftaran Membership.\n\nNama: ${payload.fullName}\nEmail: ${payload.email.trim()}\nOrder ID: ${orderId}\nTotal: Rp ${finalPriceWithUniqueCode.toLocaleString('id-ID')}`
+=======
+          `Halo Admin Panggung Kreator, saya sudah melakukan pembayaran pendaftaran Membership dengan keterangan di bawah ini.\n\nNama: ${payload.fullName}\nKode Unik: ${uniqueCode}`
+>>>>>>> 2e2f89fb377750c28ddfd56698f80c226154dc04
         );
 
         await transporter.sendMail({
