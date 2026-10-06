@@ -641,19 +641,6 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                       </svg>
                       Kirim Bukti Transfer ke WhatsApp
                     </a>
-
-                    {/* Tombol Kembali ke Form Pendaftaran */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        localStorage.removeItem("pangkreas_checkout_state");
-                        setDbMember(null);
-                        setQrisGenerated(false);
-                      }}
-                      className="w-full mt-3 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer border border-zinc-300 dark:border-zinc-700 hover:border-black dark:hover:border-white rounded-none"
-                    >
-                      ← Kembali ke Form Pendaftaran / Ganti Data
-                    </button>
                   </div>
                 </div>
                 <div className="flex mb-2 items-center gap-1.5 justify-center text-[10px] text-zinc-400 uppercase tracking-widest font-mono">
