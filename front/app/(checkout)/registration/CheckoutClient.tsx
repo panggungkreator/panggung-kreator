@@ -630,7 +630,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
                     {/* Tombol CTA WhatsApp */}
                     <a
                       href={`https://wa.me/6287823239575?text=${encodeURIComponent(
-                        `Halo Admin Panggung Kreator, saya sudah melakukan pembayaran pendaftaran Akademi. Berikut bukti transfernya.\n\nNama: ${activeFullName}\nKode Unik: ${uniqueCode}`
+                        `Halo Admin Panggung Kreator, saya sudah melakukan pembayaran pendaftaran Membership dengan keterangan di bawah ini.\nNama: ${activeFullName}\nKode Unik: ${uniqueCode}.\n Berikut dengan bukti transfernya.`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
