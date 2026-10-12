@@ -466,7 +466,7 @@ export default function ConfirmationClient({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari konfirmasi..."
-              className="h-9 w-full rounded-full pl-9 pr-8 text-xs font-medium bg-bg-well/70 border border-border-default text-text-primary focus:outline-none focus:border-text-primary transition-colors"
+              className="h-12 w-full rounded-full pl-9 pr-8 text-xs font-medium bg-bg-well/70 border border-border-default text-text-primary focus:outline-none focus:border-text-primary transition-colors"
             />
             {search && (
               <button
