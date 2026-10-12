@@ -34,19 +34,19 @@ export default function AdminPagination({
     >
 
       {/* Navigation Controls */}
-      <div className="flex items-center justify-center gap-2 flex-wrap">
+      <div className="flex items-center justify-center gap-2 flex-nowrap">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage <= 1}
-          className="h-9 px-3.5 rounded-xl border border-border-default bg-bg-card hover:bg-bg-well text-xs font-bold text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer select-none active:scale-95"
+          className="h-9 px-2.5 sm:px-3.5 rounded-xl border border-border-default bg-bg-card hover:bg-bg-well text-xs font-bold text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer select-none active:scale-95 shrink-0"
           title="Halaman Sebelumnya"
         >
           <ChevronLeft size={14} />
-          <span>Sebelumnya</span>
+          <span className="hidden sm:inline">Sebelumnya</span>
         </button>
 
-        <div className="px-3 py-1.5 rounded-xl bg-bg-well text-xs font-bold font-mono text-text-primary min-w-[90px] text-center">
+        <div className="px-3 py-1.5 rounded-xl bg-bg-well text-xs font-bold font-mono text-text-primary min-w-[90px] text-center shrink-0">
           Hal {currentPage} dari {totalPages}
         </div>
 
@@ -54,10 +54,10 @@ export default function AdminPagination({
           type="button"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage >= totalPages}
-          className="h-9 px-3.5 rounded-xl border border-border-default bg-bg-card hover:bg-bg-well text-xs font-bold text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer select-none active:scale-95"
+          className="h-9 px-2.5 sm:px-3.5 rounded-xl border border-border-default bg-bg-card hover:bg-bg-well text-xs font-bold text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer select-none active:scale-95 shrink-0"
           title="Halaman Selanjutnya"
         >
-          <span>Selanjutnya</span>
+          <span className="hidden sm:inline">Selanjutnya</span>
           <ChevronRight size={14} />
         </button>
       </div>
