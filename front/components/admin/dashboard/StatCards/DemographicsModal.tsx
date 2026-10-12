@@ -31,7 +31,7 @@ interface DemographicsModalProps {
 }
 
 export function DemographicsModal({ open, onOpenChange, data }: DemographicsModalProps) {
-  const careerColors = ["#111111", "#BAFF6A", "#D1D5DB"];
+  const careerColors = ["#111111", "#fff19c", "#D1D5DB"];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -71,7 +71,7 @@ export function DemographicsModal({ open, onOpenChange, data }: DemographicsModa
                       if (active && payload && payload.length) {
                         return (
                           <div className="bg-[#111111] text-white p-2 rounded-lg text-xs shadow-lg border border-zinc-800">
-                            <span className="font-bold text-[#BAFF6A]">{payload[0].payload.range} tahun</span>: {payload[0].value} member ({payload[0].payload.percentage}%)
+                            <span className="font-bold text-[#fff19c]">{payload[0].payload.range} tahun</span>: {payload[0].value} member ({payload[0].payload.percentage}%)
                           </div>
                         );
                       }
@@ -105,7 +105,7 @@ export function DemographicsModal({ open, onOpenChange, data }: DemographicsModa
                       if (active && payload && payload.length) {
                         return (
                           <div className="bg-[#111111] text-white p-2 rounded-lg text-xs shadow-lg border border-zinc-800">
-                            <span className="font-bold text-[#BAFF6A]">{payload[0].name}</span>: {payload[0].value} member ({payload[0].payload.percentage}%)
+                            <span className="font-bold text-[#fff19c]">{payload[0].name}</span>: {payload[0].value} member ({payload[0].payload.percentage}%)
                           </div>
                         );
                       }
@@ -179,7 +179,7 @@ export function DemographicsModal({ open, onOpenChange, data }: DemographicsModa
                       if (active && payload && payload.length) {
                         return (
                           <div className="bg-[#111111] text-white p-2 rounded-lg text-xs shadow-lg border border-zinc-800">
-                            <span className="font-bold text-[#BAFF6A]">{payload[0].payload.name}</span>: {payload[0].value} member ({payload[0].payload.percentage}%)
+                            <span className="font-bold text-[#fff19c]">{payload[0].payload.name}</span>: {payload[0].value} member ({payload[0].payload.percentage}%)
                           </div>
                         );
                       }

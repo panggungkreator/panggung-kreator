@@ -16,7 +16,7 @@ export function StatCard({
   label,
   value,
   growth,
-  sparklineColor = "#BAFF6A",
+  sparklineColor = "#fff19c",
   sparklinePath = "M 0,30 Q 25,38 40,15 T 75,25 T 100,8",
 }: StatCardProps) {
   return (
@@ -33,7 +33,7 @@ export function StatCard({
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
                 growth.isPositive === true
-                  ? "bg-[#BAFF6A] text-[#2D5A00]"
+                  ? "bg-[#fff19c] text-[#2D5A00]"
                   : growth.isPositive === false
                   ? "bg-[#FF6B6B]/15 text-[#CC0000] dark:bg-red-950/40 dark:text-red-400"
                   : "bg-zinc-200 dark:bg-zinc-800 text-text-secondary"

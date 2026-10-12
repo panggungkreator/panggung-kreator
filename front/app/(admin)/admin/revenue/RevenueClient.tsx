@@ -437,7 +437,7 @@ export default function RevenueClient({
                     </td>
 
                     {/* Total Bersih */}
-                    <td className="py-3.5 px-5 text-right font-mono font-black text-emerald-600 dark:text-[#BAFF6A] text-xs whitespace-nowrap">
+                    <td className="py-3.5 px-5 text-right font-mono font-black text-emerald-600 dark:text-[#fff19c] text-xs whitespace-nowrap">
                       {formatCurrency(tx.netAmount)}
                     </td>
 
@@ -516,7 +516,7 @@ export default function RevenueClient({
               {/* Bottom: Total Bersih */}
               <div className="pt-2 border-t border-border-default/40 flex justify-between items-center">
                 <span className="text-xs font-bold text-text-primary">Total Bersih:</span>
-                <span className="text-sm font-black font-mono text-emerald-600 dark:text-[#BAFF6A]">
+                <span className="text-sm font-black font-mono text-emerald-600 dark:text-[#fff19c]">
                   {formatCurrency(tx.netAmount)}
                 </span>
               </div>
@@ -564,7 +564,7 @@ export default function RevenueClient({
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 {(affiliateFilter !== "all" || monthFilter !== "all") && (
-                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#BAFF6A]" />
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#fff19c]" />
                 )}
               </button>
             </PopoverTrigger>

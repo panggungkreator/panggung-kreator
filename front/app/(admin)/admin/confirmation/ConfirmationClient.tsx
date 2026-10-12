@@ -441,7 +441,7 @@ export default function ConfirmationClient({
   };
 
   return (
-    <div className="space-y-6 pb-28 md:pb-12 text-zinc-800 dark:text-zinc-200 animate-fade-in">
+    <div className="space-y-6 pb-24 md:pb-12 text-zinc-800 dark:text-zinc-200 animate-fade-in">
 
       {/* ═══ TOP HEADER (Sesuai admin-mobile.md) ═══ */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-default/60">
@@ -483,9 +483,9 @@ export default function ConfirmationClient({
 
       {/* Alert Messages */}
       {successMessage && (
-        <div className="p-4 bg-[#dcfce7] border border-emerald-200/50 rounded-2xl text-xs text-[#15803d] dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 flex items-center justify-between font-semibold">
+        <div className="p-4 bg-[#dcfce7] border border-emerald-200/50 rounded-2xl text-xs text-[#fef9c3] dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 flex items-center justify-between font-semibold">
           <span className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#15803d] dark:text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-[#fef9c3] dark:text-emerald-400" />
             {successMessage}
           </span>
           <button onClick={() => setSuccessMessage(null)} className="hover:opacity-80 p-1 cursor-pointer">✕</button>
@@ -685,12 +685,12 @@ export default function ConfirmationClient({
                           <button
                             onClick={() => handleVerify(member.id, member.full_name || member.username || "Kreator")}
                             disabled={verifyingId !== null}
-                            className="px-4 py-1.5 bg-[#BAFF6A] text-zinc-950 hover:bg-[#a5f053] rounded-full text-xs font-bold transition-all disabled:opacity-50 shadow-xs cursor-pointer border border-lime-500/20 active:scale-95"
+                            className="px-5 py-2.5 bg-[#fef9c3] text-zinc-800 dark:text-zinc-200 rounded-full text-xs font-bold transition-all disabled:opacity-50 shadow-xs cursor-pointer border border-lime-500/20 active:scale-95"
                           >
                             {verifyingId === member.id ? "Memproses..." : "Konfirmasi Lunas"}
                           </button>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-3.5 py-1 bg-[#dcfce7] text-[#15803d] dark:bg-emerald-950/20 dark:text-emerald-400 rounded-full text-xs font-bold border border-emerald-200/20">
+                          <span className="inline-flex items-center gap-1 px-3.5 py-1 bg-[#dcfce7] text-[#fef9c3] dark:bg-emerald-950/20 dark:text-emerald-400 rounded-full text-xs font-bold border border-emerald-200/20">
                             Lunas
                           </span>
                         )}
@@ -727,121 +727,122 @@ export default function ConfirmationClient({
           </div>
         ) : (
           paginatedMembers.map((member) => {
-            const pkgName = packageMap.get(member.package_id || "") || "Akademi Regular";
             return (
               <div
                 key={member.id}
-                onClick={() => setDetailMember(member)}
-                className="bg-white dark:bg-[#121212] border border-border-default/70 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-3xl p-4 sm:p-5 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group relative cursor-pointer active:scale-[0.99]"
+                className="bg-white dark:bg-[#121212] border border-border-default/70 rounded-2xl p-4 shadow-xs flex flex-col gap-3"
               >
-                {/* Top: Status Badge, Nominal, & Checkbox */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      className="rounded border-zinc-300 dark:border-white/10 text-zinc-900 focus:ring-zinc-900 dark:bg-zinc-900 cursor-pointer w-4 h-4"
-                      checked={selectedIds.has(member.id)}
-                      onChange={() => toggleSelect(member.id)}
-                    />
-                    {member.payment_status === "pending" ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#fef9c3] text-[#854d0e] border border-[#fde047] dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800">
-                        Menunggu Konfirmasi
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#dcfce7] text-[#15803d] border border-[#86efac] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
-                        Lunas
-                      </span>
-                    )}
-                  </div>
-
-                  <span className="text-xs font-extrabold font-mono text-text-primary">
-                    {formatIDR(member.final_price || 49000)}
-                  </span>
+                {/* ── Row 1: Checkbox + Status Badge ── */}
+                <div
+                  className="flex items-center justify-between"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    className="rounded border-zinc-300 dark:border-white/10 text-zinc-900 focus:ring-zinc-900 dark:bg-zinc-900 cursor-pointer w-4 h-4 shrink-0"
+                    checked={selectedIds.has(member.id)}
+                    onChange={() => toggleSelect(member.id)}
+                  />
+                  {member.payment_status === "pending" ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-[#fef9c3] text-[#854d0e] border border-[#fde047] dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800 whitespace-nowrap">
+                      Menunggu
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-[#dcfce7] text-[#fef9c3] border border-[#86efac] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                      Lunas
+                    </span>
+                  )}
                 </div>
 
-                {/* Middle: Member info */}
-                <div className="my-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 flex items-center justify-center font-bold text-xs shrink-0">
-                      {(member.full_name || "M")[0].toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="text-sm font-bold tracking-tight text-text-primary leading-tight truncate">
-                          {member.full_name}
-                        </h3>
-                        {member.stage_name && (
-                          <span className="text-[10px] font-semibold text-text-muted">
-                            ({member.stage_name})
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-text-secondary font-mono mt-0.5 truncate">
-                        @{member.username || "username"} • <span className="text-text-muted">{formatOccupation(member.occupation)}</span>
-                      </p>
-                    </div>
+                {/* ── Body: Avatar + Info + Nominal ── */}
+                <div
+                  className="flex items-start gap-3 cursor-pointer active:opacity-80 transition-opacity"
+                  onClick={() => setDetailMember(member)}
+                >
+                  {/* Avatar */}
+                  <div className="w-11 h-11 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 flex items-center justify-center font-bold text-base shrink-0">
+                    {(member.full_name || "M")[0].toUpperCase()}
                   </div>
 
-                  {/* Package & Badges */}
-                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-bg-well border border-border-default/60 text-[10px] font-semibold text-text-secondary">
-                      📦 {pkgName}
+                  {/* Info tengah */}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-[17px] font-bold text-text-primary truncate leading-tight">
+                      {member.full_name}
+                    </h3>
+                    <p className="text-[11px] text-text-muted mt-1 truncate">
+                      <span className="font-mono">@{member.username || "username"}</span>
+                      <span className="mx-1.5 opacity-40">·</span>
+                      <span>{formatOccupation(member.occupation)}</span>
+                    </p>
+                    <p className="text-[11px] font-mono text-text-secondary mt-1.5 truncate">
+                      {member.whatsapp_number || "-"}
+                      <span className="mx-1.5 opacity-40">·</span>
+                      <span className="tabular-nums text-text-muted">
+                        {new Date(member.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* Nominal — kanan */}
+                  <div className="flex flex-col items-end shrink-0">
+                    <span className="text-[15px] font-extrabold font-mono text-text-primary tabular-nums mt-5">
+                      {formatIDR(member.final_price || 49000)}
                     </span>
+                  </div>
+                </div>
+
+                {/* Badges voucher & referral */}
+                {(member.used_voucher_code || member.referrer || member.referred_by) && (
+                  <div className="flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
                     {member.used_voucher_code && (
-                      <span className="px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                      <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
                         🎟️ {member.used_voucher_code}
                       </span>
                     )}
                     {(member.referrer || member.referred_by) && (
-                      <span className="px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                        🎁 Ref: {member.referrer?.stage_name || member.referrer?.full_name || "Ada"}
+                      <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 max-w-[130px] truncate">
+                        🎁 {member.referrer?.stage_name || member.referrer?.full_name || "Referral"}
                       </span>
                     )}
                   </div>
-                </div>
+                )}
 
-                {/* Bottom: Contact info & Action buttons */}
-                <div className="pt-2 border-t border-border-default/40 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-mono text-text-secondary truncate">
-                      {member.whatsapp_number || "-"}
-                    </p>
-                    <p className="text-[10px] text-text-muted mt-0.5">
-                      {new Date(member.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {member.payment_status === "pending" && (
-                      <button
-                        type="button"
-                        onClick={() => handleVerify(member.id, member.full_name || member.username || "Kreator")}
-                        disabled={verifyingId !== null}
-                        className="h-8 px-3 rounded-full text-xs font-bold text-zinc-950 bg-[#BAFF6A] hover:bg-[#a5f053] active:scale-95 transition-all cursor-pointer shadow-2xs flex items-center gap-1 disabled:opacity-50"
-                      >
-                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>{verifyingId === member.id ? "..." : "Konfirmasi"}</span>
-                      </button>
-                    )}
-
+                {/* ── Footer: Actions ── */}
+                <div
+                  className="flex items-center gap-2 pt-3 border-t border-border-default/40"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {member.payment_status === "pending" ? (
                     <button
                       type="button"
-                      onClick={() => setDetailMember(member)}
-                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-bg-well text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
-                      title="Lihat Detail"
+                      onClick={() => handleVerify(member.id, member.full_name || member.username || "Kreator")}
+                      disabled={verifyingId !== null}
+                      className="flex-1 h-10 rounded-xl text-sm text-zinc-800 dark:text-zinc-200 font-bold bg-[#fef9c3] hover:bg-[#a5f053] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      <Eye size={13} />
+                      <span>{verifyingId === member.id ? "Memproses..." : "Konfirmasi"}</span>
                     </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDelete([member.id])}
-                      className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center hover:bg-red-50 text-red-600 dark:hover:bg-red-950/20 active:scale-95 transition-all cursor-pointer"
-                      title="Hapus"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
+                  ) : (
+                    <div className="flex-1 h-10 rounded-xl bg-[#dcfce7] dark:bg-emerald-950/30 border border-[#86efac] dark:border-emerald-800 flex items-center justify-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-[#fef9c3] dark:text-emerald-400 shrink-0" />
+                      <span className="text-sm font-bold text-[#fef9c3] dark:text-emerald-400">Dikonfirmasi</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setDetailMember(member)}
+                    className="w-10 h-10 rounded-xl bg-bg-well border border-border-default hover:bg-border-default/40 text-text-secondary hover:text-text-primary active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center shrink-0"
+                    title="Lihat Detail"
+                  >
+                    <Eye size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete([member.id])}
+                    className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center shrink-0"
+                    title="Hapus"
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
               </div>
             );
@@ -876,13 +877,54 @@ export default function ConfirmationClient({
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-white" : ""}`} />
           </button>
 
-          {/* 2. Sort Popover */}
+          {/* divider */}
+          <span className="w-px h-5 bg-white/10" />
+
+          {/* 2. Filter Status Popover */}
           <Popover>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer ${sortBy !== "newest" ? "text-white bg-zinc-800" : ""
-                  }`}
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer ${statusFilter !== "all" ? "text-white bg-zinc-800" : ""}`}
+                title="Filter Status"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="center"
+              className="w-48 p-2.5 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-1 mb-2 z-50"
+            >
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted px-2.5 py-1 block border-b border-border-default/50 mb-1">
+                Filter Status
+              </span>
+              {(["all", "pending", "paid"] as const).map((s) => {
+                const label = s === "all" ? "Semua" : s === "pending" ? "Menunggu" : "Lunas";
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter(s)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${statusFilter === s ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
+                  >
+                    <span>{label}</span>
+                    {statusFilter === s && <Check className="w-3.5 h-3.5 text-text-primary" />}
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
+
+          {/* divider */}
+          <span className="w-px h-5 bg-white/10" />
+
+          {/* 3. Sort Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer ${sortBy !== "newest" ? "text-white bg-zinc-800" : ""}`}
                 title="Urutkan Data"
               >
                 <ArrowUpDown className="w-4 h-4" />
@@ -899,8 +941,7 @@ export default function ConfirmationClient({
               <button
                 type="button"
                 onClick={() => setSortBy("newest")}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "newest" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
-                  }`}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "newest" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
               >
                 <span>Tanggal Terbaru</span>
                 {sortBy === "newest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
@@ -908,8 +949,7 @@ export default function ConfirmationClient({
               <button
                 type="button"
                 onClick={() => setSortBy("oldest")}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "oldest" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
-                  }`}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "oldest" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
               >
                 <span>Tanggal Terlama</span>
                 {sortBy === "oldest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
@@ -917,14 +957,27 @@ export default function ConfirmationClient({
               <button
                 type="button"
                 onClick={() => setSortBy("name_asc")}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "name_asc" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"
-                  }`}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "name_asc" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
               >
                 <span>Nama (A-Z)</span>
                 {sortBy === "name_asc" && <Check className="w-3.5 h-3.5 text-text-primary" />}
               </button>
             </PopoverContent>
           </Popover>
+
+          {/* divider */}
+          <span className="w-px h-5 bg-white/10" />
+
+          {/* 4. Export Button */}
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={filteredMembers.length === 0}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+            title="Export CSV"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -960,7 +1013,7 @@ export default function ConfirmationClient({
                 href={formatWhatsappLink(detailMember.whatsapp_number, detailMember.stage_name, detailMember.full_name)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-2.5 text-xs font-bold text-white bg-[#15803d] hover:bg-[#166534] rounded-full transition-all w-full flex justify-center items-center gap-2 cursor-pointer shadow-xs text-center"
+                className="px-6 py-2.5 text-xs font-bold text-white bg-[#fef9c3] hover:bg-[#166534] rounded-full transition-all w-full flex justify-center items-center gap-2 cursor-pointer shadow-xs text-center"
               >
                 <span>WhatsApp</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -972,7 +1025,7 @@ export default function ConfirmationClient({
         {detailMember && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
             {/* Personal Section */}
-            <ModalSection title="Informasi Personal" titleColor="text-[#15803d] dark:text-emerald-400">
+            <ModalSection title="Informasi Personal" titleColor="text-[#fef9c3] dark:text-emerald-400">
               <div className="space-y-2.5">
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">Nama Panggung:</span>
@@ -1068,7 +1121,7 @@ export default function ConfirmationClient({
                 <div className="flex justify-between items-center">
                   <span className="text-zinc-400 font-medium">Status Pembayaran:</span>
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${detailMember.payment_status === "paid"
-                    ? "bg-[#dcfce7] text-[#15803d] border-emerald-200/20"
+                    ? "bg-[#dcfce7] text-[#fef9c3] border-emerald-200/20"
                     : "bg-[#fef9c3] text-[#713f12] border-yellow-200/20"
                     }`}>
                     {detailMember.payment_status === "paid" ? "Lunas" : "Pending"}

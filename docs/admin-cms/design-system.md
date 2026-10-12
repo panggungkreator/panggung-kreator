@@ -27,7 +27,7 @@ Admin CMS ini dirancang berdasarkan prinsip **"Data First, Decoration Never"** �
 
 Desain menggunakan konsep **"Modern Monochrome Dashboard"** yang terinspirasi langsung dari gaya Ecomora Dashboard. Karakteristik utama:
 
-- **Monochrome with One Accent:** Seluruh UI menggunakan palet hitam-putih-abu, dengan **satu pengecualian**: warna lime-green cerah (`#BAFF6A` atau `#A8F53D`) digunakan eksklusif hanya pada badge perubahan positif (growth indicators). Warna lain (merah untuk negatif) adalah satu-satunya warna kedua yang diizinkan.
+- **Monochrome with One Accent:** Seluruh UI menggunakan palet hitam-putih-abu, dengan **satu pengecualian**: warna lime-green cerah (`#fff19c` atau `#A8F53D`) digunakan eksklusif hanya pada badge perubahan positif (growth indicators). Warna lain (merah untuk negatif) adalah satu-satunya warna kedua yang diizinkan.
 - **White Cards on Light Gray:** Latar belakang halaman adalah abu-abu sangat terang (`#F2F4F7`). Kartu konten adalah putih bersih (`#FFFFFF`). Kontras antara background dan kartu sangat subtle — tidak ada bayangan dramatis.
 - **Number Display Typography:** Angka statistik utama ditampilkan dalam ukuran raksasa (`40–56px`) dengan font weight `800–900`. Ini adalah elemen paling menonjol di halaman.
 - **Horizontal Navigation (Bukan Sidebar):** Navigasi utama berada di **top navigation bar secara horizontal** dengan ikon + label teks. Item aktif ditandai oleh **garis bawah tebal berwarna hitam** (bukan background pill atau sidebar).
@@ -63,7 +63,7 @@ Desain menggunakan konsep **"Modern Monochrome Dashboard"** yang terinspirasi la
 
 | Nama | Kode Hex | Peran |
 |---|---|---|
-| **Accent Lime Green** | `#BAFF6A` | Badge pertumbuhan positif (e.g., `+10% ↑`), satu-satunya warna yang "mencolok" |
+| **Accent Lime Green** | `#fff19c` | Badge pertumbuhan positif (e.g., `+10% ↑`), satu-satunya warna yang "mencolok" |
 | **Accent Red / Salmon** | `#FF6B6B` | Badge pertumbuhan negatif (e.g., `-12% ↓`) |
 
 > Kedua warna aksen ini **HANYA** muncul pada badge perubahan/pertumbuhan statistik (growth indicators). Di tempat lain, semua elemen harus monokrom.
@@ -219,7 +219,7 @@ Dashboard                          [🔍 Search product...]  [↑ Export CSV]  [
 - **Container:** `border-radius: 16px`, background `#FFFFFF`, `border: 1px solid #E5E7EB`, padding `20–24px`.
 - **Label:** Inter `13px`, `font-weight: 500`, warna `#6B7280`, di atas angka.
 - **Angka Utama:** Inter `48–56px`, `font-weight: 800`, warna `#111111`, `letter-spacing: -0.02em`.
-- **Growth Badge:** Pill `border-radius: 999px`. Positif: background `#BAFF6A`, teks `#2D5A00`, `11px` `font-weight: 600`. Negatif: background `#FFE4E4`, teks `#CC0000`.
+- **Growth Badge:** Pill `border-radius: 999px`. Positif: background `#fff19c`, teks `#2D5A00`, `11px` `font-weight: 600`. Negatif: background `#FFE4E4`, teks `#CC0000`.
 - **Ikon Dekorasi (pojok kanan atas):** Kotak abu-abu kecil `border-radius: 8px`, background `#F3F4F6`, ikon outline `20px` warna `#6B7280`.
 - **Link "View Details":** Teks `13px` `font-weight: 500` warna `#111111`, ikon `→` di kanan. Separator: garis tipis di atas link area.
 
@@ -356,7 +356,7 @@ Admin CMS menggunakan animasi yang **sangat minimal** — hampir tidak terasa, h
 | `--text-secondary` | `#6B7280` | `#8B8FA8` |
 | `--text-placeholder` | `#9CA3AF` | `#55596E` |
 | `--border-default` | `#E5E7EB` | `#2A2E42` |
-| `--accent-green` | `#BAFF6A` | `#A3E85A` |
+| `--accent-green` | `#fff19c` | `#A3E85A` |
 | `--accent-red` | `#FF6B6B` | `#FF5252` |
 | `--chart-main` | `#111111` | `#FFFFFF` |
 | `--chart-secondary` | `#D1D5DB` | `#3A3F55` |
@@ -371,7 +371,7 @@ Dark mode toggle berada di area profil user di kanan nav bar.
 |---|---|---|
 | **Navigasi** | Sidebar vertikal 220px | **Top nav horizontal** |
 | **Font heading section** | Playfair Display Serif italic | **Inter sans-serif bold** — tidak ada serif |
-| **Aksen warna** | Dark Teal `#2D6A5E` | **Lime Green `#BAFF6A`** (eksklusif badge saja) |
+| **Aksen warna** | Dark Teal `#2D6A5E` | **Lime Green `#fff19c`** (eksklusif badge saja) |
 | **Border radius kartu** | 8–10px (konservatif) | **16–20px (modern & lembut)** |
 | **Angka statistik** | Regular card layout | **Display number raksasa 48–56px** |
 | **Chart style** | Area chart berwarna teal | **Bar chart hitam + abu arsir** |

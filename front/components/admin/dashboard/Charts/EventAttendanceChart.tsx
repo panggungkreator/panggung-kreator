@@ -37,7 +37,7 @@ export function EventAttendanceChart({ attendances }: EventAttendanceChartProps)
 
         <div className="flex items-center gap-2 text-xs font-semibold">
           <span className="flex items-center gap-1.5 text-text-secondary">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#BAFF6A]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#fff19c]" />
             <span className="hidden sm:inline">Hadir </span>Terverifikasi
           </span>
         </div>
@@ -52,8 +52,8 @@ export function EventAttendanceChart({ attendances }: EventAttendanceChartProps)
             >
               <defs>
                 <linearGradient id="attendanceGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#BAFF6A" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#BAFF6A" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#fff19c" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#fff19c" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" opacity={0.5} />
@@ -74,13 +74,13 @@ export function EventAttendanceChart({ attendances }: EventAttendanceChartProps)
                     const data = payload[0].payload as EventAttendance;
                     return (
                       <div className="bg-[#111111] text-white p-3 rounded-xl text-xs shadow-2xl border border-zinc-800 space-y-1">
-                        <p className="font-bold text-sm text-[#BAFF6A]">{data.title}</p>
+                        <p className="font-bold text-sm text-[#fff19c]">{data.title}</p>
                         <p className="text-[11px] text-zinc-300 flex items-center gap-1">
                           <CalendarDays className="w-3 h-3" />
                           {data.fullDate}
                         </p>
                         <p className="font-semibold text-white pt-1 flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5 text-[#BAFF6A]" />
+                          <Users className="w-3.5 h-3.5 text-[#fff19c]" />
                           {data.attendees} Member Hadir
                         </p>
                       </div>
@@ -96,7 +96,7 @@ export function EventAttendanceChart({ attendances }: EventAttendanceChartProps)
                 strokeWidth={2.5}
                 fillOpacity={1}
                 fill="url(#attendanceGradient)"
-                activeDot={{ r: 6, fill: "#BAFF6A", stroke: "#111111", strokeWidth: 2 }}
+                activeDot={{ r: 6, fill: "#fff19c", stroke: "#111111", strokeWidth: 2 }}
               />
             </AreaChart>
           </ResponsiveContainer>

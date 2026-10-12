@@ -12,7 +12,7 @@ Halaman Dashboard Admin (`front/app/(admin)/admin/page.tsx`) dan komponen antarm
   - Teks Sekunder: `#6B7280` (Light) / `#8B8FA8` (Dark)
   - Border / Divider: `#E5E7EB` (Light) / `#2A2E42` (Dark)
   - **Aksen Tunggal (Strictly 2 Colors):**
-    - **Lime Green `#BAFF6A`** (teks `#2D5A00`): Indikator pertumbuhan positif (`+30%`, `+23%`), status *In Stock*, dot aktif.
+    - **Lime Green `#fff19c`** (teks `#2D5A00`): Indikator pertumbuhan positif (`+30%`, `+23%`), status *In Stock*, dot aktif.
     - **Red/Salmon `#FF6B6B`** (teks `#CC0000`): Indikator pertumbuhan negatif (`-15%`), status *Out of Stock*.
 
 ---
@@ -63,7 +63,7 @@ Tersusun dalam 2 kolom sejajar horizontal (`grid-cols-1 xl:grid-cols-12 gap-6`):
 #### A. Kolom Kiri (xl:col-span-7)
 1. **Statistik Jumlah Hadir per Event (Spline/Area Chart Card):**
    - **Sumber Data:** Join table `events` dan `attendances` di-group berdasarkan `event.id` dan diurutkan kronologis.
-   - **Komponen:** Shadcn UI `Card`, Recharts `AreaChart` dengan gradient fill lime green `#BAFF6A`.
+   - **Komponen:** Shadcn UI `Card`, Recharts `AreaChart` dengan gradient fill lime green `#fff19c`.
    - **Interaksi:** Custom floating black tooltip (`#111111`) saat titik di-hover.
    - **Styling:** Tinggi `h-[380px]` sejajar sempurna dengan Leaderboard di kanannya.
 

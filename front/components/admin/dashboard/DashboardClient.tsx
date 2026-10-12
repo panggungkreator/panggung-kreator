@@ -52,7 +52,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       ],
       careerGoalDistribution: [
         { name: "Profesi Utama", count: 39, percentage: 57, color: "#111111" },
-        { name: "Sampingan / Branding", count: 25, percentage: 36, color: "#BAFF6A" },
+        { name: "Sampingan / Branding", count: 25, percentage: 36, color: "#fff19c" },
         { name: "Eksplorasi", count: 5, percentage: 7, color: "#D1D5DB" },
       ],
       occupationDistribution: [

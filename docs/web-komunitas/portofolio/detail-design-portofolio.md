@@ -14,7 +14,7 @@ Kamu adalah seorang Frontend Engineer dan UI/UX Expert. Buatlah halaman "Detail 
 
 **Aesthetic Style & Design System (Hybrid Kombinasi):**
 Gabungkan gaya **"Bold Monochrome Grid-Based Editorial"** dengan **"Modern Monochrome Dashboard (Clean Data-Driven)"**:
-1. **Palet Warna Monokrom + 1 Aksen:** Gunakan Latar Belakang Abu-abu Terang (`#F2F4F7`) dan Kartu Konten Putih Bersih (`#FFFFFF`). Gunakan warna **Lime Green (`#BAFF6A`)** HANYA sebagai warna aksen untuk badge (seperti tag keahlian utama, status "Available", atau indikator views).
+1. **Palet Warna Monokrom + 1 Aksen:** Gunakan Latar Belakang Abu-abu Terang (`#F2F4F7`) dan Kartu Konten Putih Bersih (`#FFFFFF`). Gunakan warna **Lime Green (`#fff19c`)** HANYA sebagai warna aksen untuk badge (seperti tag keahlian utama, status "Available", atau indikator views).
 2. **Bentuk (Shapes) - Rounded Cards:** Seluruh kartu (cards) memiliki lengkungan besar (Border Radius `16px` hingga `24px`). Avatar dapat berupa lingkaran sempurna atau persegi dengan sudut melengkung.
 3. **Flat & Minimal Chrome:** Tidak ada bayangan (shadow) dramatis. Elevasi dicapai melalui border tipis (`1px solid #E5E7EB`) pada kartu putih di atas latar belakang abu-abu terang.
 4. **Tipografi Raksasa (Display Typography):**
@@ -34,7 +34,7 @@ Gabungkan gaya **"Bold Monochrome Grid-Based Editorial"** dengan **"Modern Monoc
      - Badge Status/Lokasi di atas nama.
      - Headline: Teks Serif italic "*kreator*" diikuti Nama Panggung raksasa Sans-serif (`uppercase`).
      - Teks sekunder: Profesi (Occupation) warna abu-abu.
-     - Tag Keahlian (Primary Interests) bergaya "pill" (kapsul). Tag pertama memiliki background Lime Green (`#BAFF6A`) dengan teks hitam, tag lainnya abu-abu muda.
+     - Tag Keahlian (Primary Interests) bergaya "pill" (kapsul). Tag pertama memiliki background Lime Green (`#fff19c`) dengan teks hitam, tag lainnya abu-abu muda.
      - Bio singkat (teks Sans-serif regular).
      - Deretan Ikon Sosial Media (Instagram, LinkedIn, YouTube) bentuk bulat/lingkaran outline.
    - **Kolom Kanan (Statistik Data-Driven):**

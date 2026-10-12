@@ -90,7 +90,7 @@ Eksklusif untuk `/admin/*`. Dipetakan ke Tailwind via `@theme inline`.
 | `--text-secondary` | `text-text-secondary` | `#6B7280` | Teks sekunder |
 | `--text-muted` | `text-text-muted` | `#9CA3AF` | Teks muted |
 | `--border-default` | `border-border-default` | `#E5E7EB` | Border default |
-| `--accent-green` | `text-accent-green` | `#BAFF6A` | Aksen hijau neon |
+| `--accent-green` | `text-accent-green` | `#fff19c` | Aksen hijau neon |
 | `--accent-red` | `text-accent-red` | `#FF6B6B` | Aksen merah |
 
 #### Dark Mode

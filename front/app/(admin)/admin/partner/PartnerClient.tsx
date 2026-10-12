@@ -619,7 +619,7 @@
                 >
                   <SlidersHorizontal className="w-4 h-4" />
                   {(typeFilter !== "all" || statusFilter !== "all") && (
-                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#BAFF6A]" />
+                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#fff19c]" />
                   )}
                 </button>
               </PopoverTrigger>

@@ -18,7 +18,7 @@ Sesuai standar `design-system.md`, seluruh halaman admin mobile mengadopsi palet
 | **Primary Text** | `#111111` | `#F0F0F0` | Judul, nama item, nilai utama |
 | **Secondary Text** | `#6B7280` | `#8B8FA8` | Label metadata, sub-teks, username |
 | **Border Default** | `#E5E7EB` | `#2A2E42` (`border-border-default/70`) | Garis pembatas kartu, separator header |
-| **Accent Lime Green** | `#BAFF6A` / `#A3E85A` | `#BAFF6A` / `#bef264` | Badge *Published* / indikator aktif / pertumbuhan |
+| **Accent Lime Yellow** | `#fff19c` / `#A3E85A` | `#fff19c` / `#bef264` | Badge *Published* / indikator aktif / pertumbuhan |
 | **Accent Red** | `#FF6B6B` / `#EF4444` | `#FF5252` / `#f87171` | Badge prioritas tinggi, aksi hapus permanen |
 
 > ⚠️ **Aturan Ketat:** Hindari warna-warni dekoratif acak. Pertahankan estetika monokrom (hitam, putih, abu-abu netral) dengan aksen hijau lime untuk penanda positif/aktif dan merah untuk peringatan/hapus.
@@ -115,7 +115,7 @@ Pada tampilan seluler, aksi navigasi cepat dan pembuatan data dibungkus dalam se
 2. **Tata Letak Elemen Dock:**
    - **Sisi Kiri (Ikon Kontrol Sirkular):**
      - Ukuran: Tombol sirkular ramping **`w-9 h-9 rounded-full text-zinc-400 hover:text-white active:scale-95 transition-all`**.
-     - Fungsi: *Urutkan / Sort* (popover), *Filter Acara* (popover dengan dot aktif `#BAFF6A`), *QR Code*, atau *Daftar Absensi* (dengan badge counter).
+     - Fungsi: *Urutkan / Sort* (popover), *Filter Acara* (popover dengan dot aktif `#fff19c`), *QR Code*, atau *Daftar Absensi* (dengan badge counter).
    - **Sisi Kanan (Tombol Aksi Utama / Tambah Data):**
      - Ukuran & Bentuk: Tombol kapsul putih monokrom **`h-9 px-4 rounded-full bg-white text-zinc-900 dark:bg-white dark:text-zinc-900 hover:bg-zinc-100 flex items-center gap-1.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all shrink-0`**.
      - Label: Ikon `<Plus className="w-4 h-4 stroke-[2.5]" />` + teks *"Tambah"*.

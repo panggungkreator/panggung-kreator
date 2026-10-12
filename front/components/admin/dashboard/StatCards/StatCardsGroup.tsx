@@ -34,7 +34,7 @@ export function StatCardsGroup({
           isPositive: newMembers > 0 ? true : null,
           period: "Bulan ini",
         }}
-        sparklineColor="#BAFF6A"
+        sparklineColor="#fff19c"
         sparklinePath="M 0,35 Q 20,40 35,18 T 70,25 T 100,5"
       />
 

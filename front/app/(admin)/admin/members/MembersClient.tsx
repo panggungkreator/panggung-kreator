@@ -1278,7 +1278,7 @@ export default function MembersClient({
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 {(communityFilter !== "all" || tierFilter !== "all") && (
-                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#BAFF6A]"></span>
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#fff19c]"></span>
                 )}
               </button>
             </PopoverTrigger>

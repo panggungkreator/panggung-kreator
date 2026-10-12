@@ -276,7 +276,7 @@ export default async function AdminDashboardPage() {
           totalWithCareer > 0
             ? Math.round((careerCounts["Sampingan / Branding"] / totalWithCareer) * 100)
             : 36,
-        color: "#BAFF6A",
+        color: "#fff19c",
       },
       {
         name: "Eksplorasi",
