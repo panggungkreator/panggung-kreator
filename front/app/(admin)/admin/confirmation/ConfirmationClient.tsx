@@ -754,58 +754,50 @@ export default function ConfirmationClient({
                   )}
                 </div>
 
-                {/* ── Body: Avatar + Info + Nominal ── */}
+                {/* ── Body: Info (no avatar) ── */}
                 <div
-                  className="flex items-start gap-3 cursor-pointer active:opacity-80 transition-opacity"
+                  className="cursor-pointer active:opacity-80 transition-opacity"
                   onClick={() => setDetailMember(member)}
                 >
-                  {/* Avatar */}
-                  <div className="w-11 h-11 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 flex items-center justify-center font-bold text-base shrink-0">
-                    {(member.full_name || "M")[0].toUpperCase()}
-                  </div>
-
-                  {/* Info tengah */}
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-[17px] font-bold text-text-primary truncate leading-tight">
-                      {member.full_name}
-                    </h3>
-                    <p className="text-[11px] text-text-muted mt-1 truncate">
-                      <span className="font-mono">@{member.username || "username"}</span>
-                      <span className="mx-1.5 opacity-40">·</span>
-                      <span>{formatOccupation(member.occupation)}</span>
-                    </p>
-                    <p className="text-[11px] font-mono text-text-secondary mt-1.5 truncate">
-                      {member.whatsapp_number || "-"}
-                      <span className="mx-1.5 opacity-40">·</span>
-                      <span className="tabular-nums text-text-muted">
-                        {new Date(member.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                      </span>
-                    </p>
-                  </div>
-
-                  {/* Nominal — kanan */}
-                  <div className="flex flex-col items-end shrink-0">
-                    <span className="text-[15px] font-extrabold font-mono text-text-primary tabular-nums mt-5">
-                      {formatIDR(member.final_price || 49000)}
+                  <h3 className="text-[17px] font-bold text-text-primary truncate leading-tight">
+                    {member.full_name}
+                  </h3>
+                  <p className="text-[11px] text-text-muted mt-1 truncate">
+                    <span className="font-mono">@{member.username || "username"}</span>
+                    <span className="mx-1.5 opacity-40">·</span>
+                    <span>{formatOccupation(member.occupation)}</span>
+                  </p>
+                  <p className="text-[11px] font-mono text-text-secondary mt-1.5 truncate">
+                    {member.whatsapp_number || "-"}
+                    <span className="mx-1.5 opacity-40">·</span>
+                    <span className="tabular-nums text-text-muted">
+                      {new Date(member.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
                     </span>
-                  </div>
+                  </p>
                 </div>
 
-                {/* Badges voucher & referral */}
-                {(member.used_voucher_code || member.referrer || member.referred_by) && (
-                  <div className="flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    {member.used_voucher_code && (
-                      <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                        🎟️ {member.used_voucher_code}
-                      </span>
-                    )}
-                    {(member.referrer || member.referred_by) && (
-                      <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 max-w-[130px] truncate">
-                        🎁 {member.referrer?.stage_name || member.referrer?.full_name || "Referral"}
-                      </span>
-                    )}
-                  </div>
-                )}
+                {/* Badges affiliate/voucher + Nominal */}
+                <div className="flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                  {(member.used_voucher_code || member.referrer || member.referred_by) ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {member.used_voucher_code && (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                          🎟️ {member.used_voucher_code}
+                        </span>
+                      )}
+                      {(member.referrer || member.referred_by) && (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 max-w-[130px] truncate">
+                          🎁 {member.referrer?.stage_name || member.referrer?.full_name || "Referral"}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div></div>
+                  )}
+                  <span className="text-[15px] font-extrabold font-mono text-text-primary tabular-nums shrink-0">
+                    {formatIDR(member.final_price || 49000)}
+                  </span>
+                </div>
 
                 {/* ── Footer: Actions ── */}
                 <div
