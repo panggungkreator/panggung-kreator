@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition, useMemo } from "react";
+import ReactDOM from "react-dom";
 import { useRouter } from "next/navigation";
 import { verifyMemberPaymentAction, deleteMembersAction } from "@/lib/actions/checkout-actions";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +18,8 @@ import {
   SlidersHorizontal,
   Check,
   Users,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -114,8 +117,14 @@ export default function ConfirmationClient({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [detailMember, setDetailMember] = useState<Member | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const limit = paginationLimit > 0 ? paginationLimit : 10;
+
+  // Mount portal
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Sync initialMembers props to local state when Server Component re-fetches
   useEffect(() => {
@@ -809,7 +818,7 @@ export default function ConfirmationClient({
                       type="button"
                       onClick={() => handleVerify(member.id, member.full_name || member.username || "Kreator")}
                       disabled={verifyingId !== null}
-                      className="flex-1 h-10 rounded-xl text-sm text-zinc-800 dark:text-zinc-200 font-bold bg-[#fef9c3] hover:bg-[#a5f053] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="flex-1 h-10 rounded-xl text-sm text-zinc-800 dark:text-zinc-200 font-bold bg-[#fef9c3] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       <span>{verifyingId === member.id ? "Memproses..." : "Konfirmasi"}</span>
                     </button>
@@ -842,7 +851,7 @@ export default function ConfirmationClient({
         )}
       </div>
 
-      {/* ═══ PAGINATION CONTROLS (Sesuai Standar admin-mobile.md Bagian 5) ═══ */}
+      {/* ═══ PAGINATION CONTROLS ═══ */}
       <AdminPagination
         currentPage={currentPage}
         totalPages={totalPages}
@@ -855,123 +864,126 @@ export default function ConfirmationClient({
       />
 
       {/* ═══ FLOATING BOTTOM CONTROLS DOCK (Mobile md:hidden Sesuai admin-mobile.md Bagian 3B) ═══ */}
-      <div className="md:hidden fixed bottom-6 inset-x-0 z-30 pointer-events-none flex justify-center px-4">
-        <div className="pointer-events-auto bg-zinc-900/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-2 text-white">
+      {mounted && ReactDOM.createPortal(
+        <div className="md:hidden fixed bottom-6 inset-x-0 z-30 pointer-events-none flex justify-center px-4">
+          <div className="pointer-events-auto bg-zinc-900/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-2 text-white">
 
-          {/* 1. Refresh Button */}
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer disabled:opacity-60"
-            title="Segarkan Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-white" : ""}`} />
-          </button>
-
-          {/* divider */}
-          <span className="w-px h-5 bg-white/10" />
-
-          {/* 2. Filter Status Popover */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer ${statusFilter !== "all" ? "text-white bg-zinc-800" : ""}`}
-                title="Filter Status"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              side="top"
-              align="center"
-              className="w-48 p-2.5 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-1 mb-2 z-50"
+            {/* 1. Refresh Button */}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer disabled:opacity-60"
+              title="Segarkan Data"
             >
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted px-2.5 py-1 block border-b border-border-default/50 mb-1">
-                Filter Status
-              </span>
-              {(["all", "pending", "paid"] as const).map((s) => {
-                const label = s === "all" ? "Semua" : s === "pending" ? "Menunggu" : "Lunas";
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setStatusFilter(s)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${statusFilter === s ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
-                  >
-                    <span>{label}</span>
-                    {statusFilter === s && <Check className="w-3.5 h-3.5 text-text-primary" />}
-                  </button>
-                );
-              })}
-            </PopoverContent>
-          </Popover>
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-white" : ""}`} />
+            </button>
 
-          {/* divider */}
-          <span className="w-px h-5 bg-white/10" />
+            {/* divider */}
+            <span className="w-px h-5 bg-white/10" />
 
-          {/* 3. Sort Popover */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer ${sortBy !== "newest" ? "text-white bg-zinc-800" : ""}`}
-                title="Urutkan Data"
+            {/* 2. Filter Status Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer ${statusFilter !== "all" ? "text-white bg-zinc-800" : ""}`}
+                  title="Filter Status"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="top"
+                align="center"
+                className="w-48 p-2.5 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-1 mb-2 z-50"
               >
-                <ArrowUpDown className="w-4 h-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              side="top"
-              align="center"
-              className="w-52 p-2.5 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-1 mb-2 z-50"
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted px-2.5 py-1 block border-b border-border-default/50 mb-1">
+                  Filter Status
+                </span>
+                {(["all", "pending", "paid"] as const).map((s) => {
+                  const label = s === "all" ? "Semua" : s === "pending" ? "Menunggu" : "Lunas";
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setStatusFilter(s)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${statusFilter === s ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
+                    >
+                      <span>{label}</span>
+                      {statusFilter === s && <Check className="w-3.5 h-3.5 text-text-primary" />}
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
+
+            {/* divider */}
+            <span className="w-px h-5 bg-white/10" />
+
+            {/* 3. Sort Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer ${sortBy !== "newest" ? "text-white bg-zinc-800" : ""}`}
+                  title="Urutkan Data"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="top"
+                align="center"
+                className="w-52 p-2.5 rounded-3xl shadow-2xl bg-white dark:bg-[#18181b] border border-border-default/80 text-text-primary space-y-1 mb-2 z-50"
+              >
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted px-2.5 py-1 block border-b border-border-default/50 mb-1">
+                  Urutkan Berdasarkan
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSortBy("newest")}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "newest" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
+                >
+                  <span>Tanggal Terbaru</span>
+                  {sortBy === "newest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSortBy("oldest")}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "oldest" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
+                >
+                  <span>Tanggal Terlama</span>
+                  {sortBy === "oldest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSortBy("name_asc")}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "name_asc" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
+                >
+                  <span>Nama (A-Z)</span>
+                  {sortBy === "name_asc" && <Check className="w-3.5 h-3.5 text-text-primary" />}
+                </button>
+              </PopoverContent>
+            </Popover>
+
+            {/* divider */}
+            <span className="w-px h-5 bg-white/10" />
+
+            {/* 4. Export Button */}
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={filteredMembers.length === 0}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+              title="Export CSV"
             >
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted px-2.5 py-1 block border-b border-border-default/50 mb-1">
-                Urutkan Berdasarkan
-              </span>
-              <button
-                type="button"
-                onClick={() => setSortBy("newest")}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "newest" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
-              >
-                <span>Tanggal Terbaru</span>
-                {sortBy === "newest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSortBy("oldest")}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "oldest" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
-              >
-                <span>Tanggal Terlama</span>
-                {sortBy === "oldest" && <Check className="w-3.5 h-3.5 text-text-primary" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSortBy("name_asc")}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${sortBy === "name_asc" ? "bg-bg-well text-text-primary font-bold" : "text-text-secondary hover:bg-bg-well hover:text-text-primary"}`}
-              >
-                <span>Nama (A-Z)</span>
-                {sortBy === "name_asc" && <Check className="w-3.5 h-3.5 text-text-primary" />}
-              </button>
-            </PopoverContent>
-          </Popover>
-
-          {/* divider */}
-          <span className="w-px h-5 bg-white/10" />
-
-          {/* 4. Export Button */}
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            disabled={filteredMembers.length === 0}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer disabled:opacity-40"
-            title="Export CSV"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+              <FileSpreadsheet className="w-4 h-4" />
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* ═══ CONFIRMATION MODALS (rounded-none sm:rounded-3xl border-0 sm:border) ═══ */}
       <ModalConfirmation
