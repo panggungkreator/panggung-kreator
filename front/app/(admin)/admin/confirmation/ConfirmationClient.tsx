@@ -492,9 +492,9 @@ export default function ConfirmationClient({
 
       {/* Alert Messages */}
       {successMessage && (
-        <div className="p-4 bg-[#dcfce7] border border-emerald-200/50 rounded-2xl text-xs text-[#fef9c3] dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 flex items-center justify-between font-semibold">
+        <div className="p-4 bg-[#dcfce7] border border-emerald-200/50 rounded-2xl text-xs text-[#1a1a1a] dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 flex items-center justify-between font-semibold">
           <span className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#fef9c3] dark:text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-[#1a1a1a] dark:text-emerald-400" />
             {successMessage}
           </span>
           <button onClick={() => setSuccessMessage(null)} className="hover:opacity-80 p-1 cursor-pointer">✕</button>
@@ -699,7 +699,7 @@ export default function ConfirmationClient({
                             {verifyingId === member.id ? "Memproses..." : "Konfirmasi Lunas"}
                           </button>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-3.5 py-1 bg-[#dcfce7] text-[#fef9c3] dark:bg-emerald-950/20 dark:text-emerald-400 rounded-full text-xs font-bold border border-emerald-200/20">
+                          <span className="inline-flex items-center gap-1 px-3.5 py-1 bg-[#dcfce7] text-[#1a1a1a] dark:bg-emerald-950/20 dark:text-emerald-400 rounded-full text-xs font-bold border border-emerald-200/20">
                             Lunas
                           </span>
                         )}
@@ -757,7 +757,7 @@ export default function ConfirmationClient({
                       Menunggu
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-[#dcfce7] text-[#fef9c3] border border-[#86efac] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-[#dcfce7] text-[#1a1a1a] border border-[#86efac] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
                       Lunas
                     </span>
                   )}
@@ -824,8 +824,8 @@ export default function ConfirmationClient({
                     </button>
                   ) : (
                     <div className="flex-1 h-10 rounded-xl bg-[#dcfce7] dark:bg-emerald-950/30 border border-[#86efac] dark:border-emerald-800 flex items-center justify-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#fef9c3] dark:text-emerald-400 shrink-0" />
-                      <span className="text-sm font-bold text-[#fef9c3] dark:text-emerald-400">Dikonfirmasi</span>
+                      <CheckCircle2 className="w-4 h-4 text-[#1a1a1a] dark:text-emerald-400 shrink-0" />
+                      <span className="text-sm font-bold text-[#1a1a1a] dark:text-emerald-400">Dikonfirmasi</span>
                     </div>
                   )}
                   <button
@@ -1029,7 +1029,7 @@ export default function ConfirmationClient({
         {detailMember && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
             {/* Personal Section */}
-            <ModalSection title="Informasi Personal" titleColor="text-[#fef9c3] dark:text-emerald-400">
+            <ModalSection title="Informasi Personal" titleColor="text-[#1a1a1a] dark:text-emerald-400">
               <div className="space-y-2.5">
                 <div className="flex justify-between">
                   <span className="text-zinc-400 font-medium">Nama Panggung:</span>
@@ -1125,7 +1125,7 @@ export default function ConfirmationClient({
                 <div className="flex justify-between items-center">
                   <span className="text-zinc-400 font-medium">Status Pembayaran:</span>
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${detailMember.payment_status === "paid"
-                    ? "bg-[#dcfce7] text-[#fef9c3] border-emerald-200/20"
+                    ? "bg-[#dcfce7] text-[#1a1a1a] border-emerald-200/20"
                     : "bg-[#fef9c3] text-[#713f12] border-yellow-200/20"
                     }`}>
                     {detailMember.payment_status === "paid" ? "Lunas" : "Pending"}
