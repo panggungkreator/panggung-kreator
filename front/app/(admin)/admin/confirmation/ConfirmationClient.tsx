@@ -492,9 +492,9 @@ export default function ConfirmationClient({
 
       {/* Alert Messages */}
       {successMessage && (
-        <div className="p-4 bg-[#dcfce7] border border-emerald-200/50 rounded-2xl text-xs text-[#1a1a1a] dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 flex items-center justify-between font-semibold">
+        <div className="p-4 bg-[#3b9b5a] border border-emerald-200/50 rounded-2xl text-xs text-[#fef9c3] dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 flex items-center justify-between font-semibold">
           <span className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#1a1a1a] dark:text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-[#fef9c3] dark:text-emerald-400" />
             {successMessage}
           </span>
           <button onClick={() => setSuccessMessage(null)} className="hover:opacity-80 p-1 cursor-pointer">✕</button>
