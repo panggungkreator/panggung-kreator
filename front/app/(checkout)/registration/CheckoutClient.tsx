@@ -544,7 +544,7 @@ export default function CheckoutClient({ selectedPackage }: { selectedPackage: a
           </button>
           <div>
             <h1 className="font-sans text-2xl md:text-3xl font-black uppercase tracking-tighter text-[#2c2c2c] dark:text-white leading-[0.95]">
-              PENDAFTARAN PANGGUNG KREATOR AKADEMI
+              PENDAFTARAN PANGGUNG KREATOR MEMBERSHIP
             </h1>
             <p className="font-sans text-[11px] md:text-xs uppercase tracking-wider text-[#2c2c2c]/60 dark:text-white/60 mt-1.5 leading-relaxed font-medium">
               {qrisGenerated
