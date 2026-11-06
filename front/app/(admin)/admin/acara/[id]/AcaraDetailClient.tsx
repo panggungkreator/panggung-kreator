@@ -39,6 +39,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ModalConfirmation } from "@/components/ui/Modal-Confirmation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EventGalleryModal } from "@/components/admin/EventGalleryModal";
+import { PerformerList } from "./PerformerList";
 
 interface EventDetail {
   id: string;
@@ -462,6 +463,10 @@ export default function AcaraDetailClient({
         )}
       </div>
 
+
+      {event.event_type === "open_mic" && (
+        <PerformerList eventId={event.id} attendances={attendances} members={members} canEdit={canEdit} />
+      )}
 
       {/* ═══ 1. DESKTOP VIEW (hidden on mobile, visible on md/lg) ═══ */}
       <div className="hidden md:block space-y-6">
